@@ -20,10 +20,22 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
     throw new Error("NEXT_PUBLIC_API_URL is not set")
   }
 
-  const res = await fetch(`${API_URL}${path}`, init)
+  let res: Response
+  try {
+    res = await fetch(`${API_URL}${path}`, init)
+  } catch {
+    // Backend not running at all, as opposed to the backend failing a query.
+    throw new ApiError(0, `Backend tidak merespons di ${API_URL}. Pastikan \`npm run dev\` di folder backend sedang jalan.`)
+  }
 
   if (!res.ok) {
-    throw new ApiError(res.status, `Request to ${path} failed with status ${res.status}`)
+    // The backend explains actionable failures (VPN off, for instance), so prefer
+    // its message over a bare status code.
+    const message = await res
+      .json()
+      .then((body) => (body as { error?: string })?.error)
+      .catch(() => undefined)
+    throw new ApiError(res.status, message ?? `Request to ${path} failed with status ${res.status}`)
   }
 
   return res.json() as Promise<T>
