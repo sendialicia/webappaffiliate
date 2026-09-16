@@ -24,6 +24,7 @@ import type {
   AcquisitionPoint,
   DailyPerformancePoint,
   DriverChartRow,
+  EntityGrowthRow,
   DriverDimension,
   DriverEntity,
   DriversResult,
@@ -618,11 +619,14 @@ export async function getDrivers(
   const composition: DriverChartRow[] = []
   const growth: DriverChartRow[] = []
   const difference: DriverChartRow[] = []
+  const entityGrowth: EntityGrowthRow[] = []
 
   for (const entityName of entities) {
     const compRow: DriverChartRow = { entity: entityName }
     const growRow: DriverChartRow = { entity: entityName }
     const diffRow: DriverChartRow = { entity: entityName }
+    let entityGmv = 0
+    let entityGmvPrev = 0
 
     for (const name of names) {
       const match = rows.find((r) => r.entity === entityName && r.name === name)
@@ -631,14 +635,20 @@ export async function getDrivers(
       compRow[name] = gmv
       growRow[name] = gmvPrev > 0 ? ((gmv - gmvPrev) / gmvPrev) * 100 : 0
       diffRow[name] = gmv - gmvPrev
+      entityGmv += gmv
+      entityGmvPrev += gmvPrev
     }
 
     composition.push(compRow)
     growth.push(growRow)
     difference.push(diffRow)
+    entityGrowth.push({
+      entity: entityName,
+      growth: entityGmvPrev > 0 ? ((entityGmv - entityGmvPrev) / entityGmvPrev) * 100 : null,
+    })
   }
 
-  return { entity, dimension, names, composition, growth, difference }
+  return { entity, dimension, names, composition, growth, difference, entityGrowth }
 }
 
 export async function getSpend(

@@ -97,9 +97,10 @@ export async function getPidCategories(
   basis: ComparisonBasis,
   filters: PidFilters,
   level: PidLevel,
+  prevRange?: { from?: string; to?: string },
 ): Promise<PidCategoriesResult> {
   const column = LEVEL_COLUMNS[level]
-  const comparison = computeComparisonRange(from, to, basis)
+  const comparison = computeComparisonRange(from, to, basis, prevRange)
   const params: Record<string, unknown> = {
     currentFrom: from,
     currentTo: to,
@@ -253,8 +254,9 @@ export async function getPidProducts(
   to: string,
   basis: ComparisonBasis,
   filters: PidFilters,
+  prevRange?: { from?: string; to?: string },
 ): Promise<PidProductsResult> {
-  const comparison = computeComparisonRange(from, to, basis)
+  const comparison = computeComparisonRange(from, to, basis, prevRange)
   const params: Record<string, unknown> = {
     currentFrom: from,
     currentTo: to,
@@ -444,8 +446,9 @@ export async function getPidProductDetail(
   basis: ComparisonBasis,
   filters: PidFilters,
   granularity: TrendGranularity,
+  prevRange?: { from?: string; to?: string },
 ): Promise<PidProductDetail | null> {
-  const comparison = computeComparisonRange(from, to, basis)
+  const comparison = computeComparisonRange(from, to, basis, prevRange)
   const params: Record<string, unknown> = {
     pid,
     currentFrom: from,

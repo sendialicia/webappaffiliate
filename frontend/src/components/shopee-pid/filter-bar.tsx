@@ -2,8 +2,12 @@
 
 import { useState } from "react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Input } from "@/components/ui/input"
-import { DATE_PRESET_LABELS, type DatePreset } from "@/lib/date-range"
+import {
+  CurrentPeriodField,
+  PreviousPeriodField,
+  impliedPrevRange,
+  shiftYear,
+} from "@/components/period-picker"
 import { useShopeePidFilters } from "@/store/shopee-pid-filters"
 import type { PidLevel } from "@/types/shopee-pid"
 
@@ -39,8 +43,18 @@ export function FilterBar({
     setTrendGranularity,
     setLevel,
     setScope,
+    setPrevRange,
+    prevFrom,
+    prevTo,
   } = useShopeePidFilters()
   const [copyLabel, setCopyLabel] = useState("Copy link")
+
+  const resolvedPrev =
+    compare === "custom"
+      ? { from: prevFrom ?? "", to: prevTo ?? "" }
+      : compare === "ly"
+        ? { from: shiftYear(from), to: shiftYear(to) }
+        : impliedPrevRange(from, to)
 
   return (
     <div className="sticky top-0 z-30 border-b border-[var(--ov-line)] bg-[var(--background)]/95 px-6 py-3 backdrop-blur md:px-8">
@@ -97,76 +111,23 @@ export function FilterBar({
           </Select>
         </div>
 
-        <div className="flex-none">
-          <div className="mb-1.5 text-[10.5px] font-bold tracking-wider text-[var(--ov-faint)] uppercase">
-            Current period
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="flex gap-1 rounded-lg border border-[var(--ov-line)] bg-[var(--panel)] p-0.5">
-              {(Object.keys(DATE_PRESET_LABELS) as DatePreset[]).map((p) => (
-                <button
-                  key={p}
-                  type="button"
-                  onClick={() => setPreset(p)}
-                  className="rounded-md px-2.5 py-1.5 text-xs font-semibold whitespace-nowrap"
-                  style={{
-                    background: preset === p ? "var(--ov-fill1)" : "transparent",
-                    color: preset === p ? "var(--ov-ink)" : "var(--ov-mut)",
-                  }}
-                >
-                  {DATE_PRESET_LABELS[p]}
-                </button>
-              ))}
-            </div>
-            {preset === "custom" ? (
-              <div className="flex items-center gap-1.5">
-                <Input
-                  type="date"
-                  value={from}
-                  onChange={(e) => setCustomRange(e.target.value, to)}
-                  className="h-8 w-[142px] bg-[var(--input)] text-xs"
-                />
-                <span className="text-xs text-[var(--ov-faint)]">→</span>
-                <Input
-                  type="date"
-                  value={to}
-                  onChange={(e) => setCustomRange(from, e.target.value)}
-                  className="h-8 w-[142px] bg-[var(--input)] text-xs"
-                />
-              </div>
-            ) : (
-              // The scope chip takes this slot's width when it merges in, so the resolved
-              // range steps aside to keep the bar on one row.
-              !(mergeScope && scope) && (
-                <span className="rounded-md border border-[var(--ov-line)] bg-[var(--input)] px-2.5 py-1.5 font-mono text-[11.5px] text-[var(--ov-soft)]">
-                  {from} → {to}
-                </span>
-              )
-            )}
-          </div>
-        </div>
+        <CurrentPeriodField
+          preset={preset}
+          from={from}
+          to={to}
+          onPresetAction={setPreset}
+          onRangeAction={setCustomRange}
+        />
 
-        <div className="flex-none">
-          <div className="mb-1.5 text-[10.5px] font-bold tracking-wider text-[var(--ov-faint)] uppercase">
-            Bandingkan
-          </div>
-          <div className="flex gap-1 rounded-lg border border-[var(--ov-line)] bg-[var(--panel)] p-0.5">
-            {(["prev", "ly"] as const).map((c) => (
-              <button
-                key={c}
-                type="button"
-                onClick={() => setCompare(c)}
-                className="rounded-md px-2.5 py-1.5 text-xs font-semibold"
-                style={{
-                  background: compare === c ? "var(--ov-fill1)" : "transparent",
-                  color: compare === c ? "var(--ov-ink)" : "var(--ov-mut)",
-                }}
-              >
-                {c === "prev" ? "vs prev" : "vs LY"}
-              </button>
-            ))}
-          </div>
-        </div>
+        <PreviousPeriodField
+          basis={compare}
+          from={from}
+          to={to}
+          resolvedFrom={resolvedPrev.from}
+          resolvedTo={resolvedPrev.to}
+          onBasisAction={setCompare}
+          onRangeAction={setPrevRange}
+        />
 
         {/* Active scope merges in here once its own row is scrolled past. */}
         {mergeScope && scope && (

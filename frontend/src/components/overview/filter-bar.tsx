@@ -4,7 +4,12 @@ import { useState } from "react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { DetailFilterSelects, activeDetailCount } from "@/components/overview/detail-filters"
-import { PeriodPicker } from "@/components/overview/period-picker"
+import {
+  CurrentPeriodField,
+  PreviousPeriodField,
+  impliedPrevRange,
+  shiftYear,
+} from "@/components/period-picker"
 import { useOverviewFilters } from "@/store/overview-filters"
 import type { FilterOption } from "@/types/overview"
 
@@ -22,9 +27,33 @@ export function FilterBar({
   dimensionOptions: FilterOption[]
   mergeDetail: boolean
 }) {
-  const { brand, marketplace, detail, setBrand, setMarketplace, clearDetailFilters } = useOverviewFilters()
+  const {
+    brand,
+    marketplace,
+    detail,
+    preset,
+    from,
+    to,
+    compare,
+    prevFrom,
+    prevTo,
+    setBrand,
+    setMarketplace,
+    setPreset,
+    setCustomRange,
+    setCompare,
+    setPrevRange,
+    clearDetailFilters,
+  } = useOverviewFilters()
   const [copyLabel, setCopyLabel] = useState("Copy link")
   const activeCount = activeDetailCount(detail)
+
+  const resolvedPrev =
+    compare === "custom"
+      ? { from: prevFrom ?? "", to: prevTo ?? "" }
+      : compare === "ly"
+        ? { from: shiftYear(from), to: shiftYear(to) }
+        : impliedPrevRange(from, to)
 
   return (
     <div className="sticky top-0 z-30 border-b border-[var(--ov-line)] bg-[var(--background)]/95 px-6 py-3 backdrop-blur md:px-8">
@@ -67,7 +96,22 @@ export function FilterBar({
           </Select>
         </div>
 
-        <PeriodPicker compact />
+        <CurrentPeriodField
+          preset={preset}
+          from={from}
+          to={to}
+          onPresetAction={setPreset}
+          onRangeAction={setCustomRange}
+        />
+        <PreviousPeriodField
+          basis={compare}
+          from={from}
+          to={to}
+          resolvedFrom={resolvedPrev.from}
+          resolvedTo={resolvedPrev.to}
+          onBasisAction={setCompare}
+          onRangeAction={setPrevRange}
+        />
 
         {/* Detail filters merge in here once their own row is scrolled past. */}
         {mergeDetail && (

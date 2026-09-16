@@ -25,7 +25,16 @@ function range(req: Request): { from: string; to: string } {
 }
 
 function basisOf(req: Request): ComparisonBasis {
-  return req.query.compare === 'ly' ? 'ly' : 'prev'
+  if (req.query.compare === 'ly') return 'ly'
+  if (req.query.compare === 'custom') return 'custom'
+  return 'prev'
+}
+
+/** Explicit previous window, honoured only when compare=custom. */
+function prevRangeOf(req: Request): { from?: string; to?: string } {
+  const from = str(req.query.prevFrom)
+  const to = str(req.query.prevTo)
+  return { ...(from ? { from } : {}), ...(to ? { to } : {}) }
 }
 
 function granularityOf(req: Request): TrendGranularity {
@@ -53,13 +62,13 @@ function filtersOf(req: Request): PidFilters {
 export async function getPidCategoriesHandler(req: Request, res: Response) {
   const { from, to } = range(req)
   const level = levelOf(str(req.query.level))
-  const data = await getPidCategories(from, to, basisOf(req), filtersOf(req), level)
+  const data = await getPidCategories(from, to, basisOf(req), filtersOf(req), level, prevRangeOf(req))
   res.json(data)
 }
 
 export async function getPidProductsHandler(req: Request, res: Response) {
   const { from, to } = range(req)
-  const data = await getPidProducts(from, to, basisOf(req), filtersOf(req))
+  const data = await getPidProducts(from, to, basisOf(req), filtersOf(req), prevRangeOf(req))
   res.json(data)
 }
 
@@ -77,7 +86,7 @@ export async function getPidProductDetailHandler(req: Request, res: Response) {
   }
 
   const { from, to } = range(req)
-  const data = await getPidProductDetail(pid, from, to, basisOf(req), filtersOf(req), granularityOf(req))
+  const data = await getPidProductDetail(pid, from, to, basisOf(req), filtersOf(req), granularityOf(req), prevRangeOf(req))
   if (!data) {
     res.status(404).json({ error: 'product not found in this period' })
     return

@@ -71,10 +71,15 @@ export default function ShopeePidPage() {
     search,
     creatorPillar,
     creatorManaged,
+    prevFrom,
+    prevTo,
     hydrateFromParams,
     setScope,
     setSelectedPid,
   } = filters
+
+  const prevParams =
+    compare === "custom" && prevFrom && prevTo ? { prevFrom, prevTo } : ({} as Record<string, string>)
 
   const [categories, setCategories] = useState<PidCategoriesResult | null>(null)
   const [products, setProducts] = useState<PidProductsResult | null>(null)
@@ -112,6 +117,8 @@ export default function ShopeePidPage() {
     search,
     creatorPillar,
     creatorManaged,
+    prevFrom,
+    prevTo,
   ])
 
   useEffect(() => {
@@ -125,22 +132,31 @@ export default function ShopeePidPage() {
     return () => observer.disconnect()
   }, [])
 
-  const scopeQuery = { brand: brand ?? undefined, from, to, compare, level, scope: scope ?? undefined }
+  const scopeQuery = {
+    brand: brand ?? undefined,
+    from,
+    to,
+    compare,
+    level,
+    scope: scope ?? undefined,
+    ...prevParams,
+  }
 
   useEffect(() => {
     apiFetch<PidCategoriesResult>(
-      `/api/shopee-pid/categories${buildQuery({ brand: brand ?? undefined, from, to, compare, level })}`,
+      `/api/shopee-pid/categories${buildQuery({ brand: brand ?? undefined, from, to, compare, level, ...prevParams })}`,
     )
       .then(setCategories)
       .catch((e) => setError(e instanceof Error ? e.message : "Gagal memuat kategori"))
-  }, [brand, from, to, compare, level])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [brand, from, to, compare, prevFrom, prevTo, level])
 
   useEffect(() => {
     apiFetch<PidProductsResult>(`/api/shopee-pid/products${buildQuery(scopeQuery)}`)
       .then(setProducts)
       .catch((e) => setError(e instanceof Error ? e.message : "Gagal memuat produk"))
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [brand, from, to, compare, level, scope])
+  }, [brand, from, to, compare, prevFrom, prevTo, level, scope])
 
   useEffect(() => {
     apiFetch<PidTrendPoint[]>(
@@ -161,11 +177,13 @@ export default function ShopeePidPage() {
         to,
         compare,
         granularity: trendGranularity,
+        ...prevParams,
       })}`,
     )
       .then(setDetail)
       .catch((e) => setError(e instanceof Error ? e.message : "Gagal memuat detail produk"))
-  }, [selectedPid, brand, from, to, compare, trendGranularity])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedPid, brand, from, to, compare, prevFrom, prevTo, trendGranularity])
 
   useEffect(() => {
     apiFetch<PidCreatorsResult>(

@@ -124,6 +124,11 @@ export interface DriverChartRow {
   [dimensionValue: string]: string | number
 }
 
+export interface EntityGrowthRow {
+  entity: string
+  growth: number | null
+}
+
 export interface DriversResult {
   entity: DriverEntity
   dimension: DriverDimension
@@ -131,6 +136,8 @@ export interface DriversResult {
   composition: DriverChartRow[]
   growth: DriverChartRow[]
   difference: DriverChartRow[]
+  /** Growth of the entity as a whole, recomputed from its totals rather than averaged per name. */
+  entityGrowth: EntityGrowthRow[]
 }
 
 export interface SpendRow {

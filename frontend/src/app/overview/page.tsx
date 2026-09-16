@@ -11,13 +11,13 @@ import { MonthlyPerformanceChart } from "@/components/charts/monthly-performance
 import { DailyPerformanceChart } from "@/components/charts/daily-performance-chart"
 import { PaceGauge } from "@/components/charts/pace-gauge"
 import { ProgressBars } from "@/components/charts/progress-bars"
-import { KpiCard } from "@/components/charts/kpi-card"
+import { DualKpiCard, KpiCard } from "@/components/charts/kpi-card"
 import { AffSelfChart } from "@/components/charts/aff-self-chart"
 import { WaterfallChart } from "@/components/charts/waterfall-chart"
 import { CompositionTrendChart } from "@/components/charts/composition-trend-chart"
 import { CompositionTable, DIMENSION_COLORS } from "@/components/overview/composition-table"
 import { CompositionDetail } from "@/components/overview/composition-detail"
-import { DriverChart, DriverLegend } from "@/components/charts/driver-chart"
+import { DriverChart, DriverLegend, EntityGrowthChart } from "@/components/charts/driver-chart"
 import { GmvCommissionChart, ROI_THRESHOLD, RoiChart } from "@/components/charts/roi-chart"
 import { AcquisitionChart } from "@/components/charts/acquisition-chart"
 import { SpendTable } from "@/components/overview/spend-table"
@@ -495,14 +495,21 @@ export default function OverviewPage() {
           {summary ? (
             <>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                <KpiCard
-                  label="GMV Affiliate"
-                  value={formatRp(summary.kpis.gmv.value)}
-                  deltaPct={summary.kpis.gmv.deltaPct}
-                  compareLabel={compareLabel}
-                  sparkline={summary.trend}
-                  sparklineKey="gmv"
-                />
+                <div className="lg:row-span-2">
+                  <KpiCard
+                    label="GMV Affiliate"
+                    value={formatRp(summary.kpis.gmv.value)}
+                    deltaPct={summary.kpis.gmv.deltaPct}
+                    compareLabel={compareLabel}
+                    sparkline={summary.trend}
+                    sparklineKey="gmv"
+                    color="var(--ov-blue)"
+                    size="lg"
+                    note={`${summary.kpis.gmv.delta >= 0 ? "+" : "−"}${formatRpFull(
+                      Math.abs(summary.kpis.gmv.delta),
+                    )} dari ${formatRpFull(summary.kpis.gmv.value - summary.kpis.gmv.delta)}`}
+                  />
+                </div>
                 <KpiCard
                   label="Creators Count"
                   value={formatIdr(summary.kpis.creators.value)}
@@ -510,6 +517,27 @@ export default function OverviewPage() {
                   compareLabel={compareLabel}
                   sparkline={summary.trend}
                   sparklineKey="creators"
+                  color="var(--chart-5)"
+                />
+                <DualKpiCard
+                  compareLabel={compareLabel}
+                  sparkline={summary.trend}
+                  metrics={[
+                    {
+                      label: "ASP",
+                      value: formatRpFull(summary.kpis.asp.value),
+                      deltaPct: summary.kpis.asp.deltaPct,
+                      trendKey: "asp",
+                      color: "var(--ov-gold-deep)",
+                    },
+                    {
+                      label: "AOV",
+                      value: formatRpFull(summary.kpis.aov.value),
+                      deltaPct: summary.kpis.aov.deltaPct,
+                      trendKey: "aov",
+                      color: "var(--ov-blue)",
+                    },
+                  ]}
                 />
                 <KpiCard
                   label="GMV per Creator"
@@ -518,6 +546,7 @@ export default function OverviewPage() {
                   compareLabel={compareLabel}
                   sparkline={summary.trend}
                   sparklineKey="gmvPerCreator"
+                  color="var(--ov-green)"
                 />
                 <KpiCard
                   label="Commission"
@@ -527,22 +556,7 @@ export default function OverviewPage() {
                   positiveIsGood={false}
                   sparkline={summary.trend}
                   sparklineKey="commission"
-                />
-                <KpiCard
-                  label="ASP"
-                  value={formatRpFull(summary.kpis.asp.value)}
-                  deltaPct={summary.kpis.asp.deltaPct}
-                  compareLabel={compareLabel}
-                  sparkline={summary.trend}
-                  sparklineKey="asp"
-                />
-                <KpiCard
-                  label="AOV"
-                  value={formatRpFull(summary.kpis.aov.value)}
-                  deltaPct={summary.kpis.aov.deltaPct}
-                  compareLabel={compareLabel}
-                  sparkline={summary.trend}
-                  sparklineKey="aov"
+                  color="var(--ov-gold)"
                 />
                 <div className="sm:col-span-2 lg:col-span-2">
                   <div
@@ -686,19 +700,19 @@ export default function OverviewPage() {
                 <div className="mb-2 rounded-md border border-[var(--accent)] bg-[var(--accent)] p-1.5 text-center text-[11.5px] font-bold tracking-wider text-[var(--ov-head)] uppercase">
                   Composition
                 </div>
-                <DriverChart rows={drivers.composition} names={drivers.names} mode="stacked" />
+                <DriverChart rows={drivers.composition} names={drivers.names} />
               </div>
               <div>
                 <div className="mb-2 rounded-md border border-[var(--accent)] bg-[var(--accent)] p-1.5 text-center text-[11.5px] font-bold tracking-wider text-[var(--ov-head)] uppercase">
                   Growth GMV
                 </div>
-                <DriverChart rows={drivers.growth} names={drivers.names} mode="grouped" />
+                <EntityGrowthChart rows={drivers.entityGrowth} />
               </div>
               <div>
                 <div className="mb-2 rounded-md border border-[var(--accent)] bg-[var(--accent)] p-1.5 text-center text-[11.5px] font-bold tracking-wider text-[var(--ov-head)] uppercase">
                   GMV Difference
                 </div>
-                <DriverChart rows={drivers.difference} names={drivers.names} mode="stacked" />
+                <DriverChart rows={drivers.difference} names={drivers.names} />
               </div>
               <DriverLegend names={drivers.names} />
             </div>

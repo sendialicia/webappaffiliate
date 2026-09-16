@@ -6,7 +6,11 @@ function deltaColor(delta: number | null): string {
   return delta >= 0 ? "var(--ov-green-ink)" : "var(--ov-red-ink)"
 }
 
+/** This section is about content performance, so channels that carry no content are left out. */
+const NON_CONTENT_PILLARS = new Set(["Product Card", "Unknown"])
+
 export function ContentFunnel({ marketplace }: { marketplace: FunnelMarketplace }) {
+  const pillars = marketplace.pillars.filter((p) => !NON_CONTENT_PILLARS.has(p.name))
   // Impressions dwarf the content count, so the bars scale to the largest stage, not the first.
   const top = Math.max(0, ...marketplace.stages.map((s) => s.value))
 
@@ -17,7 +21,7 @@ export function ContentFunnel({ marketplace }: { marketplace: FunnelMarketplace 
       </div>
 
       <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
-        {marketplace.pillars.slice(0, 4).map((pillar) => (
+        {pillars.slice(0, 4).map((pillar) => (
           <div
             key={pillar.name}
             className="overflow-hidden rounded-lg border border-[var(--ov-line)]"

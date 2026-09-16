@@ -8,7 +8,7 @@ export function ProgressBars({ title, rows }: { title: string; rows: ProgressRow
       style={{ background: "var(--ov-card-gradient)" }}
     >
       <div className="mb-4 text-lg font-semibold font-(family-name:--font-archivo)">{title}</div>
-      <div className="flex flex-col gap-4">
+      <div className="flex max-h-[300px] flex-col gap-4 overflow-y-auto pr-1">
         {rows.map((r) => {
           const pct = Math.min(Math.max(r.pct, 0), 1)
           return (

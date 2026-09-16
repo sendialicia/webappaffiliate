@@ -18,6 +18,9 @@ interface ShopeePidState {
   search: string
   creatorPillar: string | null
   creatorManaged: boolean | null
+  /** Explicit comparison window, used when compare is "custom". */
+  prevFrom: string | null
+  prevTo: string | null
   setBrand: (brand: string | null) => void
   setPreset: (preset: DatePreset) => void
   setCustomRange: (from: string, to: string) => void
@@ -31,6 +34,7 @@ interface ShopeePidState {
   setSearch: (search: string) => void
   setCreatorPillar: (pillar: string | null) => void
   setCreatorManaged: (managed: boolean | null) => void
+  setPrevRange: (from: string, to: string) => void
   hydrateFromParams: (params: URLSearchParams) => void
 }
 
@@ -51,6 +55,8 @@ export const useShopeePidFilters = create<ShopeePidState>((set) => ({
   search: "",
   creatorPillar: null,
   creatorManaged: null,
+  prevFrom: null,
+  prevTo: null,
 
   setBrand: (brand) => set({ brand }),
   setPreset: (preset) =>
@@ -67,6 +73,7 @@ export const useShopeePidFilters = create<ShopeePidState>((set) => ({
   setSearch: (search) => set({ search }),
   setCreatorPillar: (creatorPillar) => set({ creatorPillar }),
   setCreatorManaged: (creatorManaged) => set({ creatorManaged }),
+  setPrevRange: (prevFrom, prevTo) => set({ compare: "custom", prevFrom, prevTo }),
 
   hydrateFromParams: (params) =>
     set((state) => {
@@ -89,6 +96,8 @@ export const useShopeePidFilters = create<ShopeePidState>((set) => ({
         search: params.get("q") ?? state.search,
         creatorPillar: params.get("crPillar") ?? state.creatorPillar,
         creatorManaged: managed === "true" ? true : managed === "false" ? false : state.creatorManaged,
+        prevFrom: params.get("prevFrom") ?? state.prevFrom,
+        prevTo: params.get("prevTo") ?? state.prevTo,
       }
     }),
 }))
@@ -109,5 +118,9 @@ export function pidFiltersToParams(state: ShopeePidState): URLSearchParams {
   if (state.search) params.set("q", state.search)
   if (state.creatorPillar) params.set("crPillar", state.creatorPillar)
   if (state.creatorManaged !== null) params.set("managed", String(state.creatorManaged))
+  if (state.compare === "custom" && state.prevFrom && state.prevTo) {
+    params.set("prevFrom", state.prevFrom)
+    params.set("prevTo", state.prevTo)
+  }
   return params
 }
