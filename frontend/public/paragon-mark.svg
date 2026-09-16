@@ -1,0 +1,14 @@
+<!--
+  ParagonCorp mark, hand-traced from the logo Sendi supplied. Drop the official
+  file here under the same name to replace it — the sidebar renders whatever is
+  at this path and whitens it in CSS, so no code changes when you swap it.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
+  <path
+    fill="#2B57A5"
+    fill-rule="evenodd"
+    d="M2 2.5 H22 L12 21 Z
+       M8.5 2.5 L12 11.2 L15.5 2.5 Z
+       M11.05 12.1 L12 20.7 L12.95 12.1 Z"
+  />
+</svg>

@@ -169,28 +169,18 @@ function OutlierDot({
   if (pinX === 0 && pinY === 0) {
     return <circle data-pid={payload.pid} cx={cx} cy={cy} r={3.2} fill={fill} fillOpacity={fillOpacity} />
   }
-  // SVG y grows downward, so an upper-fence pin points towards a smaller y.
-  const chevron = (dx: number, dy: number) => {
-    const ox = cx + dx * 8
-    const oy = cy - dy * 8
-    const d = dx !== 0 ? `M ${ox - dx * 3} ${oy - 3.4} L ${ox} ${oy} L ${ox - dx * 3} ${oy + 3.4}` : `M ${ox - 3.4} ${oy + dy * 3} L ${ox} ${oy} L ${ox + 3.4} ${oy + dy * 3}`
-    return <path d={d} fill="none" stroke={fill} strokeWidth={1.3} strokeLinecap="round" strokeLinejoin="round" />
-  }
+  // A pinned product sits at the fence, not at its real value, so it gets a solid
+  // arrowhead aimed the way its value actually ran off the chart. SVG y grows
+  // downward, so an upper-fence pin (pinY 1) points towards a smaller y.
+  const angle = (Math.atan2(-pinY, pinX) * 180) / Math.PI
   return (
-    <g data-pid={payload.pid}>
-      <circle
-        cx={cx}
-        cy={cy}
-        r={4.2}
-        fill={fill}
-        fillOpacity={fillOpacity * 0.45}
-        stroke={fill}
-        strokeWidth={1.3}
-        strokeDasharray="2.2 1.8"
-      />
-      {pinX !== 0 && chevron(pinX, 0)}
-      {pinY !== 0 && chevron(0, pinY)}
-    </g>
+    <path
+      data-pid={payload.pid}
+      d="M 5.6 0 L -3.6 4.3 L -3.6 -4.3 Z"
+      fill={fill}
+      fillOpacity={fillOpacity}
+      transform={`translate(${cx} ${cy}) rotate(${angle})`}
+    />
   )
 }
 

@@ -25,14 +25,15 @@ export const metadata: Metadata = {
 };
 
 // Applies the saved theme before first paint, so a light-mode reader never sees a dark flash.
-const themeBootstrap = `try{var t=localStorage.getItem("ov-theme");document.documentElement.dataset.theme=t==="light"?"light":"dark"}catch(e){document.documentElement.dataset.theme="dark"}`;
+const themeBootstrap = `try{var d=document.documentElement;var t=localStorage.getItem("ov-theme");d.dataset.theme=t==="light"?"light":"dark";var s=localStorage.getItem("ov-sidebar");d.dataset.sidebar=s==="rail"?"rail":"full"}catch(e){document.documentElement.dataset.theme="dark"}`;
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
       data-theme="dark"
-      // The bootstrap script below rewrites data-theme before hydration.
+      data-sidebar="full"
+      // The bootstrap script below rewrites both attributes before hydration.
       suppressHydrationWarning
       className={`${archivo.variable} ${barlow.variable} ${ibmPlexMono.variable} h-full antialiased`}
     >

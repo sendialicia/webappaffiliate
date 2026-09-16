@@ -1,5 +1,7 @@
+import Image from "next/image"
 import Link from "next/link"
 import type { ReactNode } from "react"
+import { SidebarToggle } from "@/components/sidebar-toggle"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { currentMonth } from "@/lib/date-range"
 import { formatMonthLabelFull } from "@/lib/format"
@@ -71,7 +73,7 @@ export function DashboardShell({
   return (
     <div className="flex min-h-screen">
       <aside
-        className="hidden w-[238px] flex-none flex-col border-r border-[var(--ov-line)] md:flex"
+        className="app-sidebar hidden w-[238px] flex-none flex-col border-r border-[var(--ov-line)] md:flex"
         style={{ background: "var(--ov-side)" }}
       >
         <div className="flex items-center gap-2.5 px-4.5 py-5">
@@ -79,24 +81,33 @@ export function DashboardShell({
             className="flex h-9.5 w-9.5 flex-none items-center justify-center rounded-[9px] border border-[var(--ov-track)]"
             style={{ background: "var(--ov-logo)" }}
           >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--ov-icon)" strokeWidth="1.5">
-              <path d="M4 5h16L12 20 4 5z" />
-              <path d="M9 9h6l-3 6-3-6z" fill="var(--ov-icon)" stroke="none" />
-            </svg>
+            {/* Whitened in CSS, so swapping in the official file needs no code change. */}
+            <Image src="/paragon-mark.svg" alt="ParagonCorp" width={21} height={21} className="paragon-mark" />
           </span>
-          <span className="text-[15px] leading-tight font-bold font-(family-name:--font-archivo)">
+          <span className="sidebar-text text-[15px] leading-tight font-bold font-(family-name:--font-archivo)">
             Affiliate
             <br />
             <span className="text-xs font-medium text-[var(--ov-label)]">Analytics</span>
           </span>
+          <span className="sidebar-text ml-auto">
+            <SidebarToggle />
+          </span>
+        </div>
+
+        {/* In the rail the toggle is the only way back, so it gets its own row. */}
+        <div className="sidebar-rail-only justify-center px-3 pb-2">
+          <SidebarToggle />
         </div>
 
         <nav className="flex flex-col gap-0.5 px-3">
           {NAV_ITEMS.map((item) => {
             const isActive =
               item.key === active || (item.key === "product" && PRODUCT_PAGES.includes(active))
+            // Sub-items carry no icon, so there is nothing to show for them in the rail.
             const className = `flex items-center gap-2.5 rounded-lg ${
-              item.sub ? "py-2.5 pr-3 pl-10 text-[13.5px] font-medium" : "px-3 py-2.5 text-[14.5px] font-semibold"
+              item.sub
+                ? "sidebar-text py-2.5 pr-3 pl-10 text-[13.5px] font-medium"
+                : "nav-row px-3 py-2.5 text-[14.5px] font-semibold"
             }`
             const style = isActive
               ? {
@@ -121,9 +132,9 @@ export function DashboardShell({
                     {item.icon}
                   </svg>
                 )}
-                {item.label}
+                <span className="sidebar-text">{item.label}</span>
                 {item.soon && (
-                  <span className="ml-auto text-[10px] font-semibold tracking-wide text-[var(--ov-dim)] uppercase">
+                  <span className="sidebar-text ml-auto text-[10px] font-semibold tracking-wide text-[var(--ov-dim)] uppercase">
                     segera
                   </span>
                 )}
@@ -147,6 +158,7 @@ export function DashboardShell({
               <Link
                 key={item.key}
                 href={item.href}
+                title={item.label}
                 className={`${className} hover:bg-[var(--ov-fill1)]`}
                 style={style}
               >
@@ -157,7 +169,7 @@ export function DashboardShell({
         </nav>
 
         {sectionNav.length > 0 && (
-          <div className="px-3 pt-5">
+          <div className="sidebar-text px-3 pt-5">
             <div className="px-3 pb-2 text-[10.5px] font-bold tracking-[0.14em] text-[var(--ov-faint)] uppercase">
               Di halaman ini
             </div>
@@ -176,7 +188,7 @@ export function DashboardShell({
           </div>
         )}
 
-        <div className="mt-auto px-4 py-5">
+        <div className="sidebar-text mt-auto px-4 py-5">
           <div className="flex items-center gap-2.5 rounded-lg border border-[var(--ov-track)] bg-[var(--ov-fill1)] px-3 py-2.5">
             <svg
               width="17"

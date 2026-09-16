@@ -183,7 +183,7 @@ html[data-theme="light"] {
   --panel: #eef2f7;
   --ov-nav-on: linear-gradient(100deg, #1d6eb4 0%, #1a5f9d 100%);
   --ov-nav-on-ink: #ffffff;
-  --ov-logo: linear-gradient(150deg, #e7f1fb 0%, #d7e7f7 100%);
+  --ov-logo: linear-gradient(150deg, #2f62b4 0%, #23498a 100%);
   --ov-ink: #14263c;
   --ov-soft: #33506e;
   --ov-mut2: #4f6a85;
@@ -211,6 +211,50 @@ html[data-theme="dark"] .theme-pill[data-theme-pill="dark"],
 html[data-theme="light"] .theme-pill[data-theme-pill="light"] {
   background: var(--ov-nav-on);
   color: var(--ov-nav-on-ink);
+}
+
+/*
+ * Sidebar collapse. Driven from html[data-sidebar] rather than React state, so the
+ * saved choice is already applied on the server-rendered markup and the rail never
+ * flashes open. Deliberately not tied to scroll position: the "Di halaman ini"
+ * links are what a scrolling reader reaches for, so hiding them on scroll would
+ * take away the one thing they were scrolling towards.
+ */
+.app-sidebar {
+  transition: width 0.18s ease;
+}
+
+.sidebar-rail-only {
+  display: none;
+}
+
+html[data-sidebar="rail"] .app-sidebar {
+  width: 62px;
+}
+
+html[data-sidebar="rail"] .sidebar-text {
+  display: none;
+}
+
+html[data-sidebar="rail"] .sidebar-rail-only {
+  display: flex;
+}
+
+html[data-sidebar="rail"] .app-sidebar .nav-row {
+  justify-content: center;
+  padding-inline: 0.5rem;
+}
+
+/* Points into the sidebar while it is open and out of it once it is railed. */
+html[data-sidebar="rail"] .sidebar-toggle-arrow {
+  transform: rotate(180deg);
+  transform-origin: 15.75px 12px;
+}
+
+/* Whatever artwork sits at /paragon-mark.svg comes out white, colour file or not.
+ * The light theme's logo tile is darkened to match, so the mark reads white in both. */
+.paragon-mark {
+  filter: brightness(0) invert(1);
 }
 
 @layer base {
