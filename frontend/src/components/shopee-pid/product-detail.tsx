@@ -23,11 +23,11 @@ export function ProductDetail({ detail }: { detail: PidProductDetail }) {
   ]
 
   return (
-    <div className="flex flex-col gap-3.5">
-      <div
-        className="rounded-xl border border-[var(--ov-line)] p-4"
-        style={{ background: "var(--ov-card-gradient)" }}
-      >
+    <div
+      className="flex flex-col rounded-xl border border-[var(--ov-line)] p-4 shadow-[0_18px_34px_-22px_var(--ov-shadow)]"
+      style={{ background: "var(--ov-card-gradient-soft)" }}
+    >
+      <div>
         <div className="flex flex-wrap items-start gap-3.5">
           <div className="flex h-[92px] w-[92px] flex-none items-center justify-center rounded-lg border border-dashed border-[var(--ov-line)] bg-[var(--ov-fill1)] text-center text-[10px] leading-tight text-[var(--ov-faint)]">
             Foto produk
@@ -62,10 +62,7 @@ export function ProductDetail({ detail }: { detail: PidProductDetail }) {
         </div>
       </div>
 
-      <div
-        className="rounded-xl border border-[var(--ov-line)] p-4"
-        style={{ background: "var(--ov-card-gradient)" }}
-      >
+      <div className="mt-4 border-t border-[var(--ov-line)] pt-4">
         <div className="text-sm font-semibold text-[var(--ov-mut)]">GMV Trend</div>
         <ResponsiveContainer width="100%" height={220}>
           <AreaChart data={detail.trend} margin={{ top: 10, right: 8, left: 0, bottom: 0 }}>
@@ -88,10 +85,7 @@ export function ProductDetail({ detail }: { detail: PidProductDetail }) {
         </ResponsiveContainer>
       </div>
 
-      <div
-        className="rounded-xl border border-[var(--ov-line)] p-4"
-        style={{ background: "var(--ov-card-gradient)" }}
-      >
+      <div className="mt-4 border-t border-[var(--ov-line)] pt-4">
         <div className="text-sm font-semibold text-[var(--ov-mut)]">Pillar Contribution</div>
         <div className="mt-0.5 mb-3 text-[11.5px] text-[var(--ov-faint)]">
           Share GMV produk ini per pillar, dengan pertumbuhan dan selisih rupiahnya.

@@ -5,6 +5,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { DashboardShell } from "@/components/dashboard-shell"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
+import { FilterBar, LEVEL_LABELS } from "@/components/shopee-pid/filter-bar"
 import { CategoryTable } from "@/components/shopee-pid/category-table"
 import { ProductTable } from "@/components/shopee-pid/product-table"
 import { ProductDetail } from "@/components/shopee-pid/product-detail"
@@ -20,24 +21,16 @@ import {
   YAxis,
 } from "recharts"
 import { apiFetch } from "@/lib/api"
-import { DATE_PRESET_LABELS, type DatePreset } from "@/lib/date-range"
 import { formatCompact, formatIdr, formatPercent } from "@/lib/format"
 import { pidFiltersToParams, useShopeePidFilters } from "@/store/shopee-pid-filters"
 import type {
   PidCategoriesResult,
   PidCreatorsResult,
-  PidLevel,
   PidProductDetail,
   PidProductsResult,
   PidTrendPoint,
   QuadrantPreset,
 } from "@/types/shopee-pid"
-
-const LEVEL_LABELS: Record<PidLevel, string> = {
-  category: "Category",
-  subcategory: "Sub Category",
-  format: "Format",
-}
 
 function buildQuery(params: Record<string, string | undefined>): string {
   const search = new URLSearchParams()
@@ -82,6 +75,8 @@ export default function ShopeePidPage() {
   const [creators, setCreators] = useState<PidCreatorsResult | null>(null)
   const [showPillars, setShowPillars] = useState(true)
   const [showShopee, setShowShopee] = useState(true)
+  const [scopeRowVisible, setScopeRowVisible] = useState(true)
+  const scopeRowRef = useRef<HTMLDivElement>(null)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -96,6 +91,7 @@ export default function ShopeePidPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     brand,
+    preset,
     from,
     to,
     compare,
@@ -109,6 +105,17 @@ export default function ShopeePidPage() {
     creatorPillar,
     creatorManaged,
   ])
+
+  useEffect(() => {
+    const el = scopeRowRef.current
+    if (!el) return
+    const observer = new IntersectionObserver(
+      ([entry]) => setScopeRowVisible(entry?.isIntersecting ?? true),
+      { rootMargin: "-72px 0px 0px 0px" },
+    )
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
 
   const scopeQuery = { brand: brand ?? undefined, from, to, compare, level, scope: scope ?? undefined }
 
@@ -182,103 +189,7 @@ export default function ShopeePidPage() {
       subtitle="Kategori dan produk mana yang menggerakkan GMV Shopee."
       active="shopee-pid"
     >
-      {/* Filter bar */}
-      <div className="mx-6 mt-4 flex flex-wrap items-end gap-4 rounded-lg border border-[var(--ov-line)] bg-[var(--ov-fill2)] p-3.5 md:mx-8">
-        <div className="min-w-[180px] flex-1">
-          <div className="mb-1.5 text-[10.5px] font-bold tracking-wider text-[var(--ov-faint)] uppercase">Brand Name</div>
-          <Select value={brand ?? "__all__"} onValueChange={(v) => v && filters.setBrand(v === "__all__" ? null : v)}>
-            <SelectTrigger className="h-8.5 w-full bg-[var(--input)] text-sm">
-              <SelectValue>{(v: string) => (v === "__all__" || !v ? "(All)" : v)}</SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__all__">(All)</SelectItem>
-              {BRAND_OPTIONS.map((b) => (
-                <SelectItem key={b} value={b}>
-                  {b}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="flex-none">
-          <div className="mb-1.5 text-[10.5px] font-bold tracking-wider text-[var(--ov-faint)] uppercase">Level</div>
-          <Select value={level} onValueChange={(v) => v && filters.setLevel(v as PidLevel)}>
-            <SelectTrigger className="h-8.5 w-40 bg-[var(--input)] text-sm">
-              <SelectValue>{(v: string) => LEVEL_LABELS[v as PidLevel] ?? v}</SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="category">Category</SelectItem>
-              <SelectItem value="subcategory">Sub Category</SelectItem>
-              <SelectItem value="format">Format</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="flex-none">
-          <div className="mb-1.5 text-[10.5px] font-bold tracking-wider text-[var(--ov-faint)] uppercase">Tren Date</div>
-          <Select
-            value={trendGranularity}
-            onValueChange={(v) => v && filters.setTrendGranularity(v as "day" | "week" | "month")}
-          >
-            <SelectTrigger className="h-8.5 w-28 bg-[var(--input)] text-sm">
-              <SelectValue>{(v: string) => v.charAt(0).toUpperCase() + v.slice(1)}</SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="day">Day</SelectItem>
-              <SelectItem value="week">Week</SelectItem>
-              <SelectItem value="month">Month</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="flex-none">
-          <div className="mb-1.5 text-[10.5px] font-bold tracking-wider text-[var(--ov-faint)] uppercase">Periode</div>
-          <div className="flex gap-1 rounded-lg border border-[var(--ov-line)] bg-[var(--panel)] p-0.5">
-            {(Object.keys(DATE_PRESET_LABELS) as DatePreset[]).map((p) => (
-              <button
-                key={p}
-                type="button"
-                onClick={() => filters.setPreset(p)}
-                className="rounded-md px-2.5 py-1.5 text-xs font-semibold whitespace-nowrap"
-                style={{
-                  background: preset === p ? "var(--ov-fill1)" : "transparent",
-                  color: preset === p ? "var(--ov-ink)" : "var(--ov-mut)",
-                }}
-              >
-                {DATE_PRESET_LABELS[p]}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {preset === "custom" && (
-          <div className="flex flex-none items-end gap-2">
-            <Input type="date" value={from} onChange={(e) => filters.setCustomRange(e.target.value, to)} className="h-8.5 bg-[var(--input)] text-sm" />
-            <Input type="date" value={to} onChange={(e) => filters.setCustomRange(from, e.target.value)} className="h-8.5 bg-[var(--input)] text-sm" />
-          </div>
-        )}
-
-        <div className="ml-auto flex flex-none items-center gap-2.5">
-          <span className="text-xs font-bold tracking-wider text-[var(--ov-faint)] uppercase">Bandingkan</span>
-          <div className="flex gap-1 rounded-lg border border-[var(--ov-line)] bg-[var(--panel)] p-0.5">
-            {(["prev", "ly"] as const).map((c) => (
-              <button
-                key={c}
-                type="button"
-                onClick={() => filters.setCompare(c)}
-                className="rounded-md px-2.5 py-1.5 text-xs font-semibold"
-                style={{
-                  background: compare === c ? "var(--ov-fill1)" : "transparent",
-                  color: compare === c ? "var(--ov-ink)" : "var(--ov-mut)",
-                }}
-              >
-                {c === "prev" ? "vs prev" : "vs LY"}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
+      <FilterBar brandOptions={BRAND_OPTIONS} mergeScope={!scopeRowVisible} />
 
       {error && (
         <div className="mx-6 mt-4 rounded-lg border border-[var(--ov-red)]/40 bg-[var(--ov-red)]/10 px-4 py-3 text-sm text-[var(--ov-red)] md:mx-8">
@@ -325,7 +236,7 @@ export default function ShopeePidPage() {
 
         {/* 2 · Deep dive */}
         <div>
-          <div className="mb-3.5 flex flex-wrap items-center gap-3">
+          <div ref={scopeRowRef} className="mb-3.5 flex flex-wrap items-center gap-3">
             <div className="rounded-lg border border-[var(--ov-gold)]/30 bg-[var(--ov-gold)]/10 px-4 py-2 text-base font-semibold text-[var(--ov-gold)] font-(family-name:--font-archivo)">
               {LEVEL_LABELS[level]} Deep Dive
             </div>
@@ -409,7 +320,7 @@ export default function ShopeePidPage() {
               <ToggleChip
                 active={excludeOutliers}
                 onClickAction={() => filters.setExcludeOutliers(!excludeOutliers)}
-                label="Kecualikan outlier"
+                label="Kecualikan outlier dari skala"
               />
               <Select value={quadrant} onValueChange={(v) => v && filters.setQuadrant(v as QuadrantPreset)}>
                 <SelectTrigger className="h-8 w-60 bg-[var(--input)] text-sm">
@@ -428,7 +339,7 @@ export default function ShopeePidPage() {
             </div>
           </div>
           <div className="mb-2.5">
-            <QuadrantLegendInfo preset={quadrant} />
+            <QuadrantLegendInfo preset={quadrant} excludeOutliers={excludeOutliers} />
           </div>
           {products ? (
             <ProductQuadrant
@@ -482,9 +393,9 @@ export default function ShopeePidPage() {
         </div>
 
         {/* 4 · Product deep dive + creators */}
-        <div className="grid grid-cols-1 gap-4.5 xl:grid-cols-2">
+        <div className="grid grid-cols-1 items-start gap-4.5 xl:grid-cols-2">
           <div className="flex flex-col">
-            <div className="mb-3.5 flex flex-wrap items-center gap-3">
+            <div className="mb-3.5 flex min-h-[42px] flex-wrap items-center gap-3">
               <div className="rounded-lg border border-[var(--ov-gold)]/30 bg-[var(--ov-gold)]/10 px-4 py-2 text-base font-semibold text-[var(--ov-gold)] font-(family-name:--font-archivo)">
                 Product Deep Dive
               </div>
@@ -504,11 +415,8 @@ export default function ShopeePidPage() {
             )}
           </div>
 
-          <div
-            className="flex flex-col rounded-xl border border-[var(--ov-line)] p-5 shadow-[0_18px_34px_-22px_var(--ov-shadow)]"
-            style={{ background: "var(--ov-card-gradient)" }}
-          >
-            <div className="mb-3.5 flex flex-wrap items-center gap-3.5">
+          <div className="flex flex-col">
+            <div className="mb-3.5 flex min-h-[42px] flex-wrap items-center gap-3.5">
               <div className="flex items-center gap-2.5">
                 <i className="block h-2.5 w-2.5 flex-none rounded-full" style={{ background: "var(--ov-gold)" }} />
                 <span className="text-[17px] font-semibold font-(family-name:--font-archivo)">
@@ -549,17 +457,24 @@ export default function ShopeePidPage() {
                 </Select>
               </div>
             </div>
-            {creators ? (
-              <>
-                <TopCreatorsTable rows={creators.rows} />
-                <div className="mt-3 border-t border-[var(--ov-line)] pt-2.5 text-xs leading-relaxed text-[var(--ov-faint)]">
-                  10 creator teratas menyumbang {formatPercent(creators.concentrationTop10)} dari total GMV{" "}
-                  {formatIdr(creators.totalGmv)} pada cakupan ini.
+            <div
+              className="rounded-xl border border-[var(--ov-line)] p-5 shadow-[0_18px_34px_-22px_var(--ov-shadow)]"
+              style={{ background: "var(--ov-card-gradient)" }}
+            >
+              {creators ? (
+                <>
+                  <TopCreatorsTable rows={creators.rows} />
+                  <div className="mt-3 border-t border-[var(--ov-line)] pt-2.5 text-xs leading-relaxed text-[var(--ov-faint)]">
+                    10 creator teratas menyumbang {formatPercent(creators.concentrationTop10)} dari total GMV{" "}
+                    {formatIdr(creators.totalGmv)} pada cakupan ini.
+                  </div>
+                </>
+              ) : (
+                <div className="flex h-[240px] items-center justify-center text-sm text-[var(--ov-faint)]">
+                  Loading…
                 </div>
-              </>
-            ) : (
-              <div className="flex h-[240px] items-center justify-center text-sm text-[var(--ov-faint)]">Loading…</div>
-            )}
+              )}
+            </div>
           </div>
         </div>
       </div>

@@ -38,7 +38,7 @@ export function TopCreatorsTable({ rows }: { rows: PidCreatorRow[] }) {
   }
 
   return (
-    <div className="max-h-[420px] overflow-auto">
+    <div className="max-h-[300px] overflow-auto">
       <table className="w-full min-w-[620px] border-collapse text-[12.5px]">
         <thead>
           <tr>

@@ -124,11 +124,66 @@ function iqrBounds(values: number[]): [number, number] {
 }
 
 interface Point {
+  /** Plotted position — equal to the raw value, or pinned to the fence when the value sits outside it. */
   x: number
   y: number
+  rawX: number
+  rawY: number
+  /** -1 pinned to the lower fence, 1 pinned to the upper fence, 0 not pinned. */
+  pinX: -1 | 0 | 1
+  pinY: -1 | 0 | 1
   pid: string
   name: string
   inScope: boolean
+}
+
+function pin(value: number, lo: number, hi: number): [number, -1 | 0 | 1] {
+  if (value < lo) return [lo, -1]
+  if (value > hi) return [hi, 1]
+  return [value, 0]
+}
+
+function OutlierDot({
+  cx,
+  cy,
+  payload,
+  fill,
+  fillOpacity = 1,
+}: {
+  cx?: number
+  cy?: number
+  payload?: Point
+  fill?: string
+  fillOpacity?: number
+}) {
+  if (cx === undefined || cy === undefined || !payload) return <g />
+  const { pinX, pinY } = payload
+  if (pinX === 0 && pinY === 0) {
+    return <circle cx={cx} cy={cy} r={3.2} fill={fill} fillOpacity={fillOpacity} />
+  }
+  // SVG y grows downward, so an upper-fence pin points towards a smaller y.
+  const chevron = (dx: number, dy: number) => {
+    const ox = cx + dx * 8
+    const oy = cy - dy * 8
+    const d = dx !== 0 ? `M ${ox - dx * 3} ${oy - 3.4} L ${ox} ${oy} L ${ox - dx * 3} ${oy + 3.4}` : `M ${ox - 3.4} ${oy + dy * 3} L ${ox} ${oy} L ${ox + 3.4} ${oy + dy * 3}`
+    return <path d={d} fill="none" stroke={fill} strokeWidth={1.3} strokeLinecap="round" strokeLinejoin="round" />
+  }
+  return (
+    <g>
+      <circle
+        cx={cx}
+        cy={cy}
+        r={4.2}
+        fill={fill}
+        fillOpacity={fillOpacity * 0.45}
+        stroke={fill}
+        strokeWidth={1.3}
+        strokeDasharray="2.2 1.8"
+      />
+      {pinX !== 0 && chevron(pinX, 0)}
+      {pinY !== 0 && chevron(0, pinY)}
+    </g>
+  )
 }
 
 export function ProductQuadrant({
@@ -146,29 +201,36 @@ export function ProductQuadrant({
 }) {
   const spec = QUADRANT_PRESETS[preset]
 
-  const all: Point[] = rows
-    .map((r) => {
+  type RawPoint = Pick<Point, "x" | "y" | "pid" | "name" | "inScope">
+  const raw = rows
+    .map((r): RawPoint | null => {
       const x = spec.x.value(r)
       const y = spec.y.value(r)
       if (x === null || y === null || !Number.isFinite(x) || !Number.isFinite(y)) return null
       return { x, y, pid: r.pid, name: r.name, inScope: r.inScope }
     })
-    .filter((p): p is Point => p !== null)
+    .filter((p): p is RawPoint => p !== null)
 
-  let points = all
-  if (excludeOutliers) {
-    const [xLo, xHi] = iqrBounds(all.map((p) => p.x))
-    const [yLo, yHi] = iqrBounds(all.map((p) => p.y))
-    points = all.filter((p) => p.x >= xLo && p.x <= xHi && p.y >= yLo && p.y <= yHi)
-  }
+  const [xLo, xHi] = excludeOutliers ? iqrBounds(raw.map((p) => p.x)) : [-Infinity, Infinity]
+  const [yLo, yHi] = excludeOutliers ? iqrBounds(raw.map((p) => p.y)) : [-Infinity, Infinity]
 
-  const xMedian = median(points.map((p) => p.x))
-  const yMedian = median(points.map((p) => p.y))
+  // Outliers stay on the chart, pinned to the fence on the side they fall outside, so the
+  // scale stays readable without the product disappearing from the view.
+  const points: Point[] = raw.map((p) => {
+    const [x, pinX] = pin(p.x, xLo, xHi)
+    const [y, pinY] = pin(p.y, yLo, yHi)
+    return { ...p, x, y, rawX: p.x, rawY: p.y, pinX, pinY }
+  })
+
+  const inFence = points.filter((p) => p.pinX === 0 && p.pinY === 0)
+  const xMedian = median(inFence.map((p) => p.x))
+  const yMedian = median(inFence.map((p) => p.y))
 
   const outOfScope = points.filter((p) => !p.inScope)
   const inScope = points.filter((p) => p.inScope)
+  const pinnedCount = points.length - inFence.length
 
-  return (
+  const chart = (
     <ResponsiveContainer width="100%" height={height}>
       <ScatterChart margin={{ top: 12, right: 18, left: 4, bottom: 12 }}>
         <CartesianGrid stroke="var(--ov-line)" />
@@ -202,25 +264,38 @@ export function ProductQuadrant({
           content={({ payload }) => {
             const p = payload?.[0]?.payload as Point | undefined
             if (!p) return null
+            const pinned = p.pinX !== 0 || p.pinY !== 0
             return (
               <div className="rounded-lg border border-[var(--ov-line)] bg-[#12263d] px-3 py-2 text-xs">
                 <div className="max-w-[240px] font-semibold">{p.name}</div>
                 <div className="mt-1 font-mono text-[11px] text-[var(--ov-faint)]">PID {p.pid}</div>
                 <div className="mt-1.5 font-mono text-[11.5px]">
-                  {spec.x.label}: {spec.x.format(p.x)}
+                  {spec.x.label}: {spec.x.format(p.rawX)}
                 </div>
                 <div className="font-mono text-[11.5px]">
-                  {spec.y.label}: {spec.y.format(p.y)}
+                  {spec.y.label}: {spec.y.format(p.rawY)}
                 </div>
+                {pinned && (
+                  <div className="mt-1.5 max-w-[240px] text-[11px] leading-relaxed text-[var(--ov-gold)]">
+                    Outlier — angka di atas nilai sebenarnya, titiknya digambar di batas terluar skala.
+                  </div>
+                )}
               </div>
             )
           }}
         />
-        <Scatter name="Semua produk Shopee" data={outOfScope} fill="var(--ov-track)" fillOpacity={0.55} />
+        <Scatter
+          name="Semua produk Shopee"
+          data={outOfScope}
+          fill="var(--ov-track)"
+          fillOpacity={0.55}
+          shape={OutlierDot}
+        />
         <Scatter
           name="Produk pada cakupan ini"
           data={inScope}
           fill="var(--ov-gold)"
+          shape={OutlierDot}
           onClick={(p: unknown) => {
             const pid = (p as Point | undefined)?.pid
             if (pid) onSelectAction(pid)
@@ -230,9 +305,27 @@ export function ProductQuadrant({
       </ScatterChart>
     </ResponsiveContainer>
   )
+
+  if (!excludeOutliers || pinnedCount === 0) return chart
+
+  return (
+    <div>
+      {chart}
+      <div className="mt-1.5 text-[11.5px] text-[var(--ov-faint)]">
+        {pinnedCount} produk di luar pagar — lingkaran putus-putus dengan panah di batas terluar sisinya, nilai
+        aslinya ada di tooltip.
+      </div>
+    </div>
+  )
 }
 
-export function QuadrantLegendInfo({ preset }: { preset: QuadrantPreset }) {
+export function QuadrantLegendInfo({
+  preset,
+  excludeOutliers = false,
+}: {
+  preset: QuadrantPreset
+  excludeOutliers?: boolean
+}) {
   const spec = QUADRANT_PRESETS[preset]
   return (
     <div className="flex flex-col gap-1 text-[11.5px] text-[var(--ov-faint)]">
@@ -245,7 +338,12 @@ export function QuadrantLegendInfo({ preset }: { preset: QuadrantPreset }) {
           </div>
         ))}
       </div>
-      <div className="mt-1">Garis putus-putus = median masing-masing sumbu.</div>
+      <div className="mt-1">
+        Garis putus-putus = median masing-masing sumbu.
+        {excludeOutliers
+          ? " Skala mengikuti pagar IQR 1.5×; produk di luar pagar tetap tampil, dijepit ke batas terluar sisinya."
+          : ""}
+      </div>
     </div>
   )
 }

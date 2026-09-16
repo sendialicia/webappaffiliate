@@ -84,6 +84,8 @@
 
   /* Overview dashboard tokens (dark navy/gold, from reference/*.html) */
   --ov-card-gradient: linear-gradient(160deg, #152c49 0%, #102138 100%);
+  /* One shade lighter — for a panel that has to read as a single unit wrapping several blocks. */
+  --ov-card-gradient-soft: linear-gradient(160deg, #1c3a5e 0%, #16294a 100%);
   --ov-ink: #e9f0f8;
   --ov-soft: #c6d7e9;
   --ov-mut2: #a9bed6;
