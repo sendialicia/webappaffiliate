@@ -24,13 +24,22 @@ export const metadata: Metadata = {
   description: "Affiliate marketing performance analytics",
 };
 
+// Applies the saved theme before first paint, so a light-mode reader never sees a dark flash.
+const themeBootstrap = `try{var t=localStorage.getItem("ov-theme");document.documentElement.dataset.theme=t==="light"?"light":"dark"}catch(e){document.documentElement.dataset.theme="dark"}`;
+
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-      className={`${archivo.variable} ${barlow.variable} ${ibmPlexMono.variable} h-full antialiased dark`}
+      data-theme="dark"
+      // The bootstrap script below rewrites data-theme before hydration.
+      suppressHydrationWarning
+      className={`${archivo.variable} ${barlow.variable} ${ibmPlexMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col bg-background text-foreground font-(family-name:--font-barlow)">
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeBootstrap }} />
+      </head>
+      <body className="min-h-full flex flex-col text-foreground font-(family-name:--font-barlow)">
         {children}
       </body>
     </html>

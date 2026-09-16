@@ -8,6 +8,23 @@ export function formatCompact(value: number): string {
   return new Intl.NumberFormat("en-US", { notation: "compact", maximumFractionDigits: 1 }).format(value)
 }
 
+/** Headline money, the way the reference mockup writes it: "Rp245.3B". */
+export function formatRp(value: number): string {
+  const sign = value < 0 ? "−" : ""
+  return `${sign}Rp${formatCompact(Math.abs(value))}`
+}
+
+/** Exact money, the way the mockup writes it in tables: "Rp66,812,309,659". */
+export function formatRpFull(value: number): string {
+  const sign = value < 0 ? "−" : ""
+  return `${sign}Rp${formatIdr(Math.abs(value))}`
+}
+
+/** Signed headline money for deltas: "+Rp12.4B". */
+export function formatSignedRp(value: number): string {
+  return `${value >= 0 ? "+" : "−"}Rp${formatCompact(Math.abs(value))}`
+}
+
 export function formatNumber(value: number): string {
   return new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(value)
 }

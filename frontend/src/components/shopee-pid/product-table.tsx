@@ -56,7 +56,7 @@ function cellOf(row: PidProductRow, key: SortKey): { text: string; color?: strin
     case "growth":
       return {
         text: formatSignedPercent(row.growth),
-        color: (row.growth ?? 0) >= 0 ? "var(--ov-green)" : "var(--ov-red)",
+        color: (row.growth ?? 0) >= 0 ? "var(--ov-green-ink)" : "var(--ov-red-ink)",
       }
     case "share":
       return { text: formatPercent(row.share, 2) }

@@ -32,6 +32,14 @@ import type {
   QuadrantPreset,
 } from "@/types/shopee-pid"
 
+const SECTION_NAV = [
+  { id: "pp-sec-1", label: "1 · Category" },
+  { id: "pp-sec-2", label: "Category deep dive" },
+  { id: "pp-sec-2b", label: "Product quadrant" },
+  { id: "pp-sec-3", label: "2 · Product" },
+  { id: "pp-sec-4", label: "Product deep dive" },
+]
+
 function buildQuery(params: Record<string, string | undefined>): string {
   const search = new URLSearchParams()
   for (const [key, value] of Object.entries(params)) {
@@ -188,18 +196,19 @@ export default function ShopeePidPage() {
       title="Product — Shopee PID"
       subtitle="Kategori dan produk mana yang menggerakkan GMV Shopee."
       active="shopee-pid"
+      sectionNav={SECTION_NAV}
     >
       <FilterBar brandOptions={BRAND_OPTIONS} mergeScope={!scopeRowVisible} />
 
       {error && (
-        <div className="mx-6 mt-4 rounded-lg border border-[var(--ov-red)]/40 bg-[var(--ov-red)]/10 px-4 py-3 text-sm text-[var(--ov-red)] md:mx-8">
+        <div className="mx-6 mt-4 rounded-lg border border-[var(--ov-red)]/40 bg-[var(--ov-red)]/10 px-4 py-3 text-sm text-[var(--ov-red-ink)] md:mx-8">
           {error}
         </div>
       )}
 
       <div className="flex flex-col gap-6 px-6 py-6 md:px-8">
         {/* 1 · Category */}
-        <SectionHeading step="1 · Category" />
+        <SectionHeading id="pp-sec-1" step="1 · Category" />
 
         <div
           className="rounded-xl border border-[var(--ov-line)] p-5 shadow-[0_18px_34px_-22px_var(--ov-shadow)]"
@@ -235,9 +244,9 @@ export default function ShopeePidPage() {
         </div>
 
         {/* 2 · Deep dive */}
-        <div>
+        <div id="pp-sec-2" className="scroll-mt-24">
           <div ref={scopeRowRef} className="mb-3.5 flex flex-wrap items-center gap-3">
-            <div className="rounded-lg border border-[var(--ov-gold)]/30 bg-[var(--ov-gold)]/10 px-4 py-2 text-base font-semibold text-[var(--ov-gold)] font-(family-name:--font-archivo)">
+            <div className="rounded-lg border border-[var(--ov-gold)]/30 bg-[var(--ov-gold)]/10 px-4 py-2 text-base font-semibold text-[var(--ov-gold-ink)] font-(family-name:--font-archivo)">
               {LEVEL_LABELS[level]} Deep Dive
             </div>
             <span className="rounded-full border border-[var(--accent)] bg-[var(--accent)] px-3 py-1.5 text-[12.5px] font-semibold text-[var(--accent-foreground)]">
@@ -268,7 +277,7 @@ export default function ShopeePidPage() {
                 label="Count Profit Product"
                 value={products ? formatIdr(products.countProfitProduct) : "…"}
                 note="produk dengan GMV di atas nol"
-                color="var(--ov-green)"
+                color="var(--ov-green-ink)"
               />
             </div>
             <div
@@ -292,7 +301,7 @@ export default function ShopeePidPage() {
                       width={52}
                     />
                     <RTooltip
-                      contentStyle={{ background: "#12263d", border: "1px solid var(--ov-line)", borderRadius: 8, fontSize: 12 }}
+                      contentStyle={{ background: "var(--ov-tooltip)", border: "1px solid var(--ov-line)", borderRadius: 8, fontSize: 12 }}
                       labelStyle={{ color: "var(--ov-head)" }}
                       formatter={(value, name) => [formatIdr(Number(value)), name === "gmv" ? "GMV affiliate" : "SP GMV"]}
                     />
@@ -309,7 +318,8 @@ export default function ShopeePidPage() {
 
         {/* 2b · Quadrant */}
         <div
-          className="rounded-xl border border-[var(--ov-line)] p-5 shadow-[0_18px_34px_-22px_var(--ov-shadow)]"
+          id="pp-sec-2b"
+          className="scroll-mt-24 rounded-xl border border-[var(--ov-line)] p-5 shadow-[0_18px_34px_-22px_var(--ov-shadow)]"
           style={{ background: "var(--ov-card-gradient)" }}
         >
           <div className="mb-2 flex flex-wrap items-center gap-3">
@@ -354,7 +364,7 @@ export default function ShopeePidPage() {
         </div>
 
         {/* 3 · Product */}
-        <SectionHeading step="2 · Product" note={`cakupan: ${scopeLabel}`} />
+        <SectionHeading id="pp-sec-3" step="2 · Product" note={`cakupan: ${scopeLabel}`} />
 
         <div
           className="rounded-xl border border-[var(--ov-line)] p-5 shadow-[0_18px_34px_-22px_var(--ov-shadow)]"
@@ -393,10 +403,10 @@ export default function ShopeePidPage() {
         </div>
 
         {/* 4 · Product deep dive + creators */}
-        <div className="grid grid-cols-1 items-start gap-4.5 xl:grid-cols-2">
+        <div id="pp-sec-4" className="grid scroll-mt-24 grid-cols-1 items-start gap-4.5 xl:grid-cols-2">
           <div className="flex flex-col">
             <div className="mb-3.5 flex min-h-[42px] flex-wrap items-center gap-3">
-              <div className="rounded-lg border border-[var(--ov-gold)]/30 bg-[var(--ov-gold)]/10 px-4 py-2 text-base font-semibold text-[var(--ov-gold)] font-(family-name:--font-archivo)">
+              <div className="rounded-lg border border-[var(--ov-gold)]/30 bg-[var(--ov-gold)]/10 px-4 py-2 text-base font-semibold text-[var(--ov-gold-ink)] font-(family-name:--font-archivo)">
                 Product Deep Dive
               </div>
               <span className="text-[12.5px] text-[var(--ov-faint)]">mengikuti baris produk yang dipilih di tabel atas</span>
@@ -498,9 +508,9 @@ const BRAND_OPTIONS = [
   "Crystallure",
 ]
 
-function SectionHeading({ step, note }: { step: string; note?: string }) {
+function SectionHeading({ id, step, note }: { id?: string; step: string; note?: string }) {
   return (
-    <div className="flex flex-wrap items-center gap-3.5">
+    <div id={id} className="flex scroll-mt-24 flex-wrap items-center gap-3.5">
       <span className="flex-none rounded-md border border-[var(--accent)] bg-[var(--accent)] px-4 py-2 text-[13px] font-bold tracking-widest text-[var(--accent-foreground)] uppercase font-(family-name:--font-archivo)">
         {step}
       </span>

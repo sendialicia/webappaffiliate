@@ -26,7 +26,9 @@ export function PaceGauge({ pace }: { pace: PaceSummary }) {
         </RadialBarChart>
       </ResponsiveContainer>
       <div className="absolute inset-x-0 bottom-2 flex flex-col items-center">
-        <div className="text-2xl font-bold font-(family-name:--font-archivo)">{formatPercent(pace.actualPct, 0)}</div>
+        <div className="text-2xl font-bold text-[var(--ov-gold-ink)] font-(family-name:--font-archivo)">
+          {formatPercent(pace.actualPct)}
+        </div>
         <div className="text-xs text-[var(--ov-faint)]">of monthly target</div>
       </div>
     </div>

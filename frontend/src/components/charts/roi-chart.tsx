@@ -32,7 +32,7 @@ export function GmvCommissionChart({ trend, height = 126 }: { trend: SummaryTren
         />
         <Tooltip
           cursor={{ fill: "var(--ov-fill1)" }}
-          contentStyle={{ background: "#12263d", border: "1px solid var(--ov-line)", borderRadius: 8, fontSize: 12 }}
+          contentStyle={{ background: "var(--ov-tooltip)", border: "1px solid var(--ov-line)", borderRadius: 8, fontSize: 12 }}
           labelStyle={{ color: "var(--ov-head)" }}
           formatter={(value, name) => [formatCompact(Number(value)), String(name)]}
         />
@@ -75,7 +75,7 @@ export function RoiChart({ trend, height = 118 }: { trend: SummaryTrendPoint[]; 
           width={52}
         />
         <Tooltip
-          contentStyle={{ background: "#12263d", border: "1px solid var(--ov-line)", borderRadius: 8, fontSize: 12 }}
+          contentStyle={{ background: "var(--ov-tooltip)", border: "1px solid var(--ov-line)", borderRadius: 8, fontSize: 12 }}
           labelStyle={{ color: "var(--ov-head)" }}
           formatter={(value) => [`${Number(value).toFixed(1)}x`, "ROI"]}
         />

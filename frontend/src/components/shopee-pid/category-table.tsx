@@ -58,12 +58,12 @@ function renderCell(row: PidCategoryRow, key: SortKey) {
     case "growth":
       return {
         text: formatSignedPercent(row.growth),
-        color: (row.growth ?? 0) >= 0 ? "var(--ov-green)" : "var(--ov-red)",
+        color: (row.growth ?? 0) >= 0 ? "var(--ov-green-ink)" : "var(--ov-red-ink)",
       }
     case "deltaRp":
       return {
         text: `${row.deltaRp >= 0 ? "+" : "−"}${formatCompact(Math.abs(row.deltaRp))}`,
-        color: row.deltaRp >= 0 ? "var(--ov-green)" : "var(--ov-red)",
+        color: row.deltaRp >= 0 ? "var(--ov-green-ink)" : "var(--ov-red-ink)",
       }
     case "spRoi":
       return { text: row.spRoi !== null ? `${row.spRoi.toFixed(1)}x` : "—", color: undefined }

@@ -68,7 +68,7 @@ export function SpendTable({ rows }: { rows: SpendRow[] }) {
               </td>
               <td
                 className="border-b border-[var(--ov-line)] p-2 text-right font-mono font-semibold"
-                style={{ color: row.roi >= ROI_THRESHOLD ? "var(--ov-green)" : "var(--ov-red)" }}
+                style={{ color: row.roi >= ROI_THRESHOLD ? "var(--ov-green-ink)" : "var(--ov-red-ink)" }}
               >
                 {row.roi.toFixed(1)}x
               </td>

@@ -24,7 +24,7 @@ import { SpendTable } from "@/components/overview/spend-table"
 import { ContentFunnel } from "@/components/overview/content-funnel"
 import { apiFetch } from "@/lib/api"
 import { computeFindings } from "@/lib/findings"
-import { formatIdr, formatMonthLabelFull, formatPercent } from "@/lib/format"
+import { formatIdr, formatMonthLabelFull, formatPercent, formatRp, formatRpFull } from "@/lib/format"
 import { currentMonth } from "@/lib/date-range"
 import { filtersToParams, useOverviewFilters } from "@/store/overview-filters"
 import type {
@@ -41,6 +41,18 @@ import type {
   SpendResult,
   SummaryResult,
 } from "@/types/overview"
+
+const SECTION_NAV = [
+  { id: "ov-sec-1", label: "Performa tahun ini" },
+  { id: "ov-sec-2", label: "Daily achievement" },
+  { id: "ov-sec-3", label: "Progress bar bulanan" },
+  { id: "ov-sec-4", label: "Summary" },
+  { id: "ov-sec-5", label: "Komposisi GMV" },
+  { id: "ov-sec-6", label: "Format per brand" },
+  { id: "ov-sec-7", label: "Conversion funnel" },
+  { id: "ov-sec-8", label: "Affiliate's health" },
+  { id: "ov-sec-9", label: "Spend & akuisisi" },
+]
 
 const DIMENSION_LABELS: Record<CompositionDimension, string> = {
   pillar: "Pillar",
@@ -281,7 +293,11 @@ export default function OverviewPage() {
     selectedIndex >= 0 ? DIMENSION_COLORS[selectedIndex % DIMENSION_COLORS.length] : "var(--ov-gold)"
 
   return (
-    <DashboardShell title="Performance Overview" subtitle="Melihat performa affiliate berdasarkan berbagai dimensi dan periode.">
+    <DashboardShell
+      title="Performance Overview"
+      subtitle="Melihat performa affiliate berdasarkan berbagai dimensi dan periode."
+      sectionNav={SECTION_NAV}
+    >
       <FilterBar
         brandOptions={filterOptions?.brands ?? progress?.brand.map((r) => r.name) ?? []}
         marketplaceOptions={filterOptions?.marketplaces ?? progress?.marketplace.map((r) => r.name) ?? []}
@@ -290,7 +306,7 @@ export default function OverviewPage() {
       />
 
       {error && (
-        <div className="mx-6 mt-4 rounded-lg border border-[var(--ov-red)]/40 bg-[var(--ov-red)]/10 px-4 py-3 text-sm text-[var(--ov-red)] md:mx-8">
+        <div className="mx-6 mt-4 rounded-lg border border-[var(--ov-red)]/40 bg-[var(--ov-red)]/10 px-4 py-3 text-sm text-[var(--ov-red-ink)] md:mx-8">
           {error}
         </div>
       )}
@@ -299,7 +315,7 @@ export default function OverviewPage() {
         <FindingsFeed findings={findings} />
 
         {/* Section 1: annual performance + on-track gauge */}
-        <div className="grid grid-cols-1 items-stretch gap-4.5 lg:grid-cols-2">
+        <div id="ov-sec-1" className="grid scroll-mt-24 grid-cols-1 items-stretch gap-4.5 lg:grid-cols-2">
           <div
             className="rounded-xl border border-[var(--ov-line)] p-5 shadow-[0_18px_34px_-22px_var(--ov-shadow)]"
             style={{ background: "var(--ov-card-gradient)" }}
@@ -348,7 +364,7 @@ export default function OverviewPage() {
                 <div className="text-right">
                   <div className="text-sm text-[var(--ov-mut)]">Remaining</div>
                   <div className="text-lg font-bold font-(family-name:--font-archivo)">
-                    {formatIdr(Math.max(monthly.pace.remaining, 0))}
+                    {formatRp(Math.max(monthly.pace.remaining, 0))}
                   </div>
                   <div className="text-sm text-[var(--ov-mut)]">in {monthly.pace.daysLeft} days left</div>
                 </div>
@@ -359,9 +375,9 @@ export default function OverviewPage() {
                 <PaceGauge pace={monthly.pace} />
                 <div className="mt-2 flex justify-between font-mono text-xs text-[var(--ov-soft)]">
                   <span>
-                    {formatIdr(monthly.pace.actual)} of {formatIdr(monthly.pace.target)}
+                    {formatRp(monthly.pace.actual)} of {formatRp(monthly.pace.target)}
                   </span>
-                  <span className="text-[var(--ov-faint)]">expected to date {formatIdr(monthly.pace.expected)}</span>
+                  <span className="text-[var(--ov-faint)]">expected to date {formatRp(monthly.pace.expected)}</span>
                 </div>
                 <div className="mt-3 grid grid-cols-2 gap-3.5 border-t border-[var(--ov-line)] pt-4">
                   <div>
@@ -373,7 +389,7 @@ export default function OverviewPage() {
                   <div>
                     <div className="text-xs text-[var(--ov-mut)]">Proyeksi akhir bulan</div>
                     <div className="text-base font-bold font-(family-name:--font-archivo)">
-                      {formatIdr(monthly.pace.projection)}
+                      {formatRp(monthly.pace.projection)}
                     </div>
                   </div>
                 </div>
@@ -386,7 +402,8 @@ export default function OverviewPage() {
 
         {/* Section 2: daily drill-down */}
         <div
-          className="rounded-xl border border-[var(--ov-line)] p-5 shadow-[0_18px_34px_-22px_var(--ov-shadow)]"
+          id="ov-sec-2"
+          className="scroll-mt-24 rounded-xl border border-[var(--ov-line)] p-5 shadow-[0_18px_34px_-22px_var(--ov-shadow)]"
           style={{ background: "var(--ov-card-gradient)" }}
         >
           <div className="flex flex-wrap items-center gap-2.5">
@@ -407,7 +424,7 @@ export default function OverviewPage() {
         </div>
 
         {/* Section 3: monthly progress */}
-        <div>
+        <div id="ov-sec-3" className="scroll-mt-24">
           <div className="mb-3 text-center text-xl font-bold font-(family-name:--font-archivo)">Progress Bar (Monthly)</div>
           <div className="grid grid-cols-1 gap-4.5 lg:grid-cols-2">
             {progress ? (
@@ -456,7 +473,7 @@ export default function OverviewPage() {
         </div>
 
         {/* Section 4: summary KPIs */}
-        <div>
+        <div id="ov-sec-4" className="scroll-mt-24">
           <div className="mb-4 flex flex-wrap items-center gap-4">
             <div className="text-xl font-bold font-(family-name:--font-archivo)">Summary</div>
             <div className="h-px flex-1 bg-[var(--ov-line)]" />
@@ -480,7 +497,7 @@ export default function OverviewPage() {
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 <KpiCard
                   label="GMV Affiliate"
-                  value={formatIdr(summary.kpis.gmv.value)}
+                  value={formatRp(summary.kpis.gmv.value)}
                   deltaPct={summary.kpis.gmv.deltaPct}
                   compareLabel={compareLabel}
                   sparkline={summary.trend}
@@ -496,7 +513,7 @@ export default function OverviewPage() {
                 />
                 <KpiCard
                   label="GMV per Creator"
-                  value={formatIdr(summary.kpis.gmvPerCreator.value)}
+                  value={formatRpFull(summary.kpis.gmvPerCreator.value)}
                   deltaPct={summary.kpis.gmvPerCreator.deltaPct}
                   compareLabel={compareLabel}
                   sparkline={summary.trend}
@@ -504,7 +521,7 @@ export default function OverviewPage() {
                 />
                 <KpiCard
                   label="Commission"
-                  value={formatIdr(summary.kpis.commission.value)}
+                  value={formatRp(summary.kpis.commission.value)}
                   deltaPct={summary.kpis.commission.deltaPct}
                   compareLabel={compareLabel}
                   positiveIsGood={false}
@@ -513,7 +530,7 @@ export default function OverviewPage() {
                 />
                 <KpiCard
                   label="ASP"
-                  value={formatIdr(summary.kpis.asp.value)}
+                  value={formatRpFull(summary.kpis.asp.value)}
                   deltaPct={summary.kpis.asp.deltaPct}
                   compareLabel={compareLabel}
                   sparkline={summary.trend}
@@ -521,7 +538,7 @@ export default function OverviewPage() {
                 />
                 <KpiCard
                   label="AOV"
-                  value={formatIdr(summary.kpis.aov.value)}
+                  value={formatRpFull(summary.kpis.aov.value)}
                   deltaPct={summary.kpis.aov.deltaPct}
                   compareLabel={compareLabel}
                   sparkline={summary.trend}
@@ -533,11 +550,11 @@ export default function OverviewPage() {
                     style={{ background: "var(--ov-card-gradient)" }}
                   >
                     <div className="text-base font-semibold font-(family-name:--font-archivo)">
-                      <span style={{ color: "var(--ov-gold)" }}>Affiliate</span> vs Self Operated
+                      <span style={{ color: "var(--ov-gold-ink)" }}>Affiliate</span> vs Self Operated
                     </div>
                     <div className="mt-1.5 mb-1 text-sm text-[var(--ov-mut2)]">
                       Kontribusi affiliate pada periode ini{" "}
-                      <span className="font-bold" style={{ color: "var(--ov-gold)" }}>
+                      <span className="font-bold" style={{ color: "var(--ov-gold-ink)" }}>
                         {(summary.kpis.affiliateShare.value * 100).toFixed(1)}%
                       </span>
                     </div>
@@ -553,7 +570,8 @@ export default function OverviewPage() {
 
         {/* Section 5: GMV composition */}
         <div
-          className="rounded-xl border border-[var(--ov-line)] p-5 shadow-[0_18px_34px_-22px_var(--ov-shadow)]"
+          id="ov-sec-5"
+          className="scroll-mt-24 rounded-xl border border-[var(--ov-line)] p-5 shadow-[0_18px_34px_-22px_var(--ov-shadow)]"
           style={{ background: "var(--ov-card-gradient)" }}
         >
           <div className="mb-4 flex flex-wrap items-center gap-3">
@@ -629,7 +647,8 @@ export default function OverviewPage() {
 
         {/* Section 6: growth/loss drivers */}
         <div
-          className="rounded-xl border border-[var(--ov-line)] p-5 shadow-[0_18px_34px_-22px_var(--ov-shadow)]"
+          id="ov-sec-6"
+          className="scroll-mt-24 rounded-xl border border-[var(--ov-line)] p-5 shadow-[0_18px_34px_-22px_var(--ov-shadow)]"
           style={{ background: "var(--ov-card-gradient)" }}
         >
           <div className="mb-4 flex flex-wrap items-center gap-3">
@@ -689,9 +708,9 @@ export default function OverviewPage() {
         </div>
 
         {/* Section 7: content conversion funnel */}
-        <div className="rounded-xl border border-[var(--ov-red)]/40 bg-[var(--ov-red)]/5 p-5">
+        <div id="ov-sec-7" className="scroll-mt-24 rounded-xl border border-[var(--ov-red)]/40 bg-[var(--ov-red)]/5 p-5">
           <div className="mb-4 flex flex-wrap items-center gap-3">
-            <span className="flex h-6 w-6 flex-none items-center justify-center rounded-full border border-[var(--ov-red)]/40 bg-[var(--ov-red)]/15 text-sm font-bold text-[var(--ov-red)]">
+            <span className="flex h-6 w-6 flex-none items-center justify-center rounded-full border border-[var(--ov-red)]/40 bg-[var(--ov-red)]/15 text-sm font-bold text-[var(--ov-red-ink)]">
               !
             </span>
             <span className="text-lg font-semibold font-(family-name:--font-archivo)">Content Conversion Funnel</span>
@@ -711,7 +730,7 @@ export default function OverviewPage() {
         </div>
 
         {/* Section 8: affiliate health */}
-        <div className="grid grid-cols-1 gap-4.5 xl:grid-cols-2">
+        <div id="ov-sec-8" className="grid scroll-mt-24 grid-cols-1 gap-4.5 xl:grid-cols-2">
           <div>
             <div className="mb-3.5 text-xl font-bold font-(family-name:--font-archivo)">Affiliate&rsquo;s Health</div>
             {summary ? (
@@ -811,7 +830,7 @@ export default function OverviewPage() {
         </div>
 
         {/* Section 9: spend health + creator acquisition */}
-        <div className="grid grid-cols-1 gap-4.5 xl:grid-cols-2">
+        <div id="ov-sec-9" className="grid scroll-mt-24 grid-cols-1 gap-4.5 xl:grid-cols-2">
           <div
             className="rounded-xl border border-[var(--ov-line)] p-5 shadow-[0_18px_34px_-22px_var(--ov-shadow)]"
             style={{ background: "var(--ov-card-gradient)" }}

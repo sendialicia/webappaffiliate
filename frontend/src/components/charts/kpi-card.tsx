@@ -22,7 +22,7 @@ export function KpiCard({
   positiveIsGood?: boolean
 }) {
   const isGood = deltaPct === null ? null : positiveIsGood ? deltaPct >= 0 : deltaPct <= 0
-  const deltaColor = isGood === null ? "var(--ov-faint)" : isGood ? "var(--ov-green)" : "var(--ov-red)"
+  const deltaColor = isGood === null ? "var(--ov-faint)" : isGood ? "var(--ov-green-ink)" : "var(--ov-red-ink)"
 
   return (
     <div

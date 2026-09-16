@@ -29,7 +29,7 @@ export function AcquisitionChart({ data, height = 332 }: { data: AcquisitionPoin
         />
         <Tooltip
           cursor={{ fill: "var(--ov-fill1)" }}
-          contentStyle={{ background: "#12263d", border: "1px solid var(--ov-line)", borderRadius: 8, fontSize: 12 }}
+          contentStyle={{ background: "var(--ov-tooltip)", border: "1px solid var(--ov-line)", borderRadius: 8, fontSize: 12 }}
           labelStyle={{ color: "var(--ov-head)" }}
           formatter={(value, name) => [
             name === "Creator Acquisition" ? formatNumber(Number(value)) : formatCompact(Number(value)),

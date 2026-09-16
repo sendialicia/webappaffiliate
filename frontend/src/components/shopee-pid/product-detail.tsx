@@ -2,16 +2,16 @@
 
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts"
 import { DIMENSION_COLORS } from "@/components/overview/composition-table"
-import { formatCompact, formatIdr, formatPercent, formatSignedPercent } from "@/lib/format"
+import { formatCompact, formatIdr, formatPercent, formatRpFull, formatSignedPercent } from "@/lib/format"
 import type { PidProductDetail } from "@/types/shopee-pid"
 
 export function ProductDetail({ detail }: { detail: PidProductDetail }) {
   const a = detail.attributes
 
   const kpis = [
-    { label: "GMV affiliate", value: formatIdr(detail.gmv), note: formatSignedPercent(detail.growth) },
+    { label: "GMV affiliate", value: formatRpFull(detail.gmv), note: formatSignedPercent(detail.growth) },
     { label: "Creators", value: formatIdr(detail.creators), note: "creator dengan penjualan" },
-    { label: "SP GMV (confirmed)", value: formatIdr(a.spGmv), note: "dari Shopee affiliate centre" },
+    { label: "SP GMV (confirmed)", value: formatRpFull(a.spGmv), note: "dari Shopee affiliate centre" },
     { label: "Orders", value: formatIdr(a.spOrders), note: `${formatIdr(a.spProductSold)} unit terjual` },
     { label: "Clicks", value: formatIdr(a.spClicks), note: a.spCoRate !== null ? `CO rate ${formatPercent(a.spCoRate, 2)}` : "—" },
     {
@@ -19,7 +19,7 @@ export function ProductDetail({ detail }: { detail: PidProductDetail }) {
       value: formatIdr(a.spBuyers),
       note: a.spBuyers > 0 ? `${formatPercent(a.spNewBuyers / a.spBuyers)} pembeli baru` : "—",
     },
-    { label: "Est commission", value: formatIdr(a.spCommission), note: a.spRoi !== null ? `ROI ${a.spRoi.toFixed(1)}x` : "—" },
+    { label: "Est commission", value: formatRpFull(a.spCommission), note: a.spRoi !== null ? `ROI ${a.spRoi.toFixed(1)}x` : "—" },
   ]
 
   return (
@@ -76,7 +76,7 @@ export function ProductDetail({ detail }: { detail: PidProductDetail }) {
               width={52}
             />
             <Tooltip
-              contentStyle={{ background: "#12263d", border: "1px solid var(--ov-line)", borderRadius: 8, fontSize: 12 }}
+              contentStyle={{ background: "var(--ov-tooltip)", border: "1px solid var(--ov-line)", borderRadius: 8, fontSize: 12 }}
               labelStyle={{ color: "var(--ov-head)" }}
               formatter={(value) => [formatIdr(Number(value)), "GMV"]}
             />
@@ -100,7 +100,7 @@ export function ProductDetail({ detail }: { detail: PidProductDetail }) {
                 <span className="font-mono text-[13px] font-semibold">{formatPercent(p.share)}</span>
                 <span
                   className="min-w-[72px] text-right font-mono text-[12px] font-semibold"
-                  style={{ color: (p.growth ?? 0) >= 0 ? "var(--ov-green)" : "var(--ov-red)" }}
+                  style={{ color: (p.growth ?? 0) >= 0 ? "var(--ov-green-ink)" : "var(--ov-red-ink)" }}
                 >
                   {formatSignedPercent(p.growth)}
                 </span>

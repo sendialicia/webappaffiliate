@@ -35,7 +35,7 @@ export function CompositionTrendChart({
           width={56}
         />
         <Tooltip
-          contentStyle={{ background: "#12263d", border: "1px solid var(--ov-line)", borderRadius: 8, fontSize: 12 }}
+          contentStyle={{ background: "var(--ov-tooltip)", border: "1px solid var(--ov-line)", borderRadius: 8, fontSize: 12 }}
           labelStyle={{ color: "var(--ov-head)" }}
           formatter={(value, name) => [formatCompact(Number(value)), String(name)]}
         />

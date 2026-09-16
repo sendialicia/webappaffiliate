@@ -260,13 +260,13 @@ export function ProductQuadrant({
         <ReferenceLine y={yMedian} stroke="var(--ov-rule)" strokeDasharray="4 4" />
         <Tooltip
           cursor={{ strokeDasharray: "3 3" }}
-          contentStyle={{ background: "#12263d", border: "1px solid var(--ov-line)", borderRadius: 8, fontSize: 12 }}
+          contentStyle={{ background: "var(--ov-tooltip)", border: "1px solid var(--ov-line)", borderRadius: 8, fontSize: 12 }}
           content={({ payload }) => {
             const p = payload?.[0]?.payload as Point | undefined
             if (!p) return null
             const pinned = p.pinX !== 0 || p.pinY !== 0
             return (
-              <div className="rounded-lg border border-[var(--ov-line)] bg-[#12263d] px-3 py-2 text-xs">
+              <div className="rounded-lg border border-[var(--ov-line)] bg-[var(--ov-tooltip)] px-3 py-2 text-xs">
                 <div className="max-w-[240px] font-semibold">{p.name}</div>
                 <div className="mt-1 font-mono text-[11px] text-[var(--ov-faint)]">PID {p.pid}</div>
                 <div className="mt-1.5 font-mono text-[11.5px]">
@@ -276,7 +276,7 @@ export function ProductQuadrant({
                   {spec.y.label}: {spec.y.format(p.rawY)}
                 </div>
                 {pinned && (
-                  <div className="mt-1.5 max-w-[240px] text-[11px] leading-relaxed text-[var(--ov-gold)]">
+                  <div className="mt-1.5 max-w-[240px] text-[11px] leading-relaxed text-[var(--ov-gold-ink)]">
                     Outlier — angka di atas nilai sebenarnya, titiknya digambar di batas terluar skala.
                   </div>
                 )}

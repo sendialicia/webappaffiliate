@@ -82,10 +82,28 @@
   --sidebar-border: rgba(122, 162, 208, 0.13);
   --sidebar-ring: #4aa3e0;
 
-  /* Overview dashboard tokens (dark navy/gold, from reference/*.html) */
+  /* Dashboard tokens (dark navy/gold, from reference/*.html) */
+  --ov-page:
+    radial-gradient(760px 420px at 16% 4%, rgba(96, 170, 235, 0.16) 0%, transparent 68%),
+    radial-gradient(1200px 700px at 84% -8%, rgba(56, 124, 196, 0.26) 0%, transparent 64%),
+    radial-gradient(900px 620px at 96% 58%, rgba(88, 206, 214, 0.09) 0%, transparent 66%),
+    radial-gradient(820px 560px at 8% 92%, rgba(122, 96, 220, 0.12) 0%, transparent 70%),
+    linear-gradient(104deg, transparent 38%, rgba(150, 200, 245, 0.05) 47%, transparent 56%),
+    linear-gradient(72deg, transparent 62%, rgba(150, 200, 245, 0.035) 71%, transparent 79%),
+    linear-gradient(168deg, #0c1d34 0%, #0a1628 52%, #091425 100%);
+  --ov-side:
+    radial-gradient(420px 320px at 12% 2%, rgba(96, 170, 235, 0.14) 0%, transparent 72%),
+    radial-gradient(360px 420px at 110% 78%, rgba(122, 96, 220, 0.1) 0%, transparent 74%),
+    linear-gradient(182deg, #0b1a2e 0%, #0a1526 60%, #091321 100%);
   --ov-card-gradient: linear-gradient(160deg, #152c49 0%, #102138 100%);
   /* One shade lighter — for a panel that has to read as a single unit wrapping several blocks. */
   --ov-card-gradient-soft: linear-gradient(160deg, #1c3a5e 0%, #16294a 100%);
+  --ov-card-solid: #0f2138;
+  --ov-tooltip: #12263d;
+  --panel: rgba(10, 22, 40, 0.6);
+  --ov-nav-on: linear-gradient(100deg, #1b3f6b 0%, #17355c 100%);
+  --ov-nav-on-ink: #ffffff;
+  --ov-logo: linear-gradient(150deg, #27547f 0%, #1b3a63 100%);
   --ov-ink: #e9f0f8;
   --ov-soft: #c6d7e9;
   --ov-mut2: #a9bed6;
@@ -93,51 +111,106 @@
   --ov-head: #9fb6cf;
   --ov-label: #8ba3bf;
   --ov-faint: #7f96b2;
+  --ov-dim: #5f748d;
+  --ov-icon: #7bb8e8;
   --ov-line: rgba(122, 162, 208, 0.13);
   --ov-track: rgba(122, 162, 208, 0.16);
   --ov-fill1: rgba(122, 162, 208, 0.08);
   --ov-fill2: rgba(122, 162, 208, 0.055);
+  --ov-rule: rgba(122, 162, 208, 0.34);
+  --ov-axis: rgba(122, 162, 208, 0.44);
+  /* Series colours stay identical in both themes; the -ink variants are for text on the page background. */
   --ov-gold: #f2c14e;
   --ov-gold-deep: #e8a93a;
   --ov-blue: #4aa3e0;
   --ov-red: #ef5f7a;
   --ov-green: #2ec27e;
+  --ov-gold-ink: #f2c14e;
+  --ov-red-ink: #ef5f7a;
+  --ov-green-ink: #2ec27e;
   --ov-shadow: rgba(0, 0, 0, 0.75);
   --ov-sheen: rgba(255, 255, 255, 0.05);
 }
 
-.dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+html[data-theme="light"] {
+  --background: #f2f5fa;
+  --foreground: #14263c;
+  --card: #ffffff;
+  --card-foreground: #14263c;
+  --popover: #ffffff;
+  --popover-foreground: #14263c;
+  --primary: #1d6eb4;
+  --primary-foreground: #ffffff;
+  --secondary: #e7f1fb;
+  --secondary-foreground: #14263c;
+  --muted: rgba(18, 52, 86, 0.045);
+  --muted-foreground: #5b7590;
+  --accent: rgba(29, 110, 180, 0.11);
+  --accent-foreground: #16598f;
+  --destructive: #b3253f;
+  --border: rgba(18, 52, 86, 0.13);
+  --input: #ffffff;
+  --ring: #1d6eb4;
+  --chart-1: #b4860f;
+  --chart-2: #1d6eb4;
+  --chart-3: #b3253f;
+  --chart-4: #14794c;
+  --chart-5: #6a5de0;
+  --sidebar: #ffffff;
+  --sidebar-foreground: #14263c;
+  --sidebar-primary: #1d6eb4;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: rgba(18, 52, 86, 0.055);
+  --sidebar-accent-foreground: #14263c;
+  --sidebar-border: rgba(18, 52, 86, 0.1);
+  --sidebar-ring: #1d6eb4;
+
+  --ov-page:
+    radial-gradient(760px 420px at 16% 4%, rgba(29, 110, 180, 0.07) 0%, transparent 68%),
+    radial-gradient(1200px 700px at 84% -8%, rgba(29, 110, 180, 0.1) 0%, transparent 64%),
+    radial-gradient(900px 620px at 96% 58%, rgba(20, 150, 160, 0.05) 0%, transparent 66%),
+    radial-gradient(820px 560px at 8% 92%, rgba(104, 84, 200, 0.055) 0%, transparent 70%),
+    linear-gradient(104deg, transparent 38%, rgba(255, 255, 255, 0.6) 47%, transparent 56%),
+    linear-gradient(168deg, #f7f9fc 0%, #f2f5fa 52%, #eef2f8 100%);
+  --ov-side:
+    radial-gradient(420px 320px at 12% 2%, rgba(29, 110, 180, 0.055) 0%, transparent 72%),
+    radial-gradient(360px 420px at 110% 78%, rgba(104, 84, 200, 0.045) 0%, transparent 74%),
+    linear-gradient(182deg, #ffffff 0%, #f6f9fd 60%, #f2f6fb 100%);
+  --ov-card-gradient: #ffffff;
+  --ov-card-gradient-soft: linear-gradient(160deg, #f4f8fd 0%, #eef4fb 100%);
+  --ov-card-solid: #ffffff;
+  --ov-tooltip: #ffffff;
+  --panel: #eef2f7;
+  --ov-nav-on: linear-gradient(100deg, #1d6eb4 0%, #1a5f9d 100%);
+  --ov-nav-on-ink: #ffffff;
+  --ov-logo: linear-gradient(150deg, #e7f1fb 0%, #d7e7f7 100%);
+  --ov-ink: #14263c;
+  --ov-soft: #33506e;
+  --ov-mut2: #4f6a85;
+  --ov-mut: #5b7590;
+  --ov-head: #55708c;
+  --ov-label: #64798f;
+  --ov-faint: #6b829b;
+  --ov-dim: #91a3b6;
+  --ov-icon: #1d6eb4;
+  --ov-line: rgba(18, 52, 86, 0.1);
+  --ov-track: rgba(18, 52, 86, 0.12);
+  --ov-fill1: rgba(18, 52, 86, 0.045);
+  --ov-fill2: rgba(18, 52, 86, 0.03);
+  --ov-rule: rgba(18, 52, 86, 0.26);
+  --ov-axis: rgba(18, 52, 86, 0.3);
+  --ov-gold-ink: #8a6410;
+  --ov-red-ink: #b3253f;
+  --ov-green-ink: #14794c;
+  --ov-shadow: rgba(18, 52, 86, 0.14);
+  --ov-sheen: rgba(255, 255, 255, 0);
+}
+
+/* The theme toggle marks its active pill from the html attribute, so it needs no client state. */
+html[data-theme="dark"] .theme-pill[data-theme-pill="dark"],
+html[data-theme="light"] .theme-pill[data-theme-pill="light"] {
+  background: var(--ov-nav-on);
+  color: var(--ov-nav-on-ink);
 }
 
 @layer base {
@@ -145,9 +218,12 @@
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply text-foreground;
+    background: var(--ov-page) fixed;
+    background-color: var(--background);
   }
   html {
     @apply font-sans;
+    background-color: var(--background);
   }
 }

@@ -112,7 +112,7 @@ export function CompositionTable({
                 </td>
                 <td
                   className="border-b border-[var(--ov-line)] p-2.5 text-right font-mono font-semibold"
-                  style={{ color: (row.growth ?? 0) >= 0 ? "var(--ov-green)" : "var(--ov-red)" }}
+                  style={{ color: (row.growth ?? 0) >= 0 ? "var(--ov-green-ink)" : "var(--ov-red-ink)" }}
                 >
                   {formatSignedPercent(row.growth)}
                 </td>
@@ -124,7 +124,7 @@ export function CompositionTable({
                 </td>
                 <td
                   className="border-b border-[var(--ov-line)] p-2.5 text-right font-mono font-semibold"
-                  style={{ color: (row.creatorsGrowth ?? 0) >= 0 ? "var(--ov-green)" : "var(--ov-red)" }}
+                  style={{ color: (row.creatorsGrowth ?? 0) >= 0 ? "var(--ov-green-ink)" : "var(--ov-red-ink)" }}
                 >
                   {formatSignedPercent(row.creatorsGrowth)}
                 </td>

@@ -36,13 +36,13 @@ export function CompositionDetail({
       </div>
 
       <div className="mt-3.5 grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <DetailTile label="GMV" value={formatIdr(row.gmv)} sub={formatSignedPercent(row.growth)} subColor={(row.growth ?? 0) >= 0 ? "var(--ov-green)" : "var(--ov-red)"} />
+        <DetailTile label="GMV" value={formatIdr(row.gmv)} sub={formatSignedPercent(row.growth)} subColor={(row.growth ?? 0) >= 0 ? "var(--ov-green-ink)" : "var(--ov-red-ink)"} />
         <DetailTile label="Share GMV" value={formatPercent(row.share)} sub="dari total afiliasi" />
         <DetailTile
           label="Creators"
           value={formatIdr(row.creators)}
           sub={`${formatSignedPercent(row.creatorsGrowth)} dari ${formatIdr(row.creatorsPrev)}`}
-          subColor={(row.creatorsGrowth ?? 0) >= 0 ? "var(--ov-green)" : "var(--ov-red)"}
+          subColor={(row.creatorsGrowth ?? 0) >= 0 ? "var(--ov-green-ink)" : "var(--ov-red-ink)"}
         />
         <DetailTile
           label="GMV per creator"

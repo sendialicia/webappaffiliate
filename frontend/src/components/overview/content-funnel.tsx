@@ -1,13 +1,14 @@
-import { formatIdr, formatNumber, formatPercent, formatSignedPercent } from "@/lib/format"
+import { formatNumber, formatPercent, formatRp, formatRpFull, formatSignedPercent } from "@/lib/format"
 import type { FunnelMarketplace } from "@/types/overview"
 
 function deltaColor(delta: number | null): string {
   if (delta === null) return "var(--ov-faint)"
-  return delta >= 0 ? "var(--ov-green)" : "var(--ov-red)"
+  return delta >= 0 ? "var(--ov-green-ink)" : "var(--ov-red-ink)"
 }
 
 export function ContentFunnel({ marketplace }: { marketplace: FunnelMarketplace }) {
-  const top = marketplace.stages[0]?.value ?? 0
+  // Impressions dwarf the content count, so the bars scale to the largest stage, not the first.
+  const top = Math.max(0, ...marketplace.stages.map((s) => s.value))
 
   return (
     <div className="flex flex-col">
@@ -26,10 +27,10 @@ export function ContentFunnel({ marketplace }: { marketplace: FunnelMarketplace 
               {pillar.name}
             </div>
             <div className="grid grid-cols-2 gap-x-3 gap-y-2.5 p-3">
-              <Stat label="GMV" value={formatIdr(pillar.gmv)} delta={pillar.gmvDeltaPct} />
+              <Stat label="GMV" value={formatRp(pillar.gmv)} delta={pillar.gmvDeltaPct} />
               <Stat label="Creators" value={formatNumber(pillar.creators)} delta={pillar.creatorsDeltaPct} />
               <Stat label="Profit creators" value={formatNumber(pillar.profitCreators)} delta={null} />
-              <Stat label="GMV / creator" value={formatIdr(pillar.gmvPerCreator)} delta={null} />
+              <Stat label="GMV / creator" value={formatRpFull(pillar.gmvPerCreator)} delta={null} />
             </div>
           </div>
         ))}
@@ -45,7 +46,7 @@ export function ContentFunnel({ marketplace }: { marketplace: FunnelMarketplace 
 
         <div className="flex flex-col items-center gap-1.5">
           {marketplace.stages.map((stage, i) => {
-            const width = top > 0 ? Math.max((stage.value / top) * 100, 12) : 12
+            const width = top > 0 ? Math.min(Math.max((stage.value / top) * 100, 12), 100) : 12
             const rate = marketplace.rates[i - 1]
 
             return (

@@ -20,7 +20,7 @@ export function AffSelfChart({ trend }: { trend: SummaryTrendPoint[] }) {
         <XAxis dataKey="label" tick={{ fill: "var(--ov-faint)", fontSize: 11 }} axisLine={{ stroke: "var(--ov-line)" }} tickLine={false} />
         <Tooltip
           formatter={(value, name) => [formatPercent(Number(value)), String(name)]}
-          contentStyle={{ background: "#12263d", border: "1px solid var(--ov-line)", borderRadius: 8, fontSize: 12 }}
+          contentStyle={{ background: "var(--ov-tooltip)", border: "1px solid var(--ov-line)", borderRadius: 8, fontSize: 12 }}
           labelStyle={{ color: "var(--ov-head)" }}
         />
         <Area type="monotone" dataKey="affiliate" stackId="1" stroke="var(--ov-gold)" fill="var(--ov-gold)" fillOpacity={0.55} name="Affiliate" />

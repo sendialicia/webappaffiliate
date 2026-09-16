@@ -1,5 +1,5 @@
 import type { ProgressRow } from "@/types/overview"
-import { formatPercent } from "@/lib/format"
+import { formatPercent, formatRp } from "@/lib/format"
 
 export function ProgressBars({ title, rows }: { title: string; rows: ProgressRow[] }) {
   return (
@@ -15,9 +15,14 @@ export function ProgressBars({ title, rows }: { title: string; rows: ProgressRow
             <div key={r.name} className="grid grid-cols-[88px_1fr] items-center gap-3">
               <div className="truncate text-right text-sm font-semibold">{r.name}</div>
               <div>
-                <div className="mb-1.5 font-mono text-xs text-[var(--ov-soft)]">
-                  {formatPercent(r.pct, 0)}{" "}
-                  <span className="text-[var(--ov-red)]">({formatPercent(1 - pct, 0)} to go)</span>
+                <div className="mb-1.5 flex flex-wrap items-baseline gap-x-2 font-mono text-xs text-[var(--ov-soft)]">
+                  <span>{formatPercent(r.pct, 0)}</span>
+                  <span className="text-[var(--ov-red-ink)]">
+                    ({formatRp(Math.max(r.target - r.actual, 0))} to go)
+                  </span>
+                  <span className="ml-auto text-[var(--ov-faint)]">
+                    {formatRp(r.actual)} / {formatRp(r.target)}
+                  </span>
                 </div>
                 <div className="relative h-3 overflow-hidden rounded-full bg-[var(--ov-track)]">
                   <div
