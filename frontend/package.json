@@ -6,7 +6,10 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "snapshot:capture": "node scripts/capture-snapshot.mjs",
+    "snapshot:build": "NEXT_PUBLIC_SNAPSHOT=1 next build",
+    "snapshot:serve": "npx --yes serve out"
   },
   "dependencies": {
     "@base-ui/react": "^1.8.0",

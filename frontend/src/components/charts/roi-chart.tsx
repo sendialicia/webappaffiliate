@@ -1,7 +1,6 @@
 "use client"
 
 import {
-  Bar,
   CartesianGrid,
   ComposedChart,
   Line,
@@ -17,27 +16,57 @@ import type { SummaryTrendPoint } from "@/types/overview"
 /** Business rule, confirmed with Sendi: ROI = GMV / Commission, floor at 12x. */
 export const ROI_THRESHOLD = 12.0
 
-export function GmvCommissionChart({ trend, height = 126 }: { trend: SummaryTrendPoint[]; height?: number }) {
+/**
+ * Indexed to 100 at the first bucket where both series have data. GMV runs ~28x
+ * larger than commission, so a shared axis flattens commission into the baseline
+ * and a second axis would put them on arbitrary scales. Indexing answers the
+ * question the title actually asks: which one is growing faster.
+ */
+export function GmvCommissionChart({ trend, height = 150 }: { trend: SummaryTrendPoint[]; height?: number }) {
+  const base = trend.find((t) => t.gmv > 0 && t.commission > 0)
+
+  const data = trend.map((t) => ({
+    bucket: t.bucket,
+    gmvIndex: base && base.gmv > 0 ? (t.gmv / base.gmv) * 100 : null,
+    // Commission lands a couple of days after GMV; a zero there is missing data,
+    // not a collapse, so it renders as a gap.
+    commissionIndex: base && base.commission > 0 && t.commission > 0 ? (t.commission / base.commission) * 100 : null,
+    gmv: t.gmv,
+    commission: t.commission,
+  }))
+
   return (
     <ResponsiveContainer width="100%" height={height}>
-      <ComposedChart data={trend} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+      <ComposedChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
         <CartesianGrid stroke="var(--ov-line)" vertical={false} />
         <XAxis dataKey="bucket" tick={{ fill: "var(--ov-faint)", fontSize: 10 }} axisLine={false} tickLine={false} minTickGap={28} />
         <YAxis
-          tickFormatter={(v) => formatCompact(Number(v))}
+          tickFormatter={(v) => `${Math.round(Number(v))}`}
           tick={{ fill: "var(--ov-faint)", fontSize: 10 }}
           axisLine={false}
           tickLine={false}
-          width={52}
+          width={44}
         />
         <Tooltip
-          cursor={{ fill: "var(--ov-fill1)" }}
           contentStyle={{ background: "var(--ov-tooltip)", border: "1px solid var(--ov-line)", borderRadius: 8, fontSize: 12 }}
           labelStyle={{ color: "var(--ov-head)" }}
-          formatter={(value, name) => [formatCompact(Number(value)), String(name)]}
+          formatter={(value, name, item) => {
+            const row = item?.payload as { gmv: number; commission: number } | undefined
+            const actual = name === "GMV" ? row?.gmv : row?.commission
+            const idx = value === null ? "—" : `${Number(value).toFixed(0)}`
+            return [`${idx} (${formatCompact(Number(actual ?? 0))})`, String(name)]
+          }}
         />
-        <Bar dataKey="gmv" name="GMV" fill="var(--ov-gold)" radius={[2, 2, 0, 0]} />
-        <Bar dataKey="commission" name="Commission" fill="var(--ov-blue)" radius={[2, 2, 0, 0]} />
+        <ReferenceLine y={100} stroke="var(--ov-rule)" strokeDasharray="4 4" />
+        <Line dataKey="gmvIndex" name="GMV" stroke="var(--ov-gold)" strokeWidth={2} dot={false} connectNulls={false} />
+        <Line
+          dataKey="commissionIndex"
+          name="Commission"
+          stroke="var(--ov-blue)"
+          strokeWidth={2}
+          dot={false}
+          connectNulls={false}
+        />
       </ComposedChart>
     </ResponsiveContainer>
   )

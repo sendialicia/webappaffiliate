@@ -217,6 +217,11 @@ export interface FunnelRate {
 
 export interface FunnelPillar {
   name: string
+  /** Content-side figures, only present for TikTok Video/Livestream. */
+  contentCreators?: number
+  contentCreatorsDeltaPct?: number | null
+  newContent?: number
+  newContentDeltaPct?: number | null
   gmv: number
   gmvDeltaPct: number | null
   creators: number
@@ -226,11 +231,25 @@ export interface FunnelPillar {
   aov: number
 }
 
+/**
+ * Content-side metrics from datamart_affiliate_content_performance. Scope agreed with
+ * Sendi: new content and the creator count only. GMV_VIDEO/GMV_LIVE are deliberately
+ * not used — they stopped being populated from Aug 2026.
+ */
+export interface FunnelContent {
+  available: boolean
+  creatorsPosting: number
+  creatorsPostingDeltaPct: number | null
+  totalNewContent: number
+  totalNewContentDeltaPct: number | null
+}
+
 export interface FunnelMarketplace {
   name: string
   stages: FunnelStage[]
   rates: FunnelRate[]
   pillars: FunnelPillar[]
+  content: FunnelContent
 }
 
 export interface FunnelResult {

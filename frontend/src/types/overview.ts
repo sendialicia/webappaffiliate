@@ -180,6 +180,10 @@ export interface FunnelRate {
 
 export interface FunnelPillar {
   name: string
+  contentCreators?: number
+  contentCreatorsDeltaPct?: number | null
+  newContent?: number
+  newContentDeltaPct?: number | null
   gmv: number
   gmvDeltaPct: number | null
   creators: number
@@ -189,11 +193,20 @@ export interface FunnelPillar {
   aov: number
 }
 
+export interface FunnelContent {
+  available: boolean
+  creatorsPosting: number
+  creatorsPostingDeltaPct: number | null
+  totalNewContent: number
+  totalNewContentDeltaPct: number | null
+}
+
 export interface FunnelMarketplace {
   name: string
   stages: FunnelStage[]
   rates: FunnelRate[]
   pillars: FunnelPillar[]
+  content: FunnelContent
 }
 
 export interface FunnelResult {

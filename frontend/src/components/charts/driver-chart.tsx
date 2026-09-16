@@ -20,18 +20,22 @@ export function DriverChart({
   rows,
   names,
   height = 330,
+  unit = "currency",
 }: {
   rows: DriverChartRow[]
   names: string[]
   height?: number
+  /** "pp" renders growth contribution in percentage points. */
+  unit?: "currency" | "pp"
 }) {
+  const fmt = (v: number) => (unit === "pp" ? `${v >= 0 ? "+" : ""}${v.toFixed(1)}pp` : formatCompact(v))
   return (
     <ResponsiveContainer width="100%" height={height}>
       <BarChart data={rows} layout="vertical" margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
         <CartesianGrid stroke="var(--ov-line)" horizontal={false} />
         <XAxis
           type="number"
-          tickFormatter={(v) => formatCompact(Number(v))}
+          tickFormatter={(v) => (unit === "pp" ? `${Math.round(Number(v))}%` : formatCompact(Number(v)))}
           tick={{ fill: "var(--ov-faint)", fontSize: 10 }}
           axisLine={false}
           tickLine={false}
@@ -48,7 +52,7 @@ export function DriverChart({
           cursor={{ fill: "var(--ov-fill1)" }}
           contentStyle={{ background: "var(--ov-tooltip)", border: "1px solid var(--ov-line)", borderRadius: 8, fontSize: 12 }}
           labelStyle={{ color: "var(--ov-head)" }}
-          formatter={(value, name) => [formatCompact(Number(value)), String(name)]}
+          formatter={(value, name) => [fmt(Number(value)), String(name)]}
         />
         <ReferenceLine x={0} stroke="var(--ov-rule)" />
         {names.map((name, i) => (

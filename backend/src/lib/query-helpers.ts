@@ -2,6 +2,8 @@ import type { ComparisonBasis, DetailFilters, OverviewFilters, TrendGranularity 
 
 export const TABLE_DAILY_PERFORMANCE = 'migration__marketplace.datamart_affiliate_daily_performance'
 export const TABLE_SUMMARY_ORDER = 'migration__marketplace.datamart_affiliate_summary_order'
+export const TABLE_CONTENT_PERFORMANCE =
+  'migration__marketplace.datamart_affiliate_content_performance'
 
 export function buildFilterClause(filters: OverviewFilters, params: Record<string, unknown>): string {
   let clause = ''

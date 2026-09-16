@@ -35,6 +35,20 @@ export function ContentFunnel({ marketplace }: { marketplace: FunnelMarketplace 
               <Stat label="Creators" value={formatNumber(pillar.creators)} delta={pillar.creatorsDeltaPct} />
               <Stat label="Profit creators" value={formatNumber(pillar.profitCreators)} delta={null} />
               <Stat label="GMV / creator" value={formatRpFull(pillar.gmvPerCreator)} delta={null} />
+              {pillar.newContent !== undefined && (
+                <>
+                  <Stat
+                    label="Total creators"
+                    value={formatNumber(pillar.contentCreators ?? 0)}
+                    delta={pillar.contentCreatorsDeltaPct ?? null}
+                  />
+                  <Stat
+                    label="New content"
+                    value={formatNumber(pillar.newContent)}
+                    delta={pillar.newContentDeltaPct ?? null}
+                  />
+                </>
+              )}
             </div>
           </div>
         ))}

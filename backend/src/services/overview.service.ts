@@ -1,6 +1,7 @@
 import { clickhouse } from '../lib/clickhouse'
 import {
   DETAIL_FILTER_COLUMNS,
+  TABLE_CONTENT_PERFORMANCE,
   DETAIL_FILTER_LABELS,
   TABLE_DAILY_PERFORMANCE,
   TABLE_SUMMARY_ORDER,
@@ -28,6 +29,7 @@ import type {
   DriverDimension,
   DriverEntity,
   DriversResult,
+  FunnelContent,
   FunnelMarketplace,
   FunnelPillar,
   FunnelRate,
@@ -630,13 +632,21 @@ export async function getDrivers(
 
     for (const name of names) {
       const match = rows.find((r) => r.entity === entityName && r.name === name)
+      entityGmv += Number(match?.gmv ?? 0)
+      entityGmvPrev += Number(match?.gmvPrev ?? 0)
+    }
+
+    for (const name of names) {
+      const match = rows.find((r) => r.entity === entityName && r.name === name)
       const gmv = Number(match?.gmv ?? 0)
       const gmvPrev = Number(match?.gmvPrev ?? 0)
       compRow[name] = gmv
-      growRow[name] = gmvPrev > 0 ? ((gmv - gmvPrev) / gmvPrev) * 100 : 0
+      // Growth contribution in percentage points of the entity's previous total, so the
+      // segments add up to the entity's overall growth and can be stacked diverging.
+      // A per-name growth rate could not be stacked: percentages of different bases
+      // do not sum to anything meaningful.
+      growRow[name] = entityGmvPrev > 0 ? ((gmv - gmvPrev) / entityGmvPrev) * 100 : 0
       diffRow[name] = gmv - gmvPrev
-      entityGmv += gmv
-      entityGmvPrev += gmvPrev
     }
 
     composition.push(compRow)
@@ -871,10 +881,56 @@ export async function getFunnel(
     profitCreators: number
   }>()
 
+  // Content-side metrics. This table has no REGION_CODE and is not product-grained,
+  // so it only takes the brand filter.
+  const contentParams: Record<string, unknown> = {
+    currentFrom: from,
+    currentTo: to,
+    prevFrom: comparison.from,
+    prevTo: comparison.to,
+  }
+  const contentFilter = filters.brand ? ' AND BRAND_NAME = {brand:String}' : ''
+  if (filters.brand) contentParams.brand = filters.brand
+
+  // Kept flat on purpose: wrapping this in a subquery stopped ClickHouse from
+  // pruning by DATE and turned it into a full scan of ~15.7M rows.
+  // Shopee rows exist here but stopped loading in Jul 2026, so this is TikTok only.
+  const contentResult = await clickhouse.query({
+    query: `
+      SELECT
+        ifNull(MARKETPLACE_NAME, 'Unknown') AS marketplace,
+        uniqExactIf(AFFILIATE_USERNAME, DATE >= {currentFrom:Date} AND DATE <= {currentTo:Date}) AS creatorsPosting,
+        uniqExactIf(AFFILIATE_USERNAME, DATE >= {prevFrom:Date} AND DATE <= {prevTo:Date}) AS creatorsPostingPrev,
+        sumIf(TOTAL_NEW_CONTENT, DATE >= {currentFrom:Date} AND DATE <= {currentTo:Date}) AS totalNewContent,
+        sumIf(TOTAL_NEW_CONTENT, DATE >= {prevFrom:Date} AND DATE <= {prevTo:Date}) AS totalNewContentPrev,
+        sumIf(NEW_CONTENT_VIDEO, DATE >= {currentFrom:Date} AND DATE <= {currentTo:Date}) AS newContentVideo,
+        sumIf(NEW_CONTENT_VIDEO, DATE >= {prevFrom:Date} AND DATE <= {prevTo:Date}) AS newContentVideoPrev,
+        sumIf(NEW_CONTENT_LIVE, DATE >= {currentFrom:Date} AND DATE <= {currentTo:Date}) AS newContentLive,
+        sumIf(NEW_CONTENT_LIVE, DATE >= {prevFrom:Date} AND DATE <= {prevTo:Date}) AS newContentLivePrev,
+        uniqExactIf(AFFILIATE_USERNAME, NEW_CONTENT_VIDEO > 0 AND DATE >= {currentFrom:Date} AND DATE <= {currentTo:Date}) AS creatorsVideo,
+        uniqExactIf(AFFILIATE_USERNAME, NEW_CONTENT_VIDEO > 0 AND DATE >= {prevFrom:Date} AND DATE <= {prevTo:Date}) AS creatorsVideoPrev,
+        uniqExactIf(AFFILIATE_USERNAME, NEW_CONTENT_LIVE > 0 AND DATE >= {currentFrom:Date} AND DATE <= {currentTo:Date}) AS creatorsLive,
+        uniqExactIf(AFFILIATE_USERNAME, NEW_CONTENT_LIVE > 0 AND DATE >= {prevFrom:Date} AND DATE <= {prevTo:Date}) AS creatorsLivePrev
+      FROM ${TABLE_CONTENT_PERFORMANCE}
+      WHERE MARKETPLACE_NAME = 'Tiktok'
+        AND ((DATE >= {currentFrom:Date} AND DATE <= {currentTo:Date})
+          OR (DATE >= {prevFrom:Date} AND DATE <= {prevTo:Date}))
+        ${contentFilter}
+      GROUP BY marketplace
+    `,
+    query_params: contentParams,
+    format: 'JSONEachRow',
+  })
+
+  const contentRows = await contentResult.json<Record<string, string | number | null>>()
+  const contentByMarketplace = new Map(contentRows.map((r) => [String(r.marketplace), r]))
+
   const marketplaces: FunnelMarketplace[] = stageRows.map((row) => {
     const name = String(row.marketplace)
     const n = (key: string) => Number(row[key] ?? 0)
 
+    const c = contentByMarketplace.get(name)
+    const cn = (key: string) => Number(c?.[key] ?? 0)
     const isTiktok = name.toLowerCase() === 'tiktok'
     const stages: FunnelStage[] = isTiktok
       ? [
@@ -902,14 +958,39 @@ export async function getFunnel(
           { key: 'buyerRate', label: 'Buyer Rate', value: rate(n('spBuyers'), n('spClicks')), prev: rate(n('spBuyersPrev'), n('spClicksPrev')) },
         ]
 
+    // Content figures only exist for the video and live pillars.
+    const contentByPillar: Record<string, { creators: number; creatorsPrev: number; content: number; contentPrev: number }> = {
+      Video: {
+        creators: cn('creatorsVideo'),
+        creatorsPrev: cn('creatorsVideoPrev'),
+        content: cn('newContentVideo'),
+        contentPrev: cn('newContentVideoPrev'),
+      },
+      Livestream: {
+        creators: cn('creatorsLive'),
+        creatorsPrev: cn('creatorsLivePrev'),
+        content: cn('newContentLive'),
+        contentPrev: cn('newContentLivePrev'),
+      },
+    }
+
     const pillars: FunnelPillar[] = pillarRows
       .filter((p) => p.marketplace === name)
       .map((p) => {
         const gmv = Number(p.gmv || 0)
         const creators = Number(p.creators || 0)
         const orders = Number(p.orders || 0)
+        const pc = contentByPillar[p.pillar]
         return {
           name: p.pillar,
+          ...(pc && (pc.content > 0 || pc.creators > 0)
+            ? {
+                contentCreators: pc.creators,
+                contentCreatorsDeltaPct: pctDelta(pc.creators, pc.creatorsPrev),
+                newContent: pc.content,
+                newContentDeltaPct: pctDelta(pc.content, pc.contentPrev),
+              }
+            : {}),
           gmv,
           gmvDeltaPct: pctDelta(gmv, Number(p.gmvPrev || 0)),
           creators,
@@ -920,15 +1001,20 @@ export async function getFunnel(
         }
       })
 
-    return { name, stages, rates, pillars }
+    const content: FunnelContent = {
+      available: Boolean(c) && (cn('totalNewContent') > 0 || cn('creatorsPosting') > 0),
+      creatorsPosting: cn('creatorsPosting'),
+      creatorsPostingDeltaPct: pctDelta(cn('creatorsPosting'), cn('creatorsPostingPrev')),
+      totalNewContent: cn('totalNewContent'),
+      totalNewContentDeltaPct: pctDelta(cn('totalNewContent'), cn('totalNewContentPrev')),
+    }
+
+    return { name, stages, rates, pillars, content }
   })
 
   return {
     marketplaces: marketplaces.sort((a, b) => a.name.localeCompare(b.name)),
-    unavailable: [
-      'New content (video/live) TikTok',
-      'Total creators TikTok (creator yang posting konten)',
-    ],
+    unavailable: [],
   }
 }
 

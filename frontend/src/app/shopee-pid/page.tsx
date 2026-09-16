@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useRef, useState } from "react"
+import { Suspense, useEffect, useMemo, useRef, useState } from "react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { DashboardShell } from "@/components/dashboard-shell"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -49,7 +49,7 @@ function buildQuery(params: Record<string, string | undefined>): string {
   return qs ? `?${qs}` : ""
 }
 
-export default function ShopeePidPage() {
+function ShopeePidPageInner() {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -632,5 +632,14 @@ function CountCard({
       </div>
       <div className="mt-1 text-[11.5px] leading-relaxed text-[var(--ov-faint)]">{note}</div>
     </button>
+  )
+}
+
+/** useSearchParams needs a Suspense boundary for the static snapshot export. */
+export default function ShopeePidPage() {
+  return (
+    <Suspense fallback={null}>
+      <ShopeePidPageInner />
+    </Suspense>
   )
 }

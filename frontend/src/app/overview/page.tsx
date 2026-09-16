@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useRef, useState } from "react"
+import { Suspense, useCallback, useEffect, useRef, useState } from "react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { DashboardShell } from "@/components/dashboard-shell"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -17,7 +17,7 @@ import { WaterfallChart } from "@/components/charts/waterfall-chart"
 import { CompositionTrendChart } from "@/components/charts/composition-trend-chart"
 import { CompositionTable, DIMENSION_COLORS } from "@/components/overview/composition-table"
 import { CompositionDetail } from "@/components/overview/composition-detail"
-import { DriverChart, DriverLegend, EntityGrowthChart } from "@/components/charts/driver-chart"
+import { DriverChart, DriverLegend } from "@/components/charts/driver-chart"
 import { GmvCommissionChart, ROI_THRESHOLD, RoiChart } from "@/components/charts/roi-chart"
 import { AcquisitionChart } from "@/components/charts/acquisition-chart"
 import { SpendTable } from "@/components/overview/spend-table"
@@ -69,7 +69,7 @@ function buildQuery(params: Record<string, string | undefined>): string {
   return qs ? `?${qs}` : ""
 }
 
-export default function OverviewPage() {
+function OverviewPageInner() {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -706,7 +706,7 @@ export default function OverviewPage() {
                 <div className="mb-2 rounded-md border border-[var(--accent)] bg-[var(--accent)] p-1.5 text-center text-[11.5px] font-bold tracking-wider text-[var(--ov-head)] uppercase">
                   Growth GMV
                 </div>
-                <EntityGrowthChart rows={drivers.entityGrowth} />
+                <DriverChart rows={drivers.growth} names={drivers.names} unit="pp" />
               </div>
               <div>
                 <div className="mb-2 rounded-md border border-[var(--accent)] bg-[var(--accent)] p-1.5 text-center text-[11.5px] font-bold tracking-wider text-[var(--ov-head)] uppercase">
@@ -729,7 +729,8 @@ export default function OverviewPage() {
             </span>
             <span className="text-lg font-semibold font-(family-name:--font-archivo)">Content Conversion Funnel</span>
             <span className="text-[13px] text-[var(--ov-mut2)]">
-              Funnel &amp; pillar stats dari summary order. Belum tersedia: {funnel?.unavailable.join(", ") ?? "—"}.
+              Funnel &amp; pillar stats dari summary order · new content dan total creators dari content
+              performance.
             </span>
           </div>
           {funnel ? (
@@ -809,7 +810,15 @@ export default function OverviewPage() {
                 </span>
               </div>
             </div>
-            {summary ? <GmvCommissionChart trend={summary.trend} /> : null}
+            {summary ? (
+              <>
+                <GmvCommissionChart trend={summary.trend} />
+                <div className="mt-1 text-[11px] text-[var(--ov-faint)]">
+                  Diindeks 100 pada awal periode — garis yang naik lebih curam tumbuh lebih cepat. Nilai rupiah
+                  aslinya ada di tooltip.
+                </div>
+              </>
+            ) : null}
 
             <div className="mt-3 flex items-center justify-between gap-4 border-t border-[var(--ov-line)] pt-3.5">
               <div className="flex items-center gap-2.5 text-base font-semibold font-(family-name:--font-archivo)">
@@ -906,5 +915,14 @@ export default function OverviewPage() {
         </div>
       </div>
     </DashboardShell>
+  )
+}
+
+/** useSearchParams needs a Suspense boundary for the static snapshot export. */
+export default function OverviewPage() {
+  return (
+    <Suspense fallback={null}>
+      <OverviewPageInner />
+    </Suspense>
   )
 }
