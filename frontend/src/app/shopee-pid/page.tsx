@@ -87,7 +87,7 @@ export default function ShopeePidPage() {
   const [categories, setCategories] = useState<PidCategoriesResult | null>(null)
   const [products, setProducts] = useState<PidProductsResult | null>(null)
   const [trend, setTrend] = useState<PidTrendPoint[] | null>(null)
-  const [detail, setDetail] = useState<PidProductDetail | null>(null)
+  const [detail, setDetail] = useState<{ key: string; data: PidProductDetail } | null>(null)
   const [creators, setCreators] = useState<PidCreatorsResult | null>(null)
   const [showPillars, setShowPillars] = useState(true)
   const [showShopee, setShowShopee] = useState(true)
@@ -172,11 +172,11 @@ export default function ShopeePidPage() {
 
   const selectedKey = selectedPids.join(",")
 
-  useEffect(() => {
-    // A stale detail simply stops matching selectedKey, so it never renders.
-    if (!selectedKey) return
-    apiFetch<PidProductDetail>(
-      `/api/shopee-pid/product-detail${buildQuery({
+  // The request URL doubles as the identity of the loaded detail. Matching on the
+  // response's own pids breaks as soon as several are selected, because the API
+  // returns them ordered by GMV and drops any with no rows in the window.
+  const detailUrl = selectedKey
+    ? `/api/shopee-pid/product-detail${buildQuery({
         pid: selectedKey,
         brand: brand ?? undefined,
         from,
@@ -184,12 +184,15 @@ export default function ShopeePidPage() {
         compare,
         granularity: trendGranularity,
         ...prevParams,
-      })}`,
-    )
-      .then(setDetail)
+      })}`
+    : null
+
+  useEffect(() => {
+    if (!detailUrl) return
+    apiFetch<PidProductDetail>(detailUrl)
+      .then((data) => setDetail({ key: detailUrl, data }))
       .catch((e) => setError(e instanceof Error ? e.message : "Gagal memuat detail produk"))
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedKey, brand, from, to, compare, prevFrom, prevTo, trendGranularity])
+  }, [detailUrl])
 
   useEffect(() => {
     apiFetch<PidCreatorsResult>(
@@ -430,7 +433,10 @@ export default function ShopeePidPage() {
               {visibleProducts.length} produk ditampilkan
               {products ? ` dari ${products.countProduct} pada cakupan ini` : ""}
             </span>
-            <span className="ml-auto">klik satu baris untuk membuka deep dive · tabel bisa di-scroll</span>
+            <span className="ml-auto">
+              klik baris untuk deep dive · shift-klik untuk rentang · ⌘/ctrl-klik untuk tambah satu · centang kotak
+              di header untuk pilih semua
+            </span>
           </div>
           {products ? (
             <ProductTable
@@ -438,6 +444,7 @@ export default function ShopeePidPage() {
               selectedPids={selectedPids}
               onSelectAction={(pid) => setSelectedPids([pid])}
               onToggleAction={toggleSelectedPid}
+              onSetSelectionAction={setSelectedPids}
               showPillars={showPillars}
               showShopee={showShopee}
             />
@@ -455,8 +462,8 @@ export default function ShopeePidPage() {
               </div>
               <span className="text-[12.5px] text-[var(--ov-faint)]">mengikuti baris produk yang dipilih di tabel atas</span>
             </div>
-            {selectedKey && detail && detail.pids.join(",") === selectedKey ? (
-              <ProductDetail detail={detail} onRemoveAction={toggleSelectedPid} />
+            {detailUrl && detail?.key === detailUrl ? (
+              <ProductDetail detail={detail.data} onRemoveAction={toggleSelectedPid} />
             ) : (
               <div
                 className="flex h-[240px] items-center justify-center rounded-xl border border-dashed border-[var(--ov-line)] px-6 text-center text-sm text-[var(--ov-faint)]"

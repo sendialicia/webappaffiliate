@@ -82,6 +82,7 @@ export function ProductTable({
   selectedPids,
   onSelectAction,
   onToggleAction,
+  onSetSelectionAction,
   showPillars,
   showShopee,
 }: {
@@ -91,11 +92,15 @@ export function ProductTable({
   onSelectAction: (pid: string) => void
   /** The checkbox adds or removes a product from the combined selection. */
   onToggleAction: (pid: string) => void
+  /** Replaces the whole selection, used by shift-range and the header checkbox. */
+  onSetSelectionAction: (pids: string[]) => void
   showPillars: boolean
   showShopee: boolean
 }) {
   const [sortKey, setSortKey] = useState<SortKey>("gmv")
   const [asc, setAsc] = useState(false)
+  // Anchor for shift-range selection, tracked in displayed order.
+  const [anchorPid, setAnchorPid] = useState<string | null>(null)
 
   const columns = COLUMNS.filter(
     (c) => (c.group !== "pillar" || showPillars) && (c.group !== "shopee" || showShopee),
@@ -112,6 +117,33 @@ export function ProductTable({
     return asc ? an - bn : bn - an
   })
 
+  const visiblePids = sorted.map((r) => r.pid)
+  const allSelected = visiblePids.length > 0 && visiblePids.every((p) => selectedPids.includes(p))
+  const someSelected = visiblePids.some((p) => selectedPids.includes(p))
+
+  const rangeFrom = (pid: string): string[] => {
+    const end = visiblePids.indexOf(pid)
+    const start = anchorPid ? visiblePids.indexOf(anchorPid) : -1
+    if (start === -1 || end === -1) return [pid]
+    const [lo, hi] = start <= end ? [start, end] : [end, start]
+    return visiblePids.slice(lo, hi + 1)
+  }
+
+  const handleRowSelect = (pid: string, e: { shiftKey: boolean; metaKey: boolean; ctrlKey: boolean }) => {
+    if (e.shiftKey && anchorPid) {
+      const range = rangeFrom(pid)
+      onSetSelectionAction([...new Set([...selectedPids, ...range])])
+      return
+    }
+    if (e.metaKey || e.ctrlKey) {
+      onToggleAction(pid)
+      setAnchorPid(pid)
+      return
+    }
+    onSelectAction(pid)
+    setAnchorPid(pid)
+  }
+
   const toggleSort = (key: SortKey) => {
     if (key === sortKey) setAsc((v) => !v)
     else {
@@ -126,7 +158,17 @@ export function ProductTable({
         <thead>
           <tr>
             <th className="sticky top-0 z-[2] w-9 bg-[var(--card)] p-2.5 shadow-[inset_0_-2px_0_var(--ov-track)]">
-              <span className="sr-only">Pilih</span>
+              <input
+                type="checkbox"
+                checked={allSelected}
+                ref={(el) => {
+                  if (el) el.indeterminate = !allSelected && someSelected
+                }}
+                onChange={() => onSetSelectionAction(allSelected ? [] : visiblePids)}
+                aria-label="Pilih semua produk yang tampil"
+                title="Pilih semua produk yang tampil"
+                className="h-3.5 w-3.5 accent-[var(--ov-blue)]"
+              />
             </th>
             {columns.map((col, i) => (
               <th
@@ -150,18 +192,26 @@ export function ProductTable({
             return (
               <tr
                 key={row.pid}
-                onClick={() => onSelectAction(row.pid)}
-                className="cursor-pointer hover:bg-[var(--ov-fill1)]"
+                onClick={(e) => handleRowSelect(row.pid, e)}
+                className="cursor-pointer select-none hover:bg-[var(--ov-fill1)]"
                 style={{ background: selected ? "var(--accent)" : undefined }}
               >
                 <td className="border-b border-[var(--ov-fill1)] p-2.5 align-top">
                   <input
                     type="checkbox"
                     checked={selected}
-                    onClick={(e) => e.stopPropagation()}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      if (e.shiftKey && anchorPid) {
+                        e.preventDefault()
+                        onSetSelectionAction([...new Set([...selectedPids, ...rangeFrom(row.pid)])])
+                        return
+                      }
+                      setAnchorPid(row.pid)
+                    }}
                     onChange={() => onToggleAction(row.pid)}
                     aria-label={`Gabungkan ${row.name}`}
-                    title="Centang untuk menggabungkan beberapa produk di deep dive"
+                    title="Centang untuk menggabungkan · shift-klik untuk rentang"
                     className="mt-0.5 h-3.5 w-3.5 accent-[var(--ov-blue)]"
                   />
                 </td>
