@@ -4,6 +4,7 @@ import { useState } from "react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { DetailFilterSelects, activeDetailCount } from "@/components/overview/detail-filters"
+import { FilterDivider, FilterItem, FloatingFilterBar, pillControlClass } from "@/components/filter-shell"
 import {
   CurrentPeriodField,
   PreviousPeriodField,
@@ -56,46 +57,44 @@ export function FilterBar({
         : impliedPrevRange(from, to)
 
   return (
-    <div className="sticky top-0 z-30 border-b border-[var(--ov-line)] bg-[var(--background)]/95 px-6 py-3 backdrop-blur md:px-8">
-      <div className="flex flex-wrap items-end gap-4">
-        <div className="min-w-[150px] flex-1">
-          <div className="mb-1.5 text-[10.5px] font-bold tracking-wider text-[var(--ov-faint)] uppercase">
-            Brand Name
-          </div>
-          <Select value={brand ?? ALL} onValueChange={(v) => v && setBrand(v === ALL ? null : v)}>
-            <SelectTrigger className="h-8 w-full bg-[var(--input)] text-[13px]">
-              <SelectValue>{(v: string) => (v === ALL || !v ? "(All)" : v)}</SelectValue>
-            </SelectTrigger>
-            <SelectContent className="max-h-[320px]">
-              <SelectItem value={ALL}>(All)</SelectItem>
-              {brandOptions.map((b) => (
-                <SelectItem key={b} value={b}>
-                  {b}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+    <FloatingFilterBar>
+      <FilterItem label="Brand" grow>
+        <Select value={brand ?? ALL} onValueChange={(v) => v && setBrand(v === ALL ? null : v)}>
+          <SelectTrigger className="h-8 w-full rounded-full bg-[var(--input)] px-3.5 text-[13px]">
+            <SelectValue>{(v: string) => (v === ALL || !v ? "(All)" : v)}</SelectValue>
+          </SelectTrigger>
+          <SelectContent className="max-h-[320px]">
+            <SelectItem value={ALL}>(All)</SelectItem>
+            {brandOptions.map((b) => (
+              <SelectItem key={b} value={b}>
+                {b}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </FilterItem>
 
-        <div className="min-w-[140px] flex-1">
-          <div className="mb-1.5 text-[10.5px] font-bold tracking-wider text-[var(--ov-faint)] uppercase">
-            Marketplace
-          </div>
-          <Select value={marketplace ?? ALL} onValueChange={(v) => v && setMarketplace(v === ALL ? null : v)}>
-            <SelectTrigger className="h-8 w-full bg-[var(--input)] text-[13px]">
-              <SelectValue>{(v: string) => (v === ALL || !v ? "(All)" : v)}</SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={ALL}>(All)</SelectItem>
-              {marketplaceOptions.map((m) => (
-                <SelectItem key={m} value={m}>
-                  {m}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+      <FilterDivider />
 
+      <FilterItem label="Marketplace" grow>
+        <Select value={marketplace ?? ALL} onValueChange={(v) => v && setMarketplace(v === ALL ? null : v)}>
+          <SelectTrigger className="h-8 w-full rounded-full bg-[var(--input)] px-3.5 text-[13px]">
+            <SelectValue>{(v: string) => (v === ALL || !v ? "(All)" : v)}</SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={ALL}>(All)</SelectItem>
+            {marketplaceOptions.map((m) => (
+              <SelectItem key={m} value={m}>
+                {m}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </FilterItem>
+
+      <FilterDivider />
+
+      <FilterItem label="Periode">
         <CurrentPeriodField
           preset={preset}
           from={from}
@@ -103,6 +102,9 @@ export function FilterBar({
           onPresetAction={setPreset}
           onRangeAction={setCustomRange}
         />
+      </FilterItem>
+
+      <FilterItem label="vs">
         <PreviousPeriodField
           basis={compare}
           from={from}
@@ -112,20 +114,17 @@ export function FilterBar({
           onBasisAction={setCompare}
           onRangeAction={setPrevRange}
         />
+      </FilterItem>
 
-        {/* Detail filters merge in here once their own row is scrolled past. */}
-        {mergeDetail && (
-          <div className="flex-none">
-            <div className="mb-1.5 text-[10.5px] font-bold tracking-wider text-[var(--ov-faint)] uppercase">
-              Filter rincian
-            </div>
+      {/* Detail filters merge in here once their own row is scrolled past. */}
+      {mergeDetail && (
+        <>
+          <FilterDivider />
+          <FilterItem label="Rincian">
             <Popover>
               <PopoverTrigger
                 render={
-                  <button
-                    type="button"
-                    className="flex h-8 items-center gap-2 rounded-md border border-[var(--ov-line)] bg-[var(--input)] px-3 text-xs font-semibold text-[var(--ov-soft)] hover:bg-[var(--ov-fill1)]"
-                  >
+                  <button type="button" className={pillControlClass}>
                     Filter lainnya
                     {activeCount > 0 && (
                       <span className="rounded-full bg-[var(--accent)] px-1.5 py-0.5 text-[10px] font-bold text-[var(--accent-foreground)]">
@@ -140,9 +139,7 @@ export function FilterBar({
                   <span className="text-[11px] font-bold tracking-wider text-[var(--ov-faint)] uppercase">
                     Filter rincian
                   </span>
-                  <span className="text-[11px] text-[var(--ov-faint)]">
-                    mengikat Summary dan seksi di bawahnya
-                  </span>
+                  <span className="text-[11px] text-[var(--ov-faint)]">mengikat Summary dan seksi di bawahnya</span>
                   {activeCount > 0 && (
                     <button
                       type="button"
@@ -158,24 +155,23 @@ export function FilterBar({
                 </div>
               </PopoverContent>
             </Popover>
-          </div>
-        )}
+          </FilterItem>
+        </>
+      )}
 
-        <div className="ml-auto flex flex-none flex-col gap-1.5">
-          <div className="text-[10.5px] font-bold tracking-wider text-[var(--ov-faint)] uppercase">Tampilan ini</div>
-          <button
-            type="button"
-            onClick={() => {
-              navigator.clipboard?.writeText(window.location.href)
-              setCopyLabel("Copied!")
-              setTimeout(() => setCopyLabel("Copy link"), 1500)
-            }}
-            className="flex h-8 items-center gap-2 rounded-md border border-[var(--ov-line)] bg-[var(--input)] px-3 text-xs font-semibold text-[var(--ov-soft)] hover:bg-[var(--ov-fill1)]"
-          >
-            {copyLabel}
-          </button>
-        </div>
+      <div className="ml-auto flex flex-none items-center pl-1.5">
+        <button
+          type="button"
+          onClick={() => {
+            navigator.clipboard?.writeText(window.location.href)
+            setCopyLabel("Copied!")
+            setTimeout(() => setCopyLabel("Copy link"), 1500)
+          }}
+          className={pillControlClass}
+        >
+          {copyLabel}
+        </button>
       </div>
-    </div>
+    </FloatingFilterBar>
   )
 }

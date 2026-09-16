@@ -8,6 +8,7 @@ import {
   impliedPrevRange,
   shiftYear,
 } from "@/components/period-picker"
+import { FilterDivider, FilterItem, FloatingFilterBar, pillControlClass } from "@/components/filter-shell"
 import { useShopeePidFilters } from "@/store/shopee-pid-filters"
 import type { PidLevel } from "@/types/shopee-pid"
 
@@ -57,60 +58,57 @@ export function FilterBar({
         : impliedPrevRange(from, to)
 
   return (
-    <div className="sticky top-0 z-30 border-b border-[var(--ov-line)] bg-[var(--background)]/95 px-6 py-3 backdrop-blur md:px-8">
-      <div className="flex flex-wrap items-end gap-4">
-        <div className="min-w-[150px] flex-1">
-          <div className="mb-1.5 text-[10.5px] font-bold tracking-wider text-[var(--ov-faint)] uppercase">
-            Brand Name
-          </div>
-          <Select value={brand ?? ALL} onValueChange={(v) => v && setBrand(v === ALL ? null : v)}>
-            <SelectTrigger className="h-8 w-full bg-[var(--input)] text-[13px]">
-              <SelectValue>{(v: string) => (v === ALL || !v ? "(All)" : v)}</SelectValue>
-            </SelectTrigger>
-            <SelectContent className="max-h-[320px]">
-              <SelectItem value={ALL}>(All)</SelectItem>
-              {brandOptions.map((b) => (
-                <SelectItem key={b} value={b}>
-                  {b}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+    <FloatingFilterBar>
+      <FilterItem label="Brand" grow>
+        <Select value={brand ?? ALL} onValueChange={(v) => v && setBrand(v === ALL ? null : v)}>
+          <SelectTrigger className="h-8 w-full rounded-full bg-[var(--input)] px-3.5 text-[13px]">
+            <SelectValue>{(v: string) => (v === ALL || !v ? "(All)" : v)}</SelectValue>
+          </SelectTrigger>
+          <SelectContent className="max-h-[320px]">
+            <SelectItem value={ALL}>(All)</SelectItem>
+            {brandOptions.map((b) => (
+              <SelectItem key={b} value={b}>
+                {b}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </FilterItem>
 
-        <div className="flex-none">
-          <div className="mb-1.5 text-[10.5px] font-bold tracking-wider text-[var(--ov-faint)] uppercase">Level</div>
-          <Select value={level} onValueChange={(v) => v && setLevel(v as PidLevel)}>
-            <SelectTrigger className="h-8 w-36 bg-[var(--input)] text-[13px]">
-              <SelectValue>{(v: string) => LEVEL_LABELS[v as PidLevel] ?? v}</SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="category">Category</SelectItem>
-              <SelectItem value="subcategory">Sub Category</SelectItem>
-              <SelectItem value="format">Format</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+      <FilterDivider />
 
-        <div className="flex-none">
-          <div className="mb-1.5 text-[10.5px] font-bold tracking-wider text-[var(--ov-faint)] uppercase">
-            Tren Date
-          </div>
-          <Select
-            value={trendGranularity}
-            onValueChange={(v) => v && setTrendGranularity(v as "day" | "week" | "month")}
-          >
-            <SelectTrigger className="h-8 w-24 bg-[var(--input)] text-[13px]">
-              <SelectValue>{(v: string) => v.charAt(0).toUpperCase() + v.slice(1)}</SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="day">Day</SelectItem>
-              <SelectItem value="week">Week</SelectItem>
-              <SelectItem value="month">Month</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+      <FilterItem label="Level">
+        <Select value={level} onValueChange={(v) => v && setLevel(v as PidLevel)}>
+          <SelectTrigger className="h-8 w-32 rounded-full bg-[var(--input)] px-3.5 text-[13px]">
+            <SelectValue>{(v: string) => LEVEL_LABELS[v as PidLevel] ?? v}</SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="category">Category</SelectItem>
+            <SelectItem value="subcategory">Sub Category</SelectItem>
+            <SelectItem value="format">Format</SelectItem>
+          </SelectContent>
+        </Select>
+      </FilterItem>
 
+      <FilterItem label="Tren">
+        <Select
+          value={trendGranularity}
+          onValueChange={(v) => v && setTrendGranularity(v as "day" | "week" | "month")}
+        >
+          <SelectTrigger className="h-8 w-24 rounded-full bg-[var(--input)] px-3.5 text-[13px]">
+            <SelectValue>{(v: string) => v.charAt(0).toUpperCase() + v.slice(1)}</SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="day">Day</SelectItem>
+            <SelectItem value="week">Week</SelectItem>
+            <SelectItem value="month">Month</SelectItem>
+          </SelectContent>
+        </Select>
+      </FilterItem>
+
+      <FilterDivider />
+
+      <FilterItem label="Periode">
         <CurrentPeriodField
           preset={preset}
           from={from}
@@ -118,7 +116,9 @@ export function FilterBar({
           onPresetAction={setPreset}
           onRangeAction={setCustomRange}
         />
+      </FilterItem>
 
+      <FilterItem label="vs">
         <PreviousPeriodField
           basis={compare}
           from={from}
@@ -128,15 +128,15 @@ export function FilterBar({
           onBasisAction={setCompare}
           onRangeAction={setPrevRange}
         />
+      </FilterItem>
 
-        {/* Active scope merges in here once its own row is scrolled past. */}
-        {mergeScope && scope && (
-          <div className="flex-none">
-            <div className="mb-1.5 text-[10.5px] font-bold tracking-wider text-[var(--ov-faint)] uppercase">
-              Cakupan
-            </div>
-            <div className="flex h-8 items-center gap-1.5 rounded-md border border-[var(--accent)] bg-[var(--accent)] px-2.5 text-xs font-semibold text-[var(--accent-foreground)]">
-              <span className="max-w-[180px] truncate">{scope}</span>
+      {/* Active scope merges in here once its own row is scrolled past. */}
+      {mergeScope && scope && (
+        <>
+          <FilterDivider />
+          <FilterItem label="Cakupan">
+            <span className="flex h-8 items-center gap-1.5 rounded-full border border-[var(--accent)] bg-[var(--accent)] px-3 text-xs font-semibold text-[var(--accent-foreground)]">
+              <span className="max-w-[160px] truncate">{scope}</span>
               <button
                 type="button"
                 onClick={() => setScope(null)}
@@ -145,25 +145,24 @@ export function FilterBar({
               >
                 ×
               </button>
-            </div>
-          </div>
-        )}
+            </span>
+          </FilterItem>
+        </>
+      )}
 
-        <div className="ml-auto flex flex-none flex-col gap-1.5">
-          <div className="text-[10.5px] font-bold tracking-wider text-[var(--ov-faint)] uppercase">Tampilan ini</div>
-          <button
-            type="button"
-            onClick={() => {
-              navigator.clipboard?.writeText(window.location.href)
-              setCopyLabel("Copied!")
-              setTimeout(() => setCopyLabel("Copy link"), 1500)
-            }}
-            className="flex h-8 items-center gap-2 rounded-md border border-[var(--ov-line)] bg-[var(--input)] px-3 text-xs font-semibold text-[var(--ov-soft)] hover:bg-[var(--ov-fill1)]"
-          >
-            {copyLabel}
-          </button>
-        </div>
+      <div className="ml-auto flex flex-none items-center pl-1.5">
+        <button
+          type="button"
+          onClick={() => {
+            navigator.clipboard?.writeText(window.location.href)
+            setCopyLabel("Copied!")
+            setTimeout(() => setCopyLabel("Copy link"), 1500)
+          }}
+          className={pillControlClass}
+        >
+          {copyLabel}
+        </button>
       </div>
-    </div>
+    </FloatingFilterBar>
   )
 }

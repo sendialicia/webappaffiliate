@@ -3,6 +3,7 @@
 import type { ReactNode } from "react"
 import { Input } from "@/components/ui/input"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { pillControlClass } from "@/components/filter-shell"
 import { DATE_PRESET_LABELS, type DatePreset } from "@/lib/date-range"
 
 /** Previous-period range implied by the current range, used when the basis is "periode sebelumnya". */
@@ -26,38 +27,22 @@ function iso(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
 }
 
-/** A labelled field whose trigger shows only the resolved dates; the controls live in the popover. */
-function RangeField({
-  label,
-  from,
-  to,
-  children,
-}: {
-  label: string
-  from: string
-  to: string
-  children: ReactNode
-}) {
+/** The trigger shows only the resolved dates; presets and custom inputs live in the popover. */
+function RangeField({ from, to, children }: { from: string; to: string; children: ReactNode }) {
   return (
-    <div className="flex-none">
-      <div className="mb-1.5 text-[10.5px] font-bold tracking-wider text-[var(--ov-faint)] uppercase">{label}</div>
-      <Popover>
-        <PopoverTrigger
-          render={
-            <button
-              type="button"
-              className="flex h-8 items-center gap-2 rounded-md border border-[var(--ov-line)] bg-[var(--input)] px-3 font-mono text-[11.5px] font-semibold text-[var(--ov-soft)] hover:bg-[var(--ov-fill1)]"
-            >
-              {from} → {to}
-              <span className="font-sans text-[9px] text-[var(--ov-faint)]">▼</span>
-            </button>
-          }
-        />
-        <PopoverContent className="w-[330px] p-3.5" align="start">
-          {children}
-        </PopoverContent>
-      </Popover>
-    </div>
+    <Popover>
+      <PopoverTrigger
+        render={
+          <button type="button" className={`${pillControlClass} font-mono text-[11.5px]`}>
+            {from} → {to}
+            <span className="font-sans text-[9px] text-[var(--ov-faint)]">▼</span>
+          </button>
+        }
+      />
+      <PopoverContent className="w-[330px] p-3.5" align="start">
+        {children}
+      </PopoverContent>
+    </Popover>
   )
 }
 
@@ -132,7 +117,7 @@ export function CurrentPeriodField({
   onRangeAction: (from: string, to: string) => void
 }) {
   return (
-    <RangeField label="Current period" from={from} to={to}>
+    <RangeField from={from} to={to}>
       <Chips
         options={(Object.keys(DATE_PRESET_LABELS) as DatePreset[]).map((p) => ({
           key: p,
@@ -172,7 +157,7 @@ export function PreviousPeriodField({
   const implied = impliedPrevRange(from, to)
 
   return (
-    <RangeField label="Previous period" from={resolvedFrom} to={resolvedTo}>
+    <RangeField from={resolvedFrom} to={resolvedTo}>
       <Chips
         options={[
           { key: "prev", label: "Periode sebelumnya" },
