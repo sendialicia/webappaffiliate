@@ -5,8 +5,16 @@ import { DIMENSION_COLORS } from "@/components/overview/composition-table"
 import { formatCompact, formatIdr, formatPercent, formatRpFull, formatSignedPercent } from "@/lib/format"
 import type { PidProductDetail } from "@/types/shopee-pid"
 
-export function ProductDetail({ detail }: { detail: PidProductDetail }) {
+export function ProductDetail({
+  detail,
+  onRemoveAction,
+}: {
+  detail: PidProductDetail
+  /** Drops one product from a combined selection. */
+  onRemoveAction?: (pid: string) => void
+}) {
   const a = detail.attributes
+  const combined = detail.members.length > 1
 
   const kpis = [
     { label: "GMV affiliate", value: formatRpFull(detail.gmv), note: formatSignedPercent(detail.growth) },
@@ -29,15 +37,28 @@ export function ProductDetail({ detail }: { detail: PidProductDetail }) {
     >
       <div>
         <div className="flex flex-wrap items-start gap-3.5">
-          <div className="flex h-[92px] w-[92px] flex-none items-center justify-center rounded-lg border border-dashed border-[var(--ov-line)] bg-[var(--ov-fill1)] text-center text-[10px] leading-tight text-[var(--ov-faint)]">
-            Foto produk
-            <br />
-            (menyusul)
+          <div className="flex h-[92px] w-[92px] flex-none flex-col items-center justify-center rounded-lg border border-dashed border-[var(--ov-line)] bg-[var(--ov-fill1)] text-center text-[10px] leading-tight text-[var(--ov-faint)]">
+            {combined ? (
+              <>
+                <span className="text-xl font-bold text-[var(--ov-soft)] font-(family-name:--font-archivo)">
+                  {detail.members.length}
+                </span>
+                produk
+                <br />
+                digabung
+              </>
+            ) : (
+              <>
+                Foto produk
+                <br />
+                (menyusul)
+              </>
+            )}
           </div>
           <div className="min-w-[210px] flex-1">
             <div className="flex flex-wrap items-center gap-2">
               <span className="rounded border border-[var(--ov-line)] bg-[var(--ov-fill1)] px-1.5 py-0.5 font-mono text-[11.5px] text-[var(--ov-faint)]">
-                PID {detail.pid}
+                {combined ? `${detail.pids.length} PID` : `PID ${detail.pids[0]}`}
               </span>
               <span className="rounded border border-[var(--accent)] bg-[var(--accent)] px-2 py-0.5 text-[11px] font-bold tracking-wide text-[var(--accent-foreground)] uppercase">
                 {detail.category}
@@ -50,6 +71,30 @@ export function ProductDetail({ detail }: { detail: PidProductDetail }) {
             <div className="mt-1 text-[11.5px] text-[var(--ov-faint)]">Sub category: {detail.subCategory}</div>
           </div>
         </div>
+
+        {combined && (
+          <div className="mt-3 max-h-[132px] overflow-y-auto rounded-lg border border-[var(--ov-line)] bg-[var(--ov-fill2)] p-2">
+            {detail.members.map((m) => (
+              <div key={m.pid} className="flex items-baseline gap-2 px-1 py-1 text-[11.5px]">
+                <span className="font-mono text-[var(--ov-faint)]">{m.pid}</span>
+                <span className="min-w-0 flex-1 truncate text-[var(--ov-soft)]" title={m.name}>
+                  {m.name}
+                </span>
+                <span className="font-mono text-[var(--ov-mut)]">{formatCompact(m.gmv)}</span>
+                {onRemoveAction && (
+                  <button
+                    type="button"
+                    onClick={() => onRemoveAction(m.pid)}
+                    title="Keluarkan dari gabungan"
+                    className="text-sm leading-none text-[var(--ov-faint)] hover:text-[var(--ov-ink)]"
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
 
         <div className="mt-3.5 grid grid-cols-2 gap-2.5 border-t border-[var(--ov-line)] pt-3.5 lg:grid-cols-4">
           {kpis.map((k) => (

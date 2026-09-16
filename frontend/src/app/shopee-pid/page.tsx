@@ -65,7 +65,8 @@ export default function ShopeePidPage() {
     trendGranularity,
     level,
     scope,
-    selectedPid,
+    selectedPids,
+    countFilter,
     quadrant,
     excludeOutliers,
     search,
@@ -75,7 +76,9 @@ export default function ShopeePidPage() {
     prevTo,
     hydrateFromParams,
     setScope,
-    setSelectedPid,
+    setSelectedPids,
+    toggleSelectedPid,
+    setCountFilter,
   } = filters
 
   const prevParams =
@@ -111,7 +114,7 @@ export default function ShopeePidPage() {
     trendGranularity,
     level,
     scope,
-    selectedPid,
+    selectedPids,
     quadrant,
     excludeOutliers,
     search,
@@ -167,11 +170,14 @@ export default function ShopeePidPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [brand, from, to, level, scope, trendGranularity])
 
+  const selectedKey = selectedPids.join(",")
+
   useEffect(() => {
-    if (!selectedPid) return
+    // A stale detail simply stops matching selectedKey, so it never renders.
+    if (!selectedKey) return
     apiFetch<PidProductDetail>(
       `/api/shopee-pid/product-detail${buildQuery({
-        pid: selectedPid,
+        pid: selectedKey,
         brand: brand ?? undefined,
         from,
         to,
@@ -183,7 +189,7 @@ export default function ShopeePidPage() {
       .then(setDetail)
       .catch((e) => setError(e instanceof Error ? e.message : "Gagal memuat detail produk"))
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedPid, brand, from, to, compare, prevFrom, prevTo, trendGranularity])
+  }, [selectedKey, brand, from, to, compare, prevFrom, prevTo, trendGranularity])
 
   useEffect(() => {
     apiFetch<PidCreatorsResult>(
@@ -204,8 +210,15 @@ export default function ShopeePidPage() {
     const q = search.trim().toLowerCase()
     return products.rows
       .filter((r) => r.inScope)
+      .filter((r) =>
+        countFilter === "profit"
+          ? r.gmv > 0
+          : countFilter === "decline"
+            ? r.growth !== null && r.growth < 0
+            : true,
+      )
       .filter((r) => !q || r.name.toLowerCase().includes(q) || r.pid.toLowerCase().includes(q))
-  }, [products, search])
+  }, [products, search, countFilter])
 
   const scopeLabel = scope ?? "Seluruh kategori"
 
@@ -290,12 +303,24 @@ export default function ShopeePidPage() {
                 label="Count Product"
                 value={products ? formatIdr(products.countProduct) : "…"}
                 note="produk dengan transaksi pada cakupan ini"
+                active={countFilter === "all"}
+                onClickAction={() => setCountFilter("all")}
               />
               <CountCard
                 label="Count Profit Product"
                 value={products ? formatIdr(products.countProfitProduct) : "…"}
                 note="produk dengan GMV di atas nol"
                 color="var(--ov-green-ink)"
+                active={countFilter === "profit"}
+                onClickAction={() => setCountFilter("profit")}
+              />
+              <CountCard
+                label="Count Declining Product"
+                value={products ? formatIdr(products.countDecliningProduct) : "…"}
+                note={`GMV-nya turun ${compare === "ly" ? "vs LY" : "vs periode pembanding"}`}
+                color="var(--ov-red-ink)"
+                active={countFilter === "decline"}
+                onClickAction={() => setCountFilter("decline")}
               />
             </div>
             <div
@@ -374,7 +399,7 @@ export default function ShopeePidPage() {
               rows={products.rows}
               preset={quadrant}
               excludeOutliers={excludeOutliers}
-              onSelectAction={setSelectedPid}
+              onSelectAction={(pid) => setSelectedPids([pid])}
             />
           ) : (
             <div className="flex h-[560px] items-center justify-center text-sm text-[var(--ov-faint)]">Loading…</div>
@@ -410,8 +435,9 @@ export default function ShopeePidPage() {
           {products ? (
             <ProductTable
               rows={visibleProducts}
-              selectedPid={selectedPid}
-              onSelectAction={setSelectedPid}
+              selectedPids={selectedPids}
+              onSelectAction={(pid) => setSelectedPids([pid])}
+              onToggleAction={toggleSelectedPid}
               showPillars={showPillars}
               showShopee={showShopee}
             />
@@ -429,16 +455,16 @@ export default function ShopeePidPage() {
               </div>
               <span className="text-[12.5px] text-[var(--ov-faint)]">mengikuti baris produk yang dipilih di tabel atas</span>
             </div>
-            {selectedPid && detail && detail.pid === selectedPid ? (
-              <ProductDetail detail={detail} />
+            {selectedKey && detail && detail.pids.join(",") === selectedKey ? (
+              <ProductDetail detail={detail} onRemoveAction={toggleSelectedPid} />
             ) : (
               <div
                 className="flex h-[240px] items-center justify-center rounded-xl border border-dashed border-[var(--ov-line)] px-6 text-center text-sm text-[var(--ov-faint)]"
                 style={{ background: "var(--ov-card-gradient)" }}
               >
-                {selectedPid
+                {selectedKey
                   ? "Memuat detail produk…"
-                  : "Pilih satu produk di tabel atau klik titik emas di quadrant untuk melihat detailnya."}
+                  : "Klik satu baris produk untuk melihat detailnya, atau centang beberapa baris untuk menggabungkannya."}
               </div>
             )}
           </div>
@@ -568,16 +594,27 @@ function CountCard({
   value,
   note,
   color,
+  active,
+  onClickAction,
 }: {
   label: string
   value: string
   note: string
   color?: string
+  /** The card doubles as the product table's filter, the way the reference mockup uses it. */
+  active: boolean
+  onClickAction: () => void
 }) {
   return (
-    <div
-      className="rounded-xl border border-[var(--ov-line)] p-4 shadow-[0_18px_34px_-22px_var(--ov-shadow)]"
-      style={{ background: "var(--ov-card-gradient)" }}
+    <button
+      type="button"
+      onClick={onClickAction}
+      title="Klik untuk menyaring tabel produk di bawah"
+      className="rounded-xl border p-4 text-left shadow-[0_18px_34px_-22px_var(--ov-shadow)] hover:border-[var(--accent)]"
+      style={{
+        background: "var(--ov-card-gradient)",
+        borderColor: active ? "var(--accent)" : "var(--ov-line)",
+      }}
     >
       <div className="text-[13px] leading-snug font-semibold text-[var(--ov-mut)]">{label}</div>
       <div
@@ -587,6 +624,6 @@ function CountCard({
         {value}
       </div>
       <div className="mt-1 text-[11.5px] leading-relaxed text-[var(--ov-faint)]">{note}</div>
-    </div>
+    </button>
   )
 }

@@ -79,14 +79,18 @@ export async function getPidTrendHandler(req: Request, res: Response) {
 }
 
 export async function getPidProductDetailHandler(req: Request, res: Response) {
-  const pid = str(req.query.pid)
-  if (!pid) {
+  // One or several products, comma separated; several are reported as one combined detail.
+  const pids = (str(req.query.pid) ?? '')
+    .split(',')
+    .map((p) => p.trim())
+    .filter(Boolean)
+  if (pids.length === 0) {
     res.status(400).json({ error: 'pid is required' })
     return
   }
 
   const { from, to } = range(req)
-  const data = await getPidProductDetail(pid, from, to, basisOf(req), filtersOf(req), granularityOf(req), prevRangeOf(req))
+  const data = await getPidProductDetail(pids, from, to, basisOf(req), filtersOf(req), granularityOf(req), prevRangeOf(req))
   if (!data) {
     res.status(404).json({ error: 'product not found in this period' })
     return

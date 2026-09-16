@@ -79,14 +79,18 @@ function cellOf(row: PidProductRow, key: SortKey): { text: string; color?: strin
 
 export function ProductTable({
   rows,
-  selectedPid,
+  selectedPids,
   onSelectAction,
+  onToggleAction,
   showPillars,
   showShopee,
 }: {
   rows: PidProductRow[]
-  selectedPid: string | null
+  selectedPids: string[]
+  /** Clicking a row opens that product on its own. */
   onSelectAction: (pid: string) => void
+  /** The checkbox adds or removes a product from the combined selection. */
+  onToggleAction: (pid: string) => void
   showPillars: boolean
   showShopee: boolean
 }) {
@@ -118,9 +122,12 @@ export function ProductTable({
 
   return (
     <div className="max-h-[440px] overflow-auto rounded-lg border border-[var(--ov-line)]">
-      <table className="w-full border-collapse text-[12.5px]" style={{ minWidth: 300 + columns.length * 88 }}>
+      <table className="w-full border-collapse text-[12.5px]" style={{ minWidth: 340 + columns.length * 88 }}>
         <thead>
           <tr>
+            <th className="sticky top-0 z-[2] w-9 bg-[var(--card)] p-2.5 shadow-[inset_0_-2px_0_var(--ov-track)]">
+              <span className="sr-only">Pilih</span>
+            </th>
             {columns.map((col, i) => (
               <th
                 key={col.key}
@@ -139,7 +146,7 @@ export function ProductTable({
         </thead>
         <tbody>
           {sorted.map((row) => {
-            const selected = selectedPid === row.pid
+            const selected = selectedPids.includes(row.pid)
             return (
               <tr
                 key={row.pid}
@@ -147,6 +154,17 @@ export function ProductTable({
                 className="cursor-pointer hover:bg-[var(--ov-fill1)]"
                 style={{ background: selected ? "var(--accent)" : undefined }}
               >
+                <td className="border-b border-[var(--ov-fill1)] p-2.5 align-top">
+                  <input
+                    type="checkbox"
+                    checked={selected}
+                    onClick={(e) => e.stopPropagation()}
+                    onChange={() => onToggleAction(row.pid)}
+                    aria-label={`Gabungkan ${row.name}`}
+                    title="Centang untuk menggabungkan beberapa produk di deep dive"
+                    className="mt-0.5 h-3.5 w-3.5 accent-[var(--ov-blue)]"
+                  />
+                </td>
                 {columns.map((col, i) => {
                   if (i === 0) {
                     return (

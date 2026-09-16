@@ -12,7 +12,9 @@ interface ShopeePidState {
   trendGranularity: TrendGranularity
   level: PidLevel
   scope: string | null
-  selectedPid: string | null
+  selectedPids: string[]
+  /** Which count card is filtering the product table. */
+  countFilter: "all" | "profit" | "decline"
   quadrant: QuadrantPreset
   excludeOutliers: boolean
   search: string
@@ -28,7 +30,9 @@ interface ShopeePidState {
   setTrendGranularity: (granularity: TrendGranularity) => void
   setLevel: (level: PidLevel) => void
   setScope: (scope: string | null) => void
-  setSelectedPid: (pid: string | null) => void
+  setSelectedPids: (pids: string[]) => void
+  toggleSelectedPid: (pid: string) => void
+  setCountFilter: (filter: "all" | "profit" | "decline") => void
   setQuadrant: (quadrant: QuadrantPreset) => void
   setExcludeOutliers: (exclude: boolean) => void
   setSearch: (search: string) => void
@@ -49,7 +53,8 @@ export const useShopeePidFilters = create<ShopeePidState>((set) => ({
   trendGranularity: "day",
   level: "category",
   scope: null,
-  selectedPid: null,
+  selectedPids: [],
+  countFilter: "all",
   quadrant: "gmv-growth",
   excludeOutliers: false,
   search: "",
@@ -67,7 +72,15 @@ export const useShopeePidFilters = create<ShopeePidState>((set) => ({
   // Changing level invalidates a scope picked under the previous level.
   setLevel: (level) => set({ level, scope: null }),
   setScope: (scope) => set({ scope }),
-  setSelectedPid: (selectedPid) => set({ selectedPid }),
+  setSelectedPids: (selectedPids) => set({ selectedPids }),
+  toggleSelectedPid: (pid) =>
+    set((state) => ({
+      selectedPids: state.selectedPids.includes(pid)
+        ? state.selectedPids.filter((p) => p !== pid)
+        : [...state.selectedPids, pid],
+    })),
+  setCountFilter: (countFilter) =>
+    set((state) => ({ countFilter: state.countFilter === countFilter ? "all" : countFilter })),
   setQuadrant: (quadrant) => set({ quadrant }),
   setExcludeOutliers: (excludeOutliers) => set({ excludeOutliers }),
   setSearch: (search) => set({ search }),
@@ -90,7 +103,7 @@ export const useShopeePidFilters = create<ShopeePidState>((set) => ({
         trendGranularity: (params.get("trend") as TrendGranularity) ?? state.trendGranularity,
         level: (params.get("level") as PidLevel) ?? state.level,
         scope: params.get("scope") ?? state.scope,
-        selectedPid: params.get("pid") ?? state.selectedPid,
+        selectedPids: params.get("pid")?.split(",").filter(Boolean) ?? state.selectedPids,
         quadrant: (params.get("quad") as QuadrantPreset) ?? state.quadrant,
         excludeOutliers: params.get("noOutliers") === "1" ? true : state.excludeOutliers,
         search: params.get("q") ?? state.search,
@@ -112,7 +125,7 @@ export function pidFiltersToParams(state: ShopeePidState): URLSearchParams {
   params.set("trend", state.trendGranularity)
   params.set("level", state.level)
   if (state.scope) params.set("scope", state.scope)
-  if (state.selectedPid) params.set("pid", state.selectedPid)
+  if (state.selectedPids.length > 0) params.set("pid", state.selectedPids.join(","))
   params.set("quad", state.quadrant)
   if (state.excludeOutliers) params.set("noOutliers", "1")
   if (state.search) params.set("q", state.search)

@@ -66,6 +66,7 @@ export interface PidProductsResult {
   scope: string | null
   countProduct: number
   countProfitProduct: number
+  countDecliningProduct: number
   countScopeProduct: number
 }
 
@@ -84,9 +85,18 @@ export interface PidPillarContribution {
   delta: number
 }
 
-export interface PidProductDetail {
+export interface PidDetailMember {
   pid: string
   name: string
+  gmv: number
+}
+
+/** Covers a single product and a combined selection of several; members carries the breakdown. */
+export interface PidProductDetail {
+  pids: string[]
+  name: string
+  members: PidDetailMember[]
+  /** "Beragam" once the selection spans more than one value. */
   category: string
   subCategory: string
   format: string

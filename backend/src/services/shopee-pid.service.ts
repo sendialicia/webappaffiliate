@@ -380,6 +380,7 @@ export async function getPidProducts(
     scope: filters.scope ?? null,
     countProduct: inScope.length,
     countProfitProduct: inScope.filter((r) => r.gmv > 0).length,
+    countDecliningProduct: inScope.filter((r) => r.growth !== null && r.growth < 0).length,
     countScopeProduct: inScope.length,
   }
 }
@@ -440,7 +441,7 @@ export async function getPidTrend(
 }
 
 export async function getPidProductDetail(
-  pid: string,
+  pids: string[],
   from: string,
   to: string,
   basis: ComparisonBasis,
@@ -450,7 +451,7 @@ export async function getPidProductDetail(
 ): Promise<PidProductDetail | null> {
   const comparison = computeComparisonRange(from, to, basis, prevRange)
   const params: Record<string, unknown> = {
-    pid,
+    pids,
     currentFrom: from,
     currentTo: to,
     prevFrom: comparison.from,
@@ -461,35 +462,68 @@ export async function getPidProductDetail(
   const infoResult = await clickhouse.query({
     query: `
       SELECT
+        PRODUCT_ID AS pid,
         any(PRODUCT_NAME) AS name,
         any(ifNull(PID_CATEGORY, 'Unknown')) AS category,
         any(ifNull(PID_SUB_CATEGORY, 'Unknown')) AS subCategory,
         any(ifNull(PID_FORMAT, 'Unknown')) AS format,
         sumIf(GMV, DATE >= {currentFrom:Date} AND DATE <= {currentTo:Date}) AS gmv,
-        sumIf(GMV, DATE >= {prevFrom:Date} AND DATE <= {prevTo:Date}) AS gmvPrev,
-        uniqExactIf(AFFILIATE_USERNAME, DATE >= {currentFrom:Date} AND DATE <= {currentTo:Date}) AS creators
+        sumIf(GMV, DATE >= {prevFrom:Date} AND DATE <= {prevTo:Date}) AS gmvPrev
       FROM ${TABLE_SUMMARY_ORDER}
       WHERE ${SHOPEE_SCOPE}
         AND IS_AFFILIATE = TRUE
-        AND PRODUCT_ID = {pid:String}
+        AND PRODUCT_ID IN {pids:Array(String)}
         ${TWO_WINDOW_CLAUSE}
         ${filterClause}
+      GROUP BY pid
+      ORDER BY gmv DESC
     `,
     query_params: params,
     format: 'JSONEachRow',
   })
 
   const infoRows = await infoResult.json<{
+    pid: string
     name: string
     category: string
     subCategory: string
     format: string
     gmv: number
     gmvPrev: number
-    creators: number
   }>()
-  const info = infoRows[0]
-  if (!info || !info.name) return null
+  if (infoRows.length === 0) return null
+
+  // Creators are counted across the whole selection, so someone selling two of the
+  // picked products still counts once.
+  const creatorResult = await clickhouse.query({
+    query: `
+      SELECT uniqExact(AFFILIATE_USERNAME) AS creators
+      FROM ${TABLE_SUMMARY_ORDER}
+      WHERE ${SHOPEE_SCOPE}
+        AND IS_AFFILIATE = TRUE
+        AND PRODUCT_ID IN {pids:Array(String)}
+        AND DATE >= {currentFrom:Date} AND DATE <= {currentTo:Date}
+        ${filterClause}
+    `,
+    query_params: params,
+    format: 'JSONEachRow',
+  })
+  const creators = Number((await creatorResult.json<{ creators: number }>())[0]?.creators ?? 0)
+
+  const members = infoRows.map((r) => ({ pid: r.pid, name: r.name, gmv: Number(r.gmv || 0) }))
+  const shared = (values: string[]): string => {
+    const unique = [...new Set(values)]
+    return unique.length === 1 ? (unique[0] as string) : 'Beragam'
+  }
+  const info = {
+    name: members.length === 1 ? (members[0]?.name ?? '') : `${members.length} produk digabung`,
+    category: shared(infoRows.map((r) => r.category)),
+    subCategory: shared(infoRows.map((r) => r.subCategory)),
+    format: shared(infoRows.map((r) => r.format)),
+    gmv: infoRows.reduce((acc, r) => acc + Number(r.gmv || 0), 0),
+    gmvPrev: infoRows.reduce((acc, r) => acc + Number(r.gmvPrev || 0), 0),
+    creators,
+  }
 
   const spResult = await clickhouse.query({
     query: `
@@ -498,7 +532,7 @@ export async function getPidProductDetail(
         SELECT DATE AS date, ${SP_INNER_COLUMNS}
         FROM ${TABLE_SUMMARY_ORDER}
         WHERE ${SHOPEE_SCOPE}
-          AND PRODUCT_ID = {pid:String}
+          AND PRODUCT_ID IN {pids:Array(String)}
           AND DATE >= {currentFrom:Date} AND DATE <= {currentTo:Date}
           ${filterClause}
         GROUP BY date
@@ -518,7 +552,7 @@ export async function getPidProductDetail(
       FROM ${TABLE_SUMMARY_ORDER}
       WHERE ${SHOPEE_SCOPE}
         AND IS_AFFILIATE = TRUE
-        AND PRODUCT_ID = {pid:String}
+        AND PRODUCT_ID IN {pids:Array(String)}
         ${TWO_WINDOW_CLAUSE}
         ${filterClause}
       GROUP BY name
@@ -544,11 +578,12 @@ export async function getPidProductDetail(
     }
   })
 
-  const trend = await getPidTrendForProduct(pid, from, to, filters, granularity)
+  const trend = await getPidTrendForProduct(pids, from, to, filters, granularity)
 
   return {
-    pid,
+    pids: members.map((m) => m.pid),
     name: info.name,
+    members,
     category: info.category,
     subCategory: info.subCategory,
     format: info.format,
@@ -563,13 +598,13 @@ export async function getPidProductDetail(
 }
 
 async function getPidTrendForProduct(
-  pid: string,
+  pids: string[],
   from: string,
   to: string,
   filters: PidFilters,
   granularity: TrendGranularity,
 ): Promise<PidTrendPoint[]> {
-  const params: Record<string, unknown> = { pid, from, to }
+  const params: Record<string, unknown> = { pids, from, to }
   const filterClause = buildFilterClause(filters.brand ? { brand: filters.brand } : {}, params)
   const bucket = bucketExpression(granularity)
 
@@ -579,7 +614,7 @@ async function getPidTrendForProduct(
       FROM ${TABLE_SUMMARY_ORDER}
       WHERE ${SHOPEE_SCOPE}
         AND IS_AFFILIATE = TRUE
-        AND PRODUCT_ID = {pid:String}
+        AND PRODUCT_ID IN {pids:Array(String)}
         AND DATE >= {from:Date} AND DATE <= {to:Date}
         ${filterClause}
       GROUP BY bucket
