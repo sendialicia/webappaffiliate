@@ -14,7 +14,7 @@ import type {
   ComparisonBasis,
   CompositionDimension,
   DetailFilters,
-  DriverDimension,
+  DriverField,
   DriverEntity,
   OverviewFilters,
   TrendGranularity,
@@ -22,6 +22,19 @@ import type {
 
 function str(value: unknown): string | undefined {
   return typeof value === 'string' && value.length > 0 ? value : undefined
+}
+
+const DRIVER_FIELDS: DriverField[] = [
+  'brand',
+  'marketplace',
+  'pillar',
+  'pidCategory',
+  'pidSubCategory',
+  'pidFormat',
+]
+
+function driverFieldOf(value: unknown, fallback: DriverField): DriverField {
+  return DRIVER_FIELDS.find((f) => f === value) ?? fallback
 }
 
 function currentMonth(): string {
@@ -121,8 +134,8 @@ export async function getDriversHandler(req: Request, res: Response) {
   const to = str(req.query.to) ?? new Date().toISOString().slice(0, 10)
   const from = str(req.query.from) ?? defaultFrom(to)
   const basis: ComparisonBasis = basisFromQuery(req)
-  const entity: DriverEntity = req.query.entity === 'marketplace' ? 'marketplace' : 'brand'
-  const dimension: DriverDimension = req.query.dimension === 'category' ? 'category' : 'format'
+  const entity = driverFieldOf(req.query.entity, 'brand')
+  const dimension = driverFieldOf(req.query.dimension, 'pidFormat')
   const limit = Math.min(Number(str(req.query.limit)) || 10, 20)
 
   const data = await getDrivers(from, to, basis, filtersFromQuery(req), entity, dimension, limit, detailFromQuery(req), prevRangeFromQuery(req))

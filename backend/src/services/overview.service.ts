@@ -26,7 +26,7 @@ import type {
   DailyPerformancePoint,
   DriverChartRow,
   EntityGrowthRow,
-  DriverDimension,
+  DriverField,
   DriverEntity,
   DriversResult,
   FunnelContent,
@@ -553,9 +553,13 @@ const ENTITY_COLUMNS: Record<DriverEntity, string> = {
   marketplace: 'MARKETPLACE_NAME',
 }
 
-const DRIVER_DIMENSION_COLUMNS: Record<DriverDimension, string> = {
-  format: 'PID_FORMAT',
-  category: 'PID_CATEGORY',
+const DRIVER_FIELD_COLUMNS: Record<DriverField, string> = {
+  brand: 'BRAND_NAME',
+  marketplace: 'MARKETPLACE_NAME',
+  pillar: 'PILLAR',
+  pidCategory: 'PID_CATEGORY',
+  pidSubCategory: 'PID_SUB_CATEGORY',
+  pidFormat: 'PID_FORMAT',
 }
 
 export async function getDrivers(
@@ -563,14 +567,14 @@ export async function getDrivers(
   to: string,
   basis: ComparisonBasis,
   filters: OverviewFilters,
-  entity: DriverEntity,
-  dimension: DriverDimension,
+  entity: DriverField,
+  dimension: DriverField,
   limit: number,
   detail: DetailFilters = {},
   prevRange?: { from?: string; to?: string },
 ): Promise<DriversResult> {
-  const entityColumn = ENTITY_COLUMNS[entity]
-  const dimensionColumn = DRIVER_DIMENSION_COLUMNS[dimension]
+  const entityColumn = DRIVER_FIELD_COLUMNS[entity]
+  const dimensionColumn = DRIVER_FIELD_COLUMNS[dimension]
   const comparison = computeComparisonRange(from, to, basis, prevRange)
   const params: Record<string, unknown> = {
     currentFrom: from,

@@ -17,6 +17,8 @@ import { WaterfallChart } from "@/components/charts/waterfall-chart"
 import { CompositionTrendChart } from "@/components/charts/composition-trend-chart"
 import { CompositionTable, DIMENSION_COLORS } from "@/components/overview/composition-table"
 import { CompositionDetail } from "@/components/overview/composition-detail"
+import { GmvDecomposition } from "@/components/overview/gmv-decomposition"
+import type { DownloadItem } from "@/components/download-menu"
 import { DriverChart, DriverLegend } from "@/components/charts/driver-chart"
 import { GmvCommissionChart, ROI_THRESHOLD, RoiChart } from "@/components/charts/roi-chart"
 import { AcquisitionChart } from "@/components/charts/acquisition-chart"
@@ -31,7 +33,7 @@ import type {
   CompositionDimension,
   CompositionResult,
   DailyPerformancePoint,
-  DriverDimension,
+  DriverField,
   DriverEntity,
   DriversResult,
   FilterOptionsResult,
@@ -53,6 +55,18 @@ const SECTION_NAV = [
   { id: "ov-sec-8", label: "Affiliate's health" },
   { id: "ov-sec-9", label: "Spend & akuisisi" },
 ]
+
+/** Both sides of the driver chart pick from the same list; a side cannot pick what the other holds. */
+const DRIVER_FIELD_LABELS: Record<DriverField, string> = {
+  brand: "Brand",
+  marketplace: "Marketplace",
+  pillar: "Pillar",
+  pidCategory: "PID Category",
+  pidSubCategory: "PID Sub Category",
+  pidFormat: "Product Format",
+}
+
+const DRIVER_FIELDS = Object.keys(DRIVER_FIELD_LABELS) as DriverField[]
 
 const DIMENSION_LABELS: Record<CompositionDimension, string> = {
   pillar: "Pillar",
@@ -287,6 +301,111 @@ function OverviewPageInner() {
     compare === "ly" ? "vs LY" : compare === "custom" ? "vs periode pembanding" : "vs prev period"
   const findings = computeFindings(monthly?.pace, summary?.kpis, progress, compareLabel, summary?.trend)
 
+
+  // Every entry is built from the same state the section renders, so a download always
+  // matches what the reader is looking at, including the filters in force.
+  const downloads: DownloadItem[] = [
+    {
+      id: "performa-tahunan",
+      label: "Performa tahun ini",
+      rows: () => (monthly?.months ?? []).map((m) => ({ ...m })),
+    },
+    {
+      id: "daily-achievement",
+      label: `Daily achievement · ${month}`,
+      rows: () => (daily ?? []).map((d) => ({ ...d })),
+    },
+    {
+      id: "progress-bulanan",
+      label: "Progress bar bulanan",
+      rows: () => [
+        ...(progress?.marketplace ?? []).map((r) => ({ grup: "Marketplace", ...r })),
+        ...(progress?.brand ?? []).map((r) => ({ grup: "Brand", ...r })),
+      ],
+    },
+    {
+      id: "summary-kpi",
+      label: "Summary · nilai KPI",
+      rows: () =>
+        summary
+          ? Object.entries(summary.kpis).map(([metric, v]) => ({
+              metric,
+              value: v.value,
+              delta: v.delta,
+              deltaPct: v.deltaPct,
+            }))
+          : [],
+    },
+    {
+      id: "summary-tren",
+      label: "Summary · tren harian",
+      rows: () => (summary?.trend ?? []).map((t) => ({ ...t })),
+    },
+    {
+      id: "komposisi-gmv",
+      label: `Komposisi GMV per ${DIMENSION_LABELS[dimension]}`,
+      rows: () => (composition?.rows ?? []).map((r) => ({ ...r })),
+    },
+    {
+      id: "komposisi-tren",
+      label: "Komposisi GMV · tren",
+      rows: () => (composition?.trend ?? []).map((t) => ({ ...t })),
+    },
+    {
+      id: "driver",
+      label: `Driver · ${DRIVER_FIELD_LABELS[driverDimension]} per ${DRIVER_FIELD_LABELS[driverEntity]}`,
+      rows: () => {
+        if (!drivers) return []
+        const growthByEntity = new Map(drivers.entityGrowth.map((e) => [e.entity, e.growth]))
+        return drivers.composition.flatMap((compRow) => {
+          const entity = String(compRow.entity)
+          const growRow = drivers.growth.find((g) => g.entity === entity)
+          const diffRow = drivers.difference.find((d) => d.entity === entity)
+          return drivers.names.map((name) => ({
+            [DRIVER_FIELD_LABELS[drivers.entity]]: entity,
+            [DRIVER_FIELD_LABELS[drivers.dimension]]: name,
+            gmv: Number(compRow[name] ?? 0),
+            growthPct: Number(growRow?.[name] ?? 0),
+            gmvDifference: Number(diffRow?.[name] ?? 0),
+            entityGrowthPct: growthByEntity.get(entity) ?? null,
+          }))
+        })
+      },
+    },
+    {
+      id: "funnel-stage",
+      label: "Conversion funnel · tahapan",
+      rows: () =>
+        (funnel?.marketplaces ?? []).flatMap((m) =>
+          m.stages.map((s) => ({
+            marketplace: m.name,
+            stage: s.label,
+            value: s.value,
+            prev: s.prev,
+            deltaPct: s.deltaPct,
+          })),
+        ),
+    },
+    {
+      id: "funnel-pillar",
+      label: "Conversion funnel · per pillar",
+      rows: () =>
+        (funnel?.marketplaces ?? []).flatMap((m) =>
+          m.pillars.map((p) => ({ marketplace: m.name, ...p })),
+        ),
+    },
+    {
+      id: "spend",
+      label: `Spend & ROI per ${spendEntity === "brand" ? "Brand" : "Marketplace"}`,
+      rows: () => (spend?.rows ?? []).map((r) => ({ ...r })),
+    },
+    {
+      id: "akuisisi-creator",
+      label: "Akuisisi creator",
+      rows: () => (spend?.acquisition ?? []).map((a) => ({ ...a })),
+    },
+  ]
+
   const selectedRow = composition?.rows.find((r) => r.name === selectedSlice) ?? null
   const selectedIndex = composition?.rows.findIndex((r) => r.name === selectedSlice) ?? -1
   const selectedColor =
@@ -303,6 +422,7 @@ function OverviewPageInner() {
         marketplaceOptions={filterOptions?.marketplaces ?? progress?.marketplace.map((r) => r.name) ?? []}
         dimensionOptions={filterOptions?.dimensions ?? []}
         mergeDetail={!detailRowVisible}
+        downloads={downloads}
       />
 
       {error && (
@@ -381,9 +501,12 @@ function OverviewPageInner() {
                 </div>
                 <div className="mt-3 grid grid-cols-2 gap-3.5 border-t border-[var(--ov-line)] pt-4">
                   <div>
-                    <div className="text-xs text-[var(--ov-mut)]">Time elapsed</div>
+                    <div className="text-xs text-[var(--ov-mut)]">Waktu berjalan</div>
                     <div className="text-base font-bold font-(family-name:--font-archivo)">
-                      {monthly.pace.daysElapsed}/{monthly.pace.daysInMonth} days
+                      {formatPercent(monthly.pace.expectedPct)}
+                    </div>
+                    <div className="mt-0.5 text-[11px] text-[var(--ov-faint)]">
+                      bulan ini sudah lewat sejauh ini
                     </div>
                   </div>
                   <div>
@@ -508,6 +631,14 @@ function OverviewPageInner() {
                     note={`${summary.kpis.gmv.delta >= 0 ? "+" : "−"}${formatRpFull(
                       Math.abs(summary.kpis.gmv.delta),
                     )} dari ${formatRpFull(summary.kpis.gmv.value - summary.kpis.gmv.delta)}`}
+                    deltaHover={
+                      <GmvDecomposition
+                        gmv={summary.kpis.gmv}
+                        creators={summary.kpis.creators}
+                        gmvPerCreator={summary.kpis.gmvPerCreator}
+                        compareLabel={compareLabel}
+                      />
+                    }
                   />
                 </div>
                 <KpiCard
@@ -670,26 +801,32 @@ function OverviewPageInner() {
             <span className="text-lg font-semibold font-(family-name:--font-archivo)">Identify which</span>
             <Select
               value={driverDimension}
-              onValueChange={(v) => v && filters.setDriverDimension(v as DriverDimension)}
+              onValueChange={(v) => v && filters.setDriverDimension(v as DriverField)}
             >
-              <SelectTrigger className="h-8 w-36 bg-[var(--input)] text-sm">
-                <SelectValue>{(v: string) => (v === "format" ? "Product Format" : "Category")}</SelectValue>
+              <SelectTrigger className="h-8 w-44 bg-[var(--input)] text-sm">
+                <SelectValue>{(v: string) => DRIVER_FIELD_LABELS[v as DriverField] ?? v}</SelectValue>
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="format">Product Format</SelectItem>
-                <SelectItem value="category">Category</SelectItem>
+                {DRIVER_FIELDS.filter((f) => f !== driverEntity).map((f) => (
+                  <SelectItem key={f} value={f}>
+                    {DRIVER_FIELD_LABELS[f]}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
             <span className="text-lg font-semibold font-(family-name:--font-archivo)">
               are driving growth or causing losses per
             </span>
-            <Select value={driverEntity} onValueChange={(v) => v && filters.setDriverEntity(v as DriverEntity)}>
-              <SelectTrigger className="h-8 w-32 bg-[var(--input)] text-sm">
-                <SelectValue>{(v: string) => (v === "brand" ? "Brand" : "Marketplace")}</SelectValue>
+            <Select value={driverEntity} onValueChange={(v) => v && filters.setDriverEntity(v as DriverField)}>
+              <SelectTrigger className="h-8 w-44 bg-[var(--input)] text-sm">
+                <SelectValue>{(v: string) => DRIVER_FIELD_LABELS[v as DriverField] ?? v}</SelectValue>
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="brand">Brand</SelectItem>
-                <SelectItem value="marketplace">Marketplace</SelectItem>
+                {DRIVER_FIELDS.filter((f) => f !== driverDimension).map((f) => (
+                  <SelectItem key={f} value={f}>
+                    {DRIVER_FIELD_LABELS[f]}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>

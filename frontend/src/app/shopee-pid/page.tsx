@@ -23,6 +23,7 @@ import {
 import { apiFetch } from "@/lib/api"
 import { formatCompact, formatIdr, formatPercent } from "@/lib/format"
 import { pidFiltersToParams, useShopeePidFilters } from "@/store/shopee-pid-filters"
+import type { DownloadItem } from "@/components/download-menu"
 import type {
   PidCategoriesResult,
   PidCreatorsResult,
@@ -225,6 +226,68 @@ function ShopeePidPageInner() {
 
   const scopeLabel = scope ?? "Seluruh kategori"
 
+  // Built from the same state each section renders — the product list follows the active
+  // count-card filter and search box, not the unfiltered response.
+  const downloads: DownloadItem[] = [
+    {
+      id: "kategori",
+      label: `Tabel ${LEVEL_LABELS[level]}`,
+      rows: () =>
+        categories
+          ? [categories.total, ...categories.rows].map(({ pillars, pillarGrowth, ...r }) => ({
+              ...r,
+              livestream: pillars.livestream,
+              video: pillars.video,
+              productCard: pillars.productCard,
+              livestreamGrowth: pillarGrowth.livestream,
+              videoGrowth: pillarGrowth.video,
+              productCardGrowth: pillarGrowth.productCard,
+            }))
+          : [],
+    },
+    {
+      id: "gmv-trend",
+      label: `GMV trend · ${scopeLabel}`,
+      rows: () => (trend ?? []).map((t) => ({ ...t })),
+    },
+    {
+      id: "quadrant",
+      label: `Product quadrant · ${QUADRANT_PRESETS[quadrant].name}`,
+      rows: () =>
+        (products?.rows ?? [])
+          .filter((r) => r.inScope)
+          .map(({ pillars, ...r }) => ({
+            ...r,
+            livestream: pillars.livestream,
+            video: pillars.video,
+            productCard: pillars.productCard,
+          })),
+    },
+    {
+      id: "produk",
+      label: `Tabel produk (${visibleProducts.length} baris tampil)`,
+      rows: () =>
+        visibleProducts.map(({ pillars, ...r }) => ({
+          ...r,
+          livestream: pillars.livestream,
+          video: pillars.video,
+          productCard: pillars.productCard,
+        })),
+    },
+    {
+      id: "product-deep-dive",
+      label: "Product deep dive · pillar",
+      rows: () =>
+        detail ? detail.data.pillars.map((p) => ({ produk: detail.data.name, ...p })) : [],
+    },
+    {
+      id: "top-creators",
+      label: "Top creators",
+      rows: () => (creators?.rows ?? []).map((r) => ({ ...r })),
+    },
+  ]
+
+
   return (
     <DashboardShell
       title="Product — Shopee PID"
@@ -232,7 +295,7 @@ function ShopeePidPageInner() {
       active="shopee-pid"
       sectionNav={SECTION_NAV}
     >
-      <FilterBar brandOptions={BRAND_OPTIONS} mergeScope={!scopeRowVisible} />
+      <FilterBar brandOptions={BRAND_OPTIONS} mergeScope={!scopeRowVisible} downloads={downloads} />
 
       {error && (
         <div className="mx-6 mt-4 rounded-lg border border-[var(--ov-red)]/40 bg-[var(--ov-red)]/10 px-4 py-3 text-sm text-[var(--ov-red-ink)] md:mx-8">

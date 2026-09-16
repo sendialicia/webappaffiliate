@@ -4,7 +4,7 @@ import type {
   CompositionDimension,
   DetailFilterKey,
   DetailFilters,
-  DriverDimension,
+  DriverField,
   DriverEntity,
 } from "@/types/overview"
 
@@ -22,8 +22,8 @@ interface OverviewFiltersState {
   trendGranularity: TrendGranularity
   dimension: CompositionDimension
   selectedSlice: string | null
-  driverEntity: DriverEntity
-  driverDimension: DriverDimension
+  driverEntity: DriverField
+  driverDimension: DriverField
   spendEntity: DriverEntity
   prevFrom: string | null
   prevTo: string | null
@@ -40,8 +40,8 @@ interface OverviewFiltersState {
   setPrevRange: (from: string, to: string) => void
   setDetailFilter: (key: DetailFilterKey, value: string | null) => void
   clearDetailFilters: () => void
-  setDriverEntity: (entity: DriverEntity) => void
-  setDriverDimension: (dimension: DriverDimension) => void
+  setDriverEntity: (entity: DriverField) => void
+  setDriverDimension: (dimension: DriverField) => void
   setSpendEntity: (entity: DriverEntity) => void
   hydrateFromParams: (params: URLSearchParams) => void
 }
@@ -60,7 +60,7 @@ export const useOverviewFilters = create<OverviewFiltersState>((set) => ({
   dimension: "pillar",
   selectedSlice: null,
   driverEntity: "brand",
-  driverDimension: "format",
+  driverDimension: "pidFormat",
   spendEntity: "brand",
   prevFrom: null,
   prevTo: null,
@@ -105,8 +105,8 @@ export const useOverviewFilters = create<OverviewFiltersState>((set) => ({
         trendGranularity: (params.get("trend") as TrendGranularity) ?? state.trendGranularity,
         dimension: (params.get("dim") as CompositionDimension) ?? state.dimension,
         selectedSlice: params.get("slice") ?? state.selectedSlice,
-        driverEntity: (params.get("drvEntity") as DriverEntity) ?? state.driverEntity,
-        driverDimension: (params.get("drvDim") as DriverDimension) ?? state.driverDimension,
+        driverEntity: (params.get("drvEntity") as DriverField) ?? state.driverEntity,
+        driverDimension: (params.get("drvDim") as DriverField) ?? state.driverDimension,
         spendEntity: (params.get("spendEntity") as DriverEntity) ?? state.spendEntity,
         prevFrom: params.get("prevFrom") ?? state.prevFrom,
         prevTo: params.get("prevTo") ?? state.prevTo,

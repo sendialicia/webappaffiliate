@@ -117,7 +117,15 @@ export interface CompositionResult {
 }
 
 export type DriverEntity = "brand" | "marketplace"
-export type DriverDimension = "format" | "category"
+
+/** Either side of the driver chart can be any of these; both dropdowns share the list. */
+export type DriverField =
+  | "brand"
+  | "marketplace"
+  | "pillar"
+  | "pidCategory"
+  | "pidSubCategory"
+  | "pidFormat"
 
 export interface DriverChartRow {
   entity: string
@@ -130,8 +138,8 @@ export interface EntityGrowthRow {
 }
 
 export interface DriversResult {
-  entity: DriverEntity
-  dimension: DriverDimension
+  entity: DriverField
+  dimension: DriverField
   names: string[]
   composition: DriverChartRow[]
   growth: DriverChartRow[]

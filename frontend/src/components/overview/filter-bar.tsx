@@ -5,6 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { DetailFilterSelects, activeDetailCount } from "@/components/overview/detail-filters"
 import { FilterDivider, FilterItem, FloatingFilterBar, pillControlClass } from "@/components/filter-shell"
+import { DownloadMenu, type DownloadItem } from "@/components/download-menu"
 import {
   CurrentPeriodField,
   PreviousPeriodField,
@@ -15,6 +16,7 @@ import { useOverviewFilters } from "@/store/overview-filters"
 import type { FilterOption } from "@/types/overview"
 
 const ALL = "__all__"
+const FILE_PREFIX = "overview"
 
 export function FilterBar({
   brandOptions,
@@ -22,11 +24,13 @@ export function FilterBar({
   dimensionOptions,
   /** True once the in-page detail row has scrolled away, so it merges in here. */
   mergeDetail,
+  downloads,
 }: {
   brandOptions: string[]
   marketplaceOptions: string[]
   dimensionOptions: FilterOption[]
   mergeDetail: boolean
+  downloads: DownloadItem[]
 }) {
   const {
     brand,
@@ -159,7 +163,8 @@ export function FilterBar({
         </>
       )}
 
-      <div className="ml-auto flex flex-none items-center pl-1.5">
+      <div className="ml-auto flex flex-none items-center gap-1.5 pl-1.5">
+        <DownloadMenu items={downloads} filePrefix={FILE_PREFIX} />
         <button
           type="button"
           onClick={() => {

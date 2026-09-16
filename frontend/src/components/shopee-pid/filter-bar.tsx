@@ -9,10 +9,12 @@ import {
   shiftYear,
 } from "@/components/period-picker"
 import { FilterDivider, FilterItem, FloatingFilterBar, pillControlClass } from "@/components/filter-shell"
+import { DownloadMenu, type DownloadItem } from "@/components/download-menu"
 import { useShopeePidFilters } from "@/store/shopee-pid-filters"
 import type { PidLevel } from "@/types/shopee-pid"
 
 const ALL = "__all__"
+const FILE_PREFIX = "shopee-pid"
 
 export const LEVEL_LABELS: Record<PidLevel, string> = {
   category: "Category",
@@ -24,9 +26,11 @@ export function FilterBar({
   brandOptions,
   /** True once the in-page scope row has scrolled away, so the active scope merges in here. */
   mergeScope,
+  downloads,
 }: {
   brandOptions: string[]
   mergeScope: boolean
+  downloads: DownloadItem[]
 }) {
   const {
     brand,
@@ -150,7 +154,8 @@ export function FilterBar({
         </>
       )}
 
-      <div className="ml-auto flex flex-none items-center pl-1.5">
+      <div className="ml-auto flex flex-none items-center gap-1.5 pl-1.5">
+        <DownloadMenu items={downloads} filePrefix={FILE_PREFIX} />
         <button
           type="button"
           onClick={() => {
