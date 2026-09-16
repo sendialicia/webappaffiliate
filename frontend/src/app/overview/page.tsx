@@ -5,7 +5,6 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { DashboardShell } from "@/components/dashboard-shell"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { FilterBar } from "@/components/overview/filter-bar"
-import { DetailFilterSelects } from "@/components/overview/detail-filters"
 import { FindingsFeed } from "@/components/overview/findings-feed"
 import { MonthlyPerformanceChart } from "@/components/charts/monthly-performance-chart"
 import { DailyPerformanceChart } from "@/components/charts/daily-performance-chart"
@@ -74,6 +73,11 @@ const DIMENSION_LABELS: Record<CompositionDimension, string> = {
   format: "Format",
 }
 
+/** Multi-value filters travel as one comma separated parameter. */
+function csv(values: string[]): string | undefined {
+  return values.length > 0 ? values.join(",") : undefined
+}
+
 function buildQuery(params: Record<string, string | undefined>): string {
   const search = new URLSearchParams()
   for (const [key, value] of Object.entries(params)) {
@@ -120,13 +124,13 @@ function OverviewPageInner() {
   const [spend, setSpend] = useState<SpendResult | null>(null)
   const [funnel, setFunnel] = useState<FunnelResult | null>(null)
   const [filterOptions, setFilterOptions] = useState<FilterOptionsResult | null>(null)
-  const [detailRowVisible, setDetailRowVisible] = useState(true)
-  const detailRowRef = useRef<HTMLDivElement>(null)
   const [error, setError] = useState<string | null>(null)
 
   const detailKey = JSON.stringify(detail)
   const detailParams = Object.fromEntries(
-    Object.entries(detail).filter(([, v]) => Boolean(v)),
+    Object.entries(detail)
+      .filter(([, v]) => v && v.length > 0)
+      .map(([k, v]) => [k, (v as string[]).join(",")]),
   ) as Record<string, string>
   const prevParams =
     compare === "custom" && prevFrom && prevTo ? { prevFrom, prevTo } : ({} as Record<string, string>)
@@ -162,20 +166,10 @@ function OverviewPageInner() {
     prevTo,
   ])
 
-  useEffect(() => {
-    const el = detailRowRef.current
-    if (!el) return
-    const observer = new IntersectionObserver(
-      ([entry]) => setDetailRowVisible(entry?.isIntersecting ?? true),
-      { rootMargin: "-72px 0px 0px 0px" },
-    )
-    observer.observe(el)
-    return () => observer.disconnect()
-  }, [])
 
   useEffect(() => {
     apiFetch<FilterOptionsResult>(
-      `/api/overview/filter-options${buildQuery({ from, to, brand: brand ?? undefined, marketplace: marketplace ?? undefined })}`,
+      `/api/overview/filter-options${buildQuery({ from, to, brand: csv(brand), marketplace: csv(marketplace) })}`,
     )
       .then(setFilterOptions)
       .catch((e) => setError(e instanceof Error ? e.message : "Failed to load filter options"))
@@ -184,7 +178,7 @@ function OverviewPageInner() {
   useEffect(() => {
     const year = new Date().getFullYear()
     apiFetch<MonthlyPerformanceResult>(
-      `/api/overview/monthly-performance${buildQuery({ year: String(year), brand: brand ?? undefined, marketplace: marketplace ?? undefined })}`,
+      `/api/overview/monthly-performance${buildQuery({ year: String(year), brand: csv(brand), marketplace: csv(marketplace) })}`,
     )
       .then(setMonthly)
       .catch((e) => setError(e instanceof Error ? e.message : "Failed to load monthly performance"))
@@ -192,7 +186,7 @@ function OverviewPageInner() {
 
   useEffect(() => {
     apiFetch<DailyPerformancePoint[]>(
-      `/api/overview/daily-performance${buildQuery({ month, brand: brand ?? undefined, marketplace: marketplace ?? undefined })}`,
+      `/api/overview/daily-performance${buildQuery({ month, brand: csv(brand), marketplace: csv(marketplace) })}`,
     )
       .then(setDaily)
       .catch((e) => setError(e instanceof Error ? e.message : "Failed to load daily performance"))
@@ -200,7 +194,7 @@ function OverviewPageInner() {
 
   useEffect(() => {
     apiFetch<ProgressResult>(
-      `/api/overview/progress${buildQuery({ month, brand: brand ?? undefined, marketplace: marketplace ?? undefined })}`,
+      `/api/overview/progress${buildQuery({ month, brand: csv(brand), marketplace: csv(marketplace) })}`,
     )
       .then(setProgress)
       .catch((e) => setError(e instanceof Error ? e.message : "Failed to load progress"))
@@ -213,8 +207,8 @@ function OverviewPageInner() {
         to,
         compare,
         granularity: trendGranularity,
-        brand: brand ?? undefined,
-        marketplace: marketplace ?? undefined,
+        brand: csv(brand),
+        marketplace: csv(marketplace),
         ...detailParams,
         ...prevParams,
       })}`,
@@ -232,8 +226,8 @@ function OverviewPageInner() {
         compare,
         granularity: trendGranularity,
         dimension,
-        brand: brand ?? undefined,
-        marketplace: marketplace ?? undefined,
+        brand: csv(brand),
+        marketplace: csv(marketplace),
         ...detailParams,
         ...prevParams,
       })}`,
@@ -251,8 +245,8 @@ function OverviewPageInner() {
         compare,
         entity: driverEntity,
         dimension: driverDimension,
-        brand: brand ?? undefined,
-        marketplace: marketplace ?? undefined,
+        brand: csv(brand),
+        marketplace: csv(marketplace),
         ...detailParams,
         ...prevParams,
       })}`,
@@ -270,8 +264,8 @@ function OverviewPageInner() {
         compare,
         granularity: trendGranularity,
         entity: spendEntity,
-        brand: brand ?? undefined,
-        marketplace: marketplace ?? undefined,
+        brand: csv(brand),
+        marketplace: csv(marketplace),
         ...detailParams,
         ...prevParams,
       })}`,
@@ -287,8 +281,8 @@ function OverviewPageInner() {
         from,
         to,
         compare,
-        brand: brand ?? undefined,
-        marketplace: marketplace ?? undefined,
+        brand: csv(brand),
+        marketplace: csv(marketplace),
       })}`,
     )
       .then(setFunnel)
@@ -421,7 +415,6 @@ function OverviewPageInner() {
         brandOptions={filterOptions?.brands ?? progress?.brand.map((r) => r.name) ?? []}
         marketplaceOptions={filterOptions?.marketplaces ?? progress?.marketplace.map((r) => r.name) ?? []}
         dimensionOptions={filterOptions?.dimensions ?? []}
-        mergeDetail={!detailRowVisible}
         downloads={downloads}
       />
 
@@ -559,38 +552,6 @@ function OverviewPageInner() {
               <div className="col-span-2 flex h-[160px] items-center justify-center text-sm text-[var(--ov-faint)]">
                 Loading…
               </div>
-            )}
-          </div>
-        </div>
-
-        {/* Detail filter row — scopes Summary and everything below it */}
-        <div
-          ref={detailRowRef}
-          className="rounded-lg border border-[var(--ov-line)] bg-[var(--ov-fill2)] p-3.5"
-        >
-          <div className="mb-2.5 flex flex-wrap items-center gap-3">
-            <span className="text-[11px] font-bold tracking-wider text-[var(--ov-faint)] uppercase">
-              Filter rincian
-            </span>
-            <span className="text-[11.5px] leading-relaxed text-[var(--ov-faint)]">
-              Mengikat Summary dan seksi di bawahnya. Seksi target di atas memakai bulan yang dipilih pada grafik
-              tahunan, karena tabel target tidak punya kolom pillar/kategori.
-            </span>
-            {Object.values(detail).filter(Boolean).length > 0 && (
-              <button
-                type="button"
-                onClick={filters.clearDetailFilters}
-                className="ml-auto text-[11.5px] font-semibold text-[var(--accent-foreground)]"
-              >
-                Reset filter rincian
-              </button>
-            )}
-          </div>
-          <div className="flex flex-wrap gap-3">
-            {filterOptions ? (
-              <DetailFilterSelects options={filterOptions.dimensions} />
-            ) : (
-              <span className="text-xs text-[var(--ov-faint)]">Memuat pilihan filter…</span>
             )}
           </div>
         </div>

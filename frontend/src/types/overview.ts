@@ -232,7 +232,7 @@ export type DetailFilterKey =
   | "productSubCategory"
   | "productFormat"
 
-export type DetailFilters = Partial<Record<DetailFilterKey, string>>
+export type DetailFilters = Partial<Record<DetailFilterKey, string[]>>
 
 export interface FilterOption {
   key: DetailFilterKey

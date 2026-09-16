@@ -1,5 +1,6 @@
 import { clickhouse } from '../lib/clickhouse'
 import {
+  buildDetailClause,
   TABLE_SUMMARY_ORDER,
   TWO_WINDOW_CLAUSE,
   bucketExpression,
@@ -85,10 +86,16 @@ function toAttributes(raw: RawShopeeAttrs): ShopeeAttributes {
   }
 }
 
+/** Brand plus the PID dimension filters; the level scope is applied separately. */
+function pidFilterClause(filters: PidFilters, params: Record<string, unknown>): string {
+  const brandClause = buildFilterClause(filters.brand ? { brand: filters.brand } : {}, params)
+  return brandClause + buildDetailClause(filters.detail, params)
+}
+
 function scopeClause(filters: PidFilters, params: Record<string, unknown>): string {
-  if (!filters.scope || !filters.scopeLevel) return ''
-  params.scope = filters.scope
-  return ` AND ifNull(${LEVEL_COLUMNS[filters.scopeLevel]}, 'Unknown') = {scope:String}`
+  if (!filters.scope?.length || !filters.scopeLevel) return ''
+  params.scopes = filters.scope
+  return ` AND ifNull(${LEVEL_COLUMNS[filters.scopeLevel]}, 'Unknown') IN {scopes:Array(String)}`
 }
 
 export async function getPidCategories(
@@ -107,7 +114,7 @@ export async function getPidCategories(
     prevFrom: comparison.from,
     prevTo: comparison.to,
   }
-  const filterClause = buildFilterClause(filters.brand ? { brand: filters.brand } : {}, params)
+  const filterClause = pidFilterClause(filters, params)
 
   const gmvResult = await clickhouse.query({
     query: `
@@ -263,7 +270,7 @@ export async function getPidProducts(
     prevFrom: comparison.from,
     prevTo: comparison.to,
   }
-  const filterClause = buildFilterClause(filters.brand ? { brand: filters.brand } : {}, params)
+  const filterClause = pidFilterClause(filters, params)
 
   const gmvResult = await clickhouse.query({
     query: `
@@ -357,7 +364,7 @@ export async function getPidProducts(
         category: r.category,
         subCategory: r.subCategory,
         format: r.format,
-        inScope: !filters.scope || levelValue === filters.scope,
+        inScope: !filters.scope?.length || filters.scope.includes(levelValue),
         gmv,
         gmvPrev,
         growth: pctDelta(gmv, gmvPrev),
@@ -377,7 +384,7 @@ export async function getPidProducts(
 
   return {
     rows,
-    scope: filters.scope ?? null,
+    scope: filters.scope?.join(', ') ?? null,
     countProduct: inScope.length,
     countProfitProduct: inScope.filter((r) => r.gmv > 0).length,
     countDecliningProduct: inScope.filter((r) => r.growth !== null && r.growth < 0).length,
@@ -392,7 +399,7 @@ export async function getPidTrend(
   granularity: TrendGranularity,
 ): Promise<PidTrendPoint[]> {
   const params: Record<string, unknown> = { from, to }
-  const filterClause = buildFilterClause(filters.brand ? { brand: filters.brand } : {}, params)
+  const filterClause = pidFilterClause(filters, params)
   const scope = scopeClause(filters, params)
   const bucket = bucketExpression(granularity)
 
@@ -457,7 +464,7 @@ export async function getPidProductDetail(
     prevFrom: comparison.from,
     prevTo: comparison.to,
   }
-  const filterClause = buildFilterClause(filters.brand ? { brand: filters.brand } : {}, params)
+  const filterClause = pidFilterClause(filters, params)
 
   const infoResult = await clickhouse.query({
     query: `
@@ -605,7 +612,7 @@ async function getPidTrendForProduct(
   granularity: TrendGranularity,
 ): Promise<PidTrendPoint[]> {
   const params: Record<string, unknown> = { pids, from, to }
-  const filterClause = buildFilterClause(filters.brand ? { brand: filters.brand } : {}, params)
+  const filterClause = pidFilterClause(filters, params)
   const bucket = bucketExpression(granularity)
 
   const result = await clickhouse.query({
@@ -637,7 +644,7 @@ export async function getPidTopCreators(
   limit: number,
 ): Promise<PidCreatorsResult> {
   const params: Record<string, unknown> = { from, to }
-  const filterClause = buildFilterClause(filters.brand ? { brand: filters.brand } : {}, params)
+  const filterClause = pidFilterClause(filters, params)
   const scope = scopeClause(filters, params)
 
   let extra = ''

@@ -7,13 +7,13 @@ export const TABLE_CONTENT_PERFORMANCE =
 
 export function buildFilterClause(filters: OverviewFilters, params: Record<string, unknown>): string {
   let clause = ''
-  if (filters.brand) {
-    clause += ' AND BRAND_NAME = {brand:String}'
-    params.brand = filters.brand
+  if (filters.brand?.length) {
+    clause += ' AND BRAND_NAME IN {brands:Array(String)}'
+    params.brands = filters.brand
   }
-  if (filters.marketplace) {
-    clause += ' AND MARKETPLACE_NAME = {marketplace:String}'
-    params.marketplace = filters.marketplace
+  if (filters.marketplace?.length) {
+    clause += ' AND MARKETPLACE_NAME IN {marketplaces:Array(String)}'
+    params.marketplaces = filters.marketplace
   }
   return clause
 }
@@ -52,10 +52,10 @@ export function buildDetailClause(
   if (!detail) return ''
   let clause = ''
   for (const [key, column] of Object.entries(DETAIL_FILTER_COLUMNS)) {
-    const value = detail[key as keyof DetailFilters]
-    if (!value) continue
-    params[key] = value
-    clause += ` AND ifNull(${column}, 'Unknown') = {${key}:String}`
+    const values = detail[key as keyof DetailFilters]
+    if (!values?.length) continue
+    params[key] = values
+    clause += ` AND ifNull(${column}, 'Unknown') IN {${key}:Array(String)}`
   }
   return clause
 }

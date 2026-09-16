@@ -6,11 +6,20 @@ import {
   getPidTopCreators,
   getPidTrend,
 } from '../services/shopee-pid.service'
-import type { ComparisonBasis, TrendGranularity } from '../types/overview'
+import type { ComparisonBasis, DetailFilters, TrendGranularity } from '../types/overview'
 import type { PidFilters, PidLevel } from '../types/shopee-pid'
 
 function str(value: unknown): string | undefined {
   return typeof value === 'string' && value.length > 0 ? value : undefined
+}
+
+/** Filters arrive comma separated; a single value still works unchanged. */
+function list(value: unknown): string[] {
+  if (Array.isArray(value)) return value.flatMap((v) => list(v))
+  return (str(value) ?? '')
+    .split(',')
+    .map((v) => v.trim())
+    .filter(Boolean)
 }
 
 function defaultFrom(to: string): string {
@@ -49,14 +58,26 @@ function levelOf(value: unknown): PidLevel {
 
 function filtersOf(req: Request): PidFilters {
   const filters: PidFilters = {}
-  const brand = str(req.query.brand)
-  const scope = str(req.query.scope)
-  if (brand) filters.brand = brand
-  if (scope) {
+  const brand = list(req.query.brand)
+  const scope = list(req.query.scope)
+  const detail = detailOf(req)
+  if (brand.length > 0) filters.brand = brand
+  if (scope.length > 0) {
     filters.scope = scope
     filters.scopeLevel = levelOf(str(req.query.level))
   }
+  if (Object.keys(detail).length > 0) filters.detail = detail
   return filters
+}
+
+/** PID dimension filters, same keys as the overview's "filter rincian". */
+function detailOf(req: Request): DetailFilters {
+  const detail: DetailFilters = {}
+  for (const key of ['pillar', 'pidCategory', 'pidSubCategory', 'pidFormat'] as const) {
+    const values = list(req.query[key])
+    if (values.length > 0) detail[key] = values
+  }
+  return detail
 }
 
 export async function getPidCategoriesHandler(req: Request, res: Response) {

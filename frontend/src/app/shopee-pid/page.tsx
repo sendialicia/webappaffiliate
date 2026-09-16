@@ -24,6 +24,7 @@ import { apiFetch } from "@/lib/api"
 import { formatCompact, formatIdr, formatPercent } from "@/lib/format"
 import { pidFiltersToParams, useShopeePidFilters } from "@/store/shopee-pid-filters"
 import type { DownloadItem } from "@/components/download-menu"
+import type { FilterOptionsResult } from "@/types/overview"
 import type {
   PidCategoriesResult,
   PidCreatorsResult,
@@ -43,6 +44,11 @@ const SECTION_NAV = [
   { id: "pp-sec-3", label: "2 · Product" },
   { id: "pp-sec-4", label: "Product deep dive" },
 ]
+
+/** Multi-value filters travel as one comma separated parameter. */
+function csv(values: string[]): string | undefined {
+  return values.length > 0 ? values.join(",") : undefined
+}
 
 function buildQuery(params: Record<string, string | undefined>): string {
   const search = new URLSearchParams()
@@ -69,6 +75,7 @@ function ShopeePidPageInner() {
     trendGranularity,
     level,
     scope,
+    detail: pidDetail,
     selectedPids,
     countFilter,
     quadrantSelection,
@@ -87,16 +94,25 @@ function ShopeePidPageInner() {
     setCountFilter,
     setQuadrantSelection,
     setCreatorLimit,
+    toggleScope,
   } = filters
 
   const prevParams =
     compare === "custom" && prevFrom && prevTo ? { prevFrom, prevTo } : ({} as Record<string, string>)
+
+  const detailParams = Object.fromEntries(
+    Object.entries(pidDetail)
+      .filter(([, v]) => v && v.length > 0)
+      .map(([k, v]) => [k, (v as string[]).join(",")]),
+  ) as Record<string, string>
+  const detailKey = JSON.stringify(pidDetail)
 
   const [categories, setCategories] = useState<PidCategoriesResult | null>(null)
   const [products, setProducts] = useState<PidProductsResult | null>(null)
   const [trend, setTrend] = useState<PidTrendPoint[] | null>(null)
   const [detail, setDetail] = useState<{ key: string; data: PidProductDetail } | null>(null)
   const [creators, setCreators] = useState<PidCreatorsResult | null>(null)
+  const [filterOptions, setFilterOptions] = useState<FilterOptionsResult | null>(null)
   const [showPillars, setShowPillars] = useState(true)
   const [showShopee, setShowShopee] = useState(true)
   // Which section the reader last touched, so the download menu can offer it first.
@@ -135,6 +151,14 @@ function ShopeePidPageInner() {
   ])
 
   useEffect(() => {
+    apiFetch<FilterOptionsResult>(
+      `/api/overview/filter-options${buildQuery({ from, to, marketplace: "Shopee" })}`,
+    )
+      .then(setFilterOptions)
+      .catch(() => undefined)
+  }, [from, to])
+
+  useEffect(() => {
     const el = scopeRowRef.current
     if (!el) return
     const observer = new IntersectionObserver(
@@ -146,30 +170,31 @@ function ShopeePidPageInner() {
   }, [])
 
   const scopeQuery = {
-    brand: brand ?? undefined,
+    brand: csv(brand),
     from,
     to,
     compare,
     level,
-    scope: scope ?? undefined,
+    scope: csv(scope),
     ...prevParams,
+    ...detailParams,
   }
 
   useEffect(() => {
     apiFetch<PidCategoriesResult>(
-      `/api/shopee-pid/categories${buildQuery({ brand: brand ?? undefined, from, to, compare, level, ...prevParams })}`,
+      `/api/shopee-pid/categories${buildQuery({ brand: csv(brand), from, to, compare, level, ...prevParams, ...detailParams })}`,
     )
       .then(setCategories)
       .catch((e) => setError(e instanceof Error ? e.message : "Gagal memuat kategori"))
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [brand, from, to, compare, prevFrom, prevTo, level])
+  }, [brand, from, to, compare, prevFrom, prevTo, level, detailKey])
 
   useEffect(() => {
     apiFetch<PidProductsResult>(`/api/shopee-pid/products${buildQuery(scopeQuery)}`)
       .then(setProducts)
       .catch((e) => setError(e instanceof Error ? e.message : "Gagal memuat produk"))
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [brand, from, to, compare, prevFrom, prevTo, level, scope])
+  }, [brand, from, to, compare, prevFrom, prevTo, level, scope, detailKey])
 
   useEffect(() => {
     apiFetch<PidTrendPoint[]>(
@@ -178,7 +203,7 @@ function ShopeePidPageInner() {
       .then(setTrend)
       .catch((e) => setError(e instanceof Error ? e.message : "Gagal memuat trend"))
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [brand, from, to, level, scope, trendGranularity])
+  }, [brand, from, to, level, scope, trendGranularity, detailKey])
 
   const selectedKey = selectedPids.join(",")
 
@@ -188,12 +213,13 @@ function ShopeePidPageInner() {
   const detailUrl = selectedKey
     ? `/api/shopee-pid/product-detail${buildQuery({
         pid: selectedKey,
-        brand: brand ?? undefined,
+        brand: csv(brand),
         from,
         to,
         compare,
         granularity: trendGranularity,
         ...prevParams,
+        ...detailParams,
       })}`
     : null
 
@@ -216,7 +242,7 @@ function ShopeePidPageInner() {
       .then(setCreators)
       .catch((e) => setError(e instanceof Error ? e.message : "Gagal memuat creator"))
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [brand, from, to, level, scope, creatorPillar, creatorManaged, creatorLimit])
+  }, [brand, from, to, level, scope, creatorPillar, creatorManaged, creatorLimit, detailKey])
 
   const visibleProducts = useMemo(() => {
     if (!products) return []
@@ -234,7 +260,17 @@ function ShopeePidPageInner() {
       .filter((r) => !q || r.name.toLowerCase().includes(q) || r.pid.toLowerCase().includes(q))
   }, [products, search, countFilter, quadrantSelection])
 
-  const scopeLabel = scope ?? "Seluruh kategori"
+  // The overview's filter-options endpoint already lists the PID dimension values.
+  const dimensionOptions: Partial<Record<string, string[]>> = Object.fromEntries(
+    (filterOptions?.dimensions ?? []).map((d) => [d.key, d.values]),
+  )
+
+  const scopeLabel =
+    scope.length === 0
+      ? `Seluruh ${LEVEL_LABELS[level].toLowerCase()}`
+      : scope.length <= 2
+        ? scope.join(" + ")
+        : `${scope.length} ${LEVEL_LABELS[level].toLowerCase()} dipilih`
 
   // Built from the same state each section renders — the product list follows the active
   // count-card filter and search box, not the unfiltered response.
@@ -306,7 +342,8 @@ function ShopeePidPageInner() {
       sectionNav={SECTION_NAV}
     >
       <FilterBar
-        brandOptions={BRAND_OPTIONS}
+        brandOptions={filterOptions?.brands ?? BRAND_OPTIONS}
+        dimensionOptions={dimensionOptions}
         mergeScope={!scopeRowVisible}
         downloads={downloads}
         lastSection={lastSection}
@@ -346,8 +383,12 @@ function ShopeePidPageInner() {
               total={categories.total}
               rows={categories.rows}
               scope={scope}
-              onScopeAction={(name) => {
-                setScope(name)
+              onScopeAction={(names) => {
+                setScope(names)
+                setLastSection("kategori")
+              }}
+              onToggleScopeAction={(name) => {
+                toggleScope(name)
                 setLastSection("kategori")
               }}
               showPillars={showPillars}
@@ -367,10 +408,10 @@ function ShopeePidPageInner() {
             <span className="rounded-full border border-[var(--accent)] bg-[var(--accent)] px-3 py-1.5 text-[12.5px] font-semibold text-[var(--accent-foreground)]">
               {scopeLabel}
             </span>
-            {scope && (
+            {scope.length > 0 && (
               <button
                 type="button"
-                onClick={() => setScope(null)}
+                onClick={() => setScope([])}
                 className="rounded-full border border-[var(--ov-line)] px-3 py-1.5 text-xs font-semibold text-[var(--ov-soft)] hover:bg-[var(--ov-fill1)]"
               >
                 Kembali ke seluruh {LEVEL_LABELS[level].toLowerCase()}

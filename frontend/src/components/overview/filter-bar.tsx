@@ -2,9 +2,16 @@
 
 import { useState } from "react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { MultiSelect } from "@/components/multi-select"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { DetailFilterSelects, activeDetailCount } from "@/components/overview/detail-filters"
-import { FilterDivider, FilterItem, FloatingFilterBar, pillControlClass } from "@/components/filter-shell"
+import {
+  FilterActions,
+  FilterDivider,
+  FilterItem,
+  FloatingFilterBar,
+  pillControlClass,
+} from "@/components/filter-shell"
 import { DownloadMenu, type DownloadItem } from "@/components/download-menu"
 import {
   CurrentPeriodField,
@@ -15,22 +22,18 @@ import {
 import { useOverviewFilters } from "@/store/overview-filters"
 import type { FilterOption } from "@/types/overview"
 
-const ALL = "__all__"
 const FILE_PREFIX = "overview"
 
 export function FilterBar({
   brandOptions,
   marketplaceOptions,
   dimensionOptions,
-  /** True once the in-page detail row has scrolled away, so it merges in here. */
-  mergeDetail,
   downloads,
   lastSection,
 }: {
   brandOptions: string[]
   marketplaceOptions: string[]
   dimensionOptions: FilterOption[]
-  mergeDetail: boolean
   downloads: DownloadItem[]
   lastSection?: string | null
 }) {
@@ -38,22 +41,32 @@ export function FilterBar({
     brand,
     marketplace,
     detail,
+    draft,
     preset,
     from,
     to,
     compare,
     prevFrom,
     prevTo,
-    setBrand,
-    setMarketplace,
+    trendGranularity,
+    setDraftBrand,
+    setDraftMarketplace,
     setPreset,
     setCustomRange,
     setCompare,
     setPrevRange,
-    clearDetailFilters,
+    setTrendGranularity,
+    clearDraftFilters,
+    applyDraft,
+    discardDraft,
   } = useOverviewFilters()
   const [copyLabel, setCopyLabel] = useState("Copy link")
-  const activeCount = activeDetailCount(detail)
+  const activeCount = activeDetailCount(draft.detail)
+
+  // Nothing refetches until Apply, so the bar has to say when it is holding edits.
+  const pending =
+    JSON.stringify([draft.brand, draft.marketplace, draft.detail]) !==
+    JSON.stringify([brand, marketplace, detail])
 
   const resolvedPrev =
     compare === "custom"
@@ -64,38 +77,22 @@ export function FilterBar({
 
   return (
     <FloatingFilterBar>
-      <FilterItem label="Brand" grow>
-        <Select value={brand ?? ALL} onValueChange={(v) => v && setBrand(v === ALL ? null : v)}>
-          <SelectTrigger className="h-8 w-full rounded-full bg-[var(--input)] px-3.5 text-[13px]">
-            <SelectValue>{(v: string) => (v === ALL || !v ? "(All)" : v)}</SelectValue>
-          </SelectTrigger>
-          <SelectContent className="max-h-[320px]">
-            <SelectItem value={ALL}>(All)</SelectItem>
-            {brandOptions.map((b) => (
-              <SelectItem key={b} value={b}>
-                {b}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+      <FilterItem label="Brand">
+        <MultiSelect
+          label="Brand"
+          options={brandOptions}
+          selected={draft.brand}
+          onChangeAction={setDraftBrand}
+        />
       </FilterItem>
 
-      <FilterDivider />
-
-      <FilterItem label="Marketplace" grow>
-        <Select value={marketplace ?? ALL} onValueChange={(v) => v && setMarketplace(v === ALL ? null : v)}>
-          <SelectTrigger className="h-8 w-full rounded-full bg-[var(--input)] px-3.5 text-[13px]">
-            <SelectValue>{(v: string) => (v === ALL || !v ? "(All)" : v)}</SelectValue>
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={ALL}>(All)</SelectItem>
-            {marketplaceOptions.map((m) => (
-              <SelectItem key={m} value={m}>
-                {m}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+      <FilterItem label="Marketplace">
+        <MultiSelect
+          label="Marketplace"
+          options={marketplaceOptions}
+          selected={draft.marketplace}
+          onChangeAction={setDraftMarketplace}
+        />
       </FilterItem>
 
       <FilterDivider />
@@ -122,16 +119,32 @@ export function FilterBar({
         />
       </FilterItem>
 
-      {/* Detail filters merge in here once their own row is scrolled past. */}
-      {mergeDetail && (
-        <>
-          <FilterDivider />
-          <FilterItem label="Rincian">
+      <FilterDivider />
+
+      <FilterItem label="Tren">
+        <Select
+          value={trendGranularity}
+          onValueChange={(v) => v && setTrendGranularity(v as "day" | "week" | "month")}
+        >
+          <SelectTrigger className="h-8 w-24 rounded-full bg-[var(--input)] px-3.5 text-[13px]">
+            <SelectValue>{(v: string) => v.charAt(0).toUpperCase() + v.slice(1)}</SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="day">Day</SelectItem>
+            <SelectItem value="week">Week</SelectItem>
+            <SelectItem value="month">Month</SelectItem>
+          </SelectContent>
+        </Select>
+      </FilterItem>
+
+      <FilterDivider />
+
+      <FilterItem label="Rincian">
             <Popover>
               <PopoverTrigger
                 render={
                   <button type="button" className={pillControlClass}>
-                    Filter lainnya
+                    Dimensi PID
                     {activeCount > 0 && (
                       <span className="rounded-full bg-[var(--accent)] px-1.5 py-0.5 text-[10px] font-bold text-[var(--accent-foreground)]">
                         {activeCount}
@@ -149,7 +162,7 @@ export function FilterBar({
                   {activeCount > 0 && (
                     <button
                       type="button"
-                      onClick={clearDetailFilters}
+                      onClick={clearDraftFilters}
                       className="ml-auto text-[11px] font-semibold text-[var(--accent-foreground)]"
                     >
                       Reset
@@ -157,15 +170,36 @@ export function FilterBar({
                   )}
                 </div>
                 <div className="flex flex-wrap gap-3">
-                  <DetailFilterSelects options={dimensionOptions} compact />
+                  <DetailFilterSelects options={dimensionOptions} />
                 </div>
               </PopoverContent>
             </Popover>
-          </FilterItem>
-        </>
-      )}
+      </FilterItem>
 
-      <div className="ml-auto flex flex-none items-center gap-1.5 pl-1.5">
+      <FilterActions>
+        {pending && (
+          <button
+            type="button"
+            onClick={discardDraft}
+            className={pillControlClass}
+            title="Kembalikan ke filter yang sedang aktif"
+          >
+            Batal
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={applyDraft}
+          disabled={!pending}
+          className="flex h-8 items-center gap-2 rounded-full border px-3.5 text-xs font-semibold whitespace-nowrap disabled:opacity-45"
+          style={{
+            borderColor: pending ? "var(--accent-foreground)" : "var(--ov-line)",
+            background: pending ? "var(--accent)" : "transparent",
+            color: pending ? "var(--accent-foreground)" : "var(--ov-mut)",
+          }}
+        >
+          Apply
+        </button>
         <DownloadMenu items={downloads} filePrefix={FILE_PREFIX} highlightId={lastSection} />
         <button
           type="button"
@@ -178,7 +212,7 @@ export function FilterBar({
         >
           {copyLabel}
         </button>
-      </div>
+      </FilterActions>
     </FloatingFilterBar>
   )
 }

@@ -1,11 +1,13 @@
-import type { ComparisonBasis, OverviewFilters, TrendGranularity } from './overview'
+import type { ComparisonBasis, DetailFilters, OverviewFilters, TrendGranularity } from './overview'
 
 export type PidLevel = 'category' | 'subcategory' | 'format'
 
 export interface PidFilters extends OverviewFilters {
-  /** Value of the selected level that scopes products/trend/creators below. */
-  scope?: string
+  /** Values of the selected level that scope products/trend/creators below. */
+  scope?: string[]
   scopeLevel?: PidLevel
+  /** PID dimension filters, same shape as the overview's "filter rincian". */
+  detail?: DetailFilters
 }
 
 /** Shopee affiliate-centre attributes. CONFIRMED variant, per Sendi. */

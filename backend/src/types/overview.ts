@@ -1,6 +1,7 @@
+/** Every filter accepts several values; an empty or absent list means no restriction. */
 export interface OverviewFilters {
-  brand?: string
-  marketplace?: string
+  brand?: string[]
+  marketplace?: string[]
 }
 
 /**
@@ -9,14 +10,14 @@ export interface OverviewFilters {
  * below it — not the target/achievement sections, which read daily_performance.
  */
 export interface DetailFilters {
-  pillar?: string
-  subpillar?: string
-  pidCategory?: string
-  pidSubCategory?: string
-  pidFormat?: string
-  productCategory?: string
-  productSubCategory?: string
-  productFormat?: string
+  pillar?: string[]
+  subpillar?: string[]
+  pidCategory?: string[]
+  pidSubCategory?: string[]
+  pidFormat?: string[]
+  productCategory?: string[]
+  productSubCategory?: string[]
+  productFormat?: string[]
 }
 
 export interface FilterOption {

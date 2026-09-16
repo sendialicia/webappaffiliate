@@ -2,18 +2,25 @@
 
 import { useState } from "react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { MultiSelect } from "@/components/multi-select"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import {
   CurrentPeriodField,
   PreviousPeriodField,
   impliedPrevRange,
   shiftYear,
 } from "@/components/period-picker"
-import { FilterDivider, FilterItem, FloatingFilterBar, pillControlClass } from "@/components/filter-shell"
+import {
+  FilterActions,
+  FilterDivider,
+  FilterItem,
+  FloatingFilterBar,
+  pillControlClass,
+} from "@/components/filter-shell"
 import { DownloadMenu, type DownloadItem } from "@/components/download-menu"
 import { useShopeePidFilters } from "@/store/shopee-pid-filters"
 import type { PidLevel } from "@/types/shopee-pid"
 
-const ALL = "__all__"
 const FILE_PREFIX = "shopee-pid"
 
 export const LEVEL_LABELS: Record<PidLevel, string> = {
@@ -22,20 +29,32 @@ export const LEVEL_LABELS: Record<PidLevel, string> = {
   format: "Format",
 }
 
+const PID_DIMENSIONS = [
+  { key: "pillar", label: "Pillar" },
+  { key: "pidCategory", label: "PID Category" },
+  { key: "pidSubCategory", label: "PID Sub Category" },
+  { key: "pidFormat", label: "PID Format" },
+] as const
+
 export function FilterBar({
   brandOptions,
+  dimensionOptions,
   /** True once the in-page scope row has scrolled away, so the active scope merges in here. */
   mergeScope,
   downloads,
   lastSection,
 }: {
   brandOptions: string[]
+  /** Values available for each PID dimension, keyed the same as the draft. */
+  dimensionOptions: Partial<Record<string, string[]>>
   mergeScope: boolean
   downloads: DownloadItem[]
   lastSection?: string | null
 }) {
   const {
     brand,
+    detail,
+    draft,
     preset,
     from,
     to,
@@ -43,7 +62,11 @@ export function FilterBar({
     trendGranularity,
     level,
     scope,
-    setBrand,
+    setDraftBrand,
+    setDraftDetail,
+    clearDraftDetail,
+    applyDraft,
+    discardDraft,
     setPreset,
     setCustomRange,
     setCompare,
@@ -56,6 +79,10 @@ export function FilterBar({
   } = useShopeePidFilters()
   const [copyLabel, setCopyLabel] = useState("Copy link")
 
+  // Nothing refetches until Apply, so the bar has to say when it is holding edits.
+  const pending = JSON.stringify([draft.brand, draft.detail]) !== JSON.stringify([brand, detail])
+  const activeDimensions = Object.values(draft.detail).filter((v) => v && v.length > 0).length
+
   const resolvedPrev =
     compare === "custom"
       ? { from: prevFrom ?? "", to: prevTo ?? "" }
@@ -65,23 +92,9 @@ export function FilterBar({
 
   return (
     <FloatingFilterBar>
-      <FilterItem label="Brand" grow>
-        <Select value={brand ?? ALL} onValueChange={(v) => v && setBrand(v === ALL ? null : v)}>
-          <SelectTrigger className="h-8 w-full rounded-full bg-[var(--input)] px-3.5 text-[13px]">
-            <SelectValue>{(v: string) => (v === ALL || !v ? "(All)" : v)}</SelectValue>
-          </SelectTrigger>
-          <SelectContent className="max-h-[320px]">
-            <SelectItem value={ALL}>(All)</SelectItem>
-            {brandOptions.map((b) => (
-              <SelectItem key={b} value={b}>
-                {b}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+      <FilterItem label="Brand">
+        <MultiSelect label="Brand" options={brandOptions} selected={draft.brand} onChangeAction={setDraftBrand} />
       </FilterItem>
-
-      <FilterDivider />
 
       <FilterItem label="Level">
         <Select value={level} onValueChange={(v) => v && setLevel(v as PidLevel)}>
@@ -92,22 +105,6 @@ export function FilterBar({
             <SelectItem value="category">Category</SelectItem>
             <SelectItem value="subcategory">Sub Category</SelectItem>
             <SelectItem value="format">Format</SelectItem>
-          </SelectContent>
-        </Select>
-      </FilterItem>
-
-      <FilterItem label="Tren">
-        <Select
-          value={trendGranularity}
-          onValueChange={(v) => v && setTrendGranularity(v as "day" | "week" | "month")}
-        >
-          <SelectTrigger className="h-8 w-24 rounded-full bg-[var(--input)] px-3.5 text-[13px]">
-            <SelectValue>{(v: string) => v.charAt(0).toUpperCase() + v.slice(1)}</SelectValue>
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="day">Day</SelectItem>
-            <SelectItem value="week">Week</SelectItem>
-            <SelectItem value="month">Month</SelectItem>
           </SelectContent>
         </Select>
       </FilterItem>
@@ -136,16 +133,86 @@ export function FilterBar({
         />
       </FilterItem>
 
+      <FilterDivider />
+
+      <FilterItem label="Tren">
+        <Select
+          value={trendGranularity}
+          onValueChange={(v) => v && setTrendGranularity(v as "day" | "week" | "month")}
+        >
+          <SelectTrigger className="h-8 w-24 rounded-full bg-[var(--input)] px-3.5 text-[13px]">
+            <SelectValue>{(v: string) => v.charAt(0).toUpperCase() + v.slice(1)}</SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="day">Day</SelectItem>
+            <SelectItem value="week">Week</SelectItem>
+            <SelectItem value="month">Month</SelectItem>
+          </SelectContent>
+        </Select>
+      </FilterItem>
+
+      <FilterDivider />
+
+      <FilterItem label="Rincian">
+        <Popover>
+          <PopoverTrigger
+            render={
+              <button type="button" className={pillControlClass}>
+                Dimensi PID
+                {activeDimensions > 0 && (
+                  <span className="rounded-full bg-[var(--accent)] px-1.5 py-0.5 text-[10px] font-bold text-[var(--accent-foreground)]">
+                    {activeDimensions}
+                  </span>
+                )}
+              </button>
+            }
+          />
+          <PopoverContent className="w-[520px] p-4" align="end">
+            <div className="mb-3 flex items-center gap-2">
+              <span className="text-[11px] font-bold tracking-wider text-[var(--ov-faint)] uppercase">
+                Filter rincian
+              </span>
+              <span className="text-[11px] text-[var(--ov-faint)]">mengikat seluruh seksi di halaman ini</span>
+              {activeDimensions > 0 && (
+                <button
+                  type="button"
+                  onClick={clearDraftDetail}
+                  className="ml-auto text-[11px] font-semibold text-[var(--accent-foreground)]"
+                >
+                  Reset
+                </button>
+              )}
+            </div>
+            <div className="flex flex-wrap gap-3">
+              {PID_DIMENSIONS.map((dim) => (
+                <div key={dim.key} className="min-w-[150px] flex-1">
+                  <div className="mb-1.5 text-[10.5px] font-bold tracking-wider text-[var(--ov-faint)] uppercase">
+                    {dim.label}
+                  </div>
+                  <MultiSelect
+                    label={dim.label}
+                    options={dimensionOptions[dim.key] ?? []}
+                    selected={draft.detail[dim.key] ?? []}
+                    onChangeAction={(values) => setDraftDetail(dim.key, values)}
+                    width="w-full"
+                  />
+                </div>
+              ))}
+            </div>
+          </PopoverContent>
+        </Popover>
+      </FilterItem>
+
       {/* Active scope merges in here once its own row is scrolled past. */}
-      {mergeScope && scope && (
+      {mergeScope && scope.length > 0 && (
         <>
           <FilterDivider />
           <FilterItem label="Cakupan">
             <span className="flex h-8 items-center gap-1.5 rounded-full border border-[var(--accent)] bg-[var(--accent)] px-3 text-xs font-semibold text-[var(--accent-foreground)]">
-              <span className="max-w-[160px] truncate">{scope}</span>
+              <span className="max-w-[160px] truncate">{scope.join(", ")}</span>
               <button
                 type="button"
-                onClick={() => setScope(null)}
+                onClick={() => setScope([])}
                 title={`Kembali ke seluruh ${LEVEL_LABELS[level].toLowerCase()}`}
                 className="text-sm leading-none opacity-70 hover:opacity-100"
               >
@@ -156,7 +223,25 @@ export function FilterBar({
         </>
       )}
 
-      <div className="ml-auto flex flex-none items-center gap-1.5 pl-1.5">
+      <FilterActions>
+        {pending && (
+          <button type="button" onClick={discardDraft} className={pillControlClass}>
+            Batal
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={applyDraft}
+          disabled={!pending}
+          className="flex h-8 items-center gap-2 rounded-full border px-3.5 text-xs font-semibold whitespace-nowrap disabled:opacity-45"
+          style={{
+            borderColor: pending ? "var(--accent-foreground)" : "var(--ov-line)",
+            background: pending ? "var(--accent)" : "transparent",
+            color: pending ? "var(--accent-foreground)" : "var(--ov-mut)",
+          }}
+        >
+          Apply
+        </button>
         <DownloadMenu items={downloads} filePrefix={FILE_PREFIX} highlightId={lastSection} />
         <button
           type="button"
@@ -169,7 +254,7 @@ export function FilterBar({
         >
           {copyLabel}
         </button>
-      </div>
+      </FilterActions>
     </FloatingFilterBar>
   )
 }

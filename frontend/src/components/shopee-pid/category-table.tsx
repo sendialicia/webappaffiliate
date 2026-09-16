@@ -89,13 +89,16 @@ export function CategoryTable({
   rows,
   scope,
   onScopeAction,
+  onToggleScopeAction,
   showPillars,
   showShopee,
 }: {
   total: PidCategoryRow
   rows: PidCategoryRow[]
-  scope: string | null
-  onScopeAction: (name: string | null) => void
+  scope: string[]
+  /** Clicking a row makes it the only scope; the checkbox adds or removes one. */
+  onScopeAction: (names: string[]) => void
+  onToggleScopeAction: (name: string) => void
   showPillars: boolean
   showShopee: boolean
 }) {
@@ -130,6 +133,9 @@ export function CategoryTable({
       <table className="w-full border-separate border-spacing-0.5 text-[12.5px]" style={{ minWidth: 220 + columns.length * 92 }}>
         <thead>
           <tr>
+            <th className="w-9 bg-[var(--accent)] p-2.5">
+              <span className="sr-only">Pilih</span>
+            </th>
             {columns.map((col, i) => (
               <th
                 key={col.key}
@@ -148,6 +154,7 @@ export function CategoryTable({
         </thead>
         <tbody>
           <tr>
+            <td className="p-2.5" />
             {columns.map((col, i) => {
               const cell = renderCell(total, col.key)
               return (
@@ -168,13 +175,23 @@ export function CategoryTable({
             })}
           </tr>
           {sorted.map((row) => {
-            const selected = scope === row.name
+            const selected = scope.includes(row.name)
             return (
               <tr
                 key={row.name}
-                onClick={() => onScopeAction(selected ? null : row.name)}
+                onClick={() => onScopeAction(selected && scope.length === 1 ? [] : [row.name])}
                 className="cursor-pointer"
               >
+                <td className="p-2.5 align-middle">
+                  <input
+                    type="checkbox"
+                    checked={selected}
+                    onClick={(e) => e.stopPropagation()}
+                    onChange={() => onToggleScopeAction(row.name)}
+                    aria-label={`Tambahkan ${row.name} ke cakupan`}
+                    className="h-3.5 w-3.5 accent-[var(--ov-blue)]"
+                  />
+                </td>
                 {columns.map((col, i) => {
                   const cell = renderCell(row, col.key)
                   return (

@@ -24,6 +24,15 @@ function str(value: unknown): string | undefined {
   return typeof value === 'string' && value.length > 0 ? value : undefined
 }
 
+/** Filters arrive comma separated; a single value still works unchanged. */
+function list(value: unknown): string[] {
+  if (Array.isArray(value)) return value.flatMap((v) => list(v))
+  return (str(value) ?? '')
+    .split(',')
+    .map((v) => v.trim())
+    .filter(Boolean)
+}
+
 const DRIVER_FIELDS: DriverField[] = [
   'brand',
   'marketplace',
@@ -56,8 +65,8 @@ const DETAIL_KEYS: Array<keyof DetailFilters> = [
 function detailFromQuery(req: Request): DetailFilters {
   const detail: DetailFilters = {}
   for (const key of DETAIL_KEYS) {
-    const value = str(req.query[key])
-    if (value) detail[key] = value
+    const values = list(req.query[key])
+    if (values.length > 0) detail[key] = values
   }
   return detail
 }
@@ -79,10 +88,10 @@ function basisFromQuery(req: Request): ComparisonBasis {
 
 function filtersFromQuery(req: Request): OverviewFilters {
   const filters: OverviewFilters = {}
-  const brand = str(req.query.brand)
-  const marketplace = str(req.query.marketplace)
-  if (brand) filters.brand = brand
-  if (marketplace) filters.marketplace = marketplace
+  const brand = list(req.query.brand)
+  const marketplace = list(req.query.marketplace)
+  if (brand.length > 0) filters.brand = brand
+  if (marketplace.length > 0) filters.marketplace = marketplace
   return filters
 }
 

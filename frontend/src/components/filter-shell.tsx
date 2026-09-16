@@ -10,7 +10,9 @@ export function FloatingFilterBar({ children }: { children: ReactNode }) {
   return (
     <div className="sticky top-3 z-30 px-4 pt-3 md:px-6">
       <div
-        className="flex items-center gap-1 overflow-x-auto rounded-full border border-[var(--ov-line)] px-3 py-1.5 shadow-[0_18px_40px_-20px_var(--ov-shadow)] backdrop-blur-xl"
+        // Wraps rather than scrolling sideways: a control the reader cannot see is a
+        // control they will not find, and this bar now carries every filter on the page.
+        className="flex flex-wrap items-center gap-x-1 gap-y-2 rounded-[22px] border border-[var(--ov-line)] px-3 py-1.5 shadow-[0_18px_40px_-20px_var(--ov-shadow)] backdrop-blur-xl"
         style={{ background: "color-mix(in srgb, var(--background) 82%, transparent)" }}
       >
         {children}
@@ -41,6 +43,14 @@ export function FilterItem({
 
 export function FilterDivider() {
   return <span className="h-6 w-px flex-none bg-[var(--ov-line)]" />
+}
+
+/**
+ * Apply and the other actions stay reachable at the right edge even once the filters
+ * outgrow the pill and it starts scrolling sideways.
+ */
+export function FilterActions({ children }: { children: ReactNode }) {
+  return <div className="ml-auto flex flex-none items-center gap-1.5 pl-1.5">{children}</div>
 }
 
 /** Shared look for the round controls sitting inside the pill. */
