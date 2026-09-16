@@ -27,10 +27,12 @@ export function FilterBar({
   /** True once the in-page scope row has scrolled away, so the active scope merges in here. */
   mergeScope,
   downloads,
+  lastSection,
 }: {
   brandOptions: string[]
   mergeScope: boolean
   downloads: DownloadItem[]
+  lastSection?: string | null
 }) {
   const {
     brand,
@@ -155,7 +157,7 @@ export function FilterBar({
       )}
 
       <div className="ml-auto flex flex-none items-center gap-1.5 pl-1.5">
-        <DownloadMenu items={downloads} filePrefix={FILE_PREFIX} />
+        <DownloadMenu items={downloads} filePrefix={FILE_PREFIX} highlightId={lastSection} />
         <button
           type="button"
           onClick={() => {

@@ -11,8 +11,20 @@ export interface DownloadItem {
   rows: () => CsvRow[]
 }
 
-export function DownloadMenu({ items, filePrefix }: { items: DownloadItem[]; filePrefix: string }) {
+export function DownloadMenu({
+  items,
+  filePrefix,
+  highlightId,
+}: {
+  items: DownloadItem[]
+  filePrefix: string
+  /** The section the reader last interacted with — offered first so the obvious pick is one click. */
+  highlightId?: string | null
+}) {
   const stamp = new Date().toISOString().slice(0, 10)
+  const ordered = highlightId
+    ? [...items].sort((a, b) => Number(b.id === highlightId) - Number(a.id === highlightId))
+    : items
 
   return (
     <Popover>
@@ -34,7 +46,7 @@ export function DownloadMenu({ items, filePrefix }: { items: DownloadItem[]; fil
           Isinya mengikuti filter yang sedang aktif di halaman ini.
         </div>
         <div className="flex flex-col">
-          {items.map((item) => (
+          {ordered.map((item) => (
             <button
               key={item.id}
               type="button"
@@ -42,9 +54,14 @@ export function DownloadMenu({ items, filePrefix }: { items: DownloadItem[]; fil
                 const rows = item.rows()
                 if (rows.length > 0) downloadCsv(`${filePrefix}-${item.id}-${stamp}`, rows)
               }}
-              className="rounded-md px-2 py-1.5 text-left text-[12.5px] font-medium text-[var(--ov-soft)] hover:bg-[var(--ov-fill1)]"
+              className="flex items-center gap-2 rounded-md px-2 py-1.5 text-left text-[12.5px] font-medium text-[var(--ov-soft)] hover:bg-[var(--ov-fill1)]"
             >
               {item.label}
+              {item.id === highlightId && (
+                <span className="ml-auto rounded-full bg-[var(--accent)] px-1.5 py-0.5 text-[9.5px] font-bold text-[var(--accent-foreground)]">
+                  baru dilihat
+                </span>
+              )}
             </button>
           ))}
         </div>

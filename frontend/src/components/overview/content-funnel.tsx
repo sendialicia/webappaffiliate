@@ -1,4 +1,4 @@
-import { formatNumber, formatPercent, formatRp, formatRpFull, formatSignedPercent } from "@/lib/format"
+import { formatNumber, formatPercent, formatRpFull, formatSignedPercent } from "@/lib/format"
 import type { FunnelMarketplace } from "@/types/overview"
 
 function deltaColor(delta: number | null): string {
@@ -30,25 +30,21 @@ export function ContentFunnel({ marketplace }: { marketplace: FunnelMarketplace 
             <div className="bg-[var(--ov-line)] p-1.5 text-center text-[13px] font-semibold text-[var(--ov-soft)]">
               {pillar.name}
             </div>
+            {/* Total creator and new content come from the TikTok-only content table, so on
+                Shopee they are absent rather than zero. */}
             <div className="grid grid-cols-2 gap-x-3 gap-y-2.5 p-3">
-              <Stat label="GMV" value={formatRp(pillar.gmv)} delta={pillar.gmvDeltaPct} />
-              <Stat label="Creators" value={formatNumber(pillar.creators)} delta={pillar.creatorsDeltaPct} />
-              <Stat label="Profit creators" value={formatNumber(pillar.profitCreators)} delta={null} />
-              <Stat label="GMV / creator" value={formatRpFull(pillar.gmvPerCreator)} delta={null} />
-              {pillar.newContent !== undefined && (
-                <>
-                  <Stat
-                    label="Total creators"
-                    value={formatNumber(pillar.contentCreators ?? 0)}
-                    delta={pillar.contentCreatorsDeltaPct ?? null}
-                  />
-                  <Stat
-                    label="New content"
-                    value={formatNumber(pillar.newContent)}
-                    delta={pillar.newContentDeltaPct ?? null}
-                  />
-                </>
-              )}
+              <Stat label="GMV per Creator" value={formatRpFull(pillar.gmvPerCreator)} delta={null} />
+              <Stat
+                label="Total Creator"
+                value={pillar.contentCreators === undefined ? null : formatNumber(pillar.contentCreators)}
+                delta={pillar.contentCreatorsDeltaPct ?? null}
+              />
+              <Stat
+                label="# New Content"
+                value={pillar.newContent === undefined ? null : formatNumber(pillar.newContent)}
+                delta={pillar.newContentDeltaPct ?? null}
+              />
+              <Stat label="Profit Creators" value={formatNumber(pillar.profitCreators)} delta={pillar.creatorsDeltaPct} />
             </div>
           </div>
         ))}
@@ -119,7 +115,17 @@ export function ContentFunnel({ marketplace }: { marketplace: FunnelMarketplace 
   )
 }
 
-function Stat({ label, value, delta }: { label: string; value: string; delta: number | null }) {
+function Stat({ label, value, delta }: { label: string; value: string | null; delta: number | null }) {
+  if (value === null) {
+    return (
+      <div>
+        <div className="text-[11.5px] text-[var(--ov-mut)]">{label}</div>
+        <div className="mt-0.5 font-mono text-[14px] font-semibold text-[var(--ov-dim)]">—</div>
+        <div className="text-[12px] font-semibold text-[var(--ov-faint)]">tidak tersedia</div>
+      </div>
+    )
+  }
+
   return (
     <div>
       <div className="text-[11.5px] text-[var(--ov-mut)]">{label}</div>

@@ -1,5 +1,6 @@
 "use client"
 
+import { useRef, useState, type ReactNode } from "react"
 import {
   CartesianGrid,
   ReferenceLine,
@@ -22,6 +23,8 @@ interface AxisSpec {
 
 interface PresetSpec {
   name: string
+  /** What question this view answers — shown first so the reader can pick without trial and error. */
+  purpose: string
   why: string
   x: AxisSpec
   y: AxisSpec
@@ -34,8 +37,9 @@ const plain: AxisSpec["format"] = (v) => formatCompact(v)
 
 export const QUADRANT_PRESETS: Record<QuadrantPreset, PresetSpec> = {
   "gmv-growth": {
-    name: "GMV × Growth",
-    why: "Memisahkan produk bervolume besar dari produk yang sedang tumbuh cepat.",
+    name: "Skala × Momentum",
+    purpose: "Cari tahu produk mana yang menopang GMV sekarang, dan mana yang sedang naik cepat.",
+    why: "Sumbu X GMV periode ini, sumbu Y pertumbuhannya vs periode pembanding.",
     x: { label: "GMV", value: (r) => r.gmv, format: money },
     y: { label: "GMV Growth", value: (r) => (r.growth === null ? null : r.growth * 100), format: pct },
     quadrants: [
@@ -46,8 +50,9 @@ export const QUADRANT_PRESETS: Record<QuadrantPreset, PresetSpec> = {
     ],
   },
   "clicks-corate": {
-    name: "Clicks × CO Rate",
-    why: "Membedakan produk yang ramai trafik dari produk yang efisien mengonversi.",
+    name: "Efisiensi trafik · Clicks × CO Rate",
+    purpose: "Cari produk yang ramai dilihat tapi jarang dibeli, atau sebaliknya.",
+    why: "Sumbu X jumlah klik, sumbu Y rasio klik yang berujung order.",
     x: { label: "Clicks", value: (r) => r.spClicks, format: plain },
     y: { label: "CO Rate", value: (r) => (r.spCoRate === null ? null : r.spCoRate * 100), format: pct },
     quadrants: [
@@ -58,8 +63,9 @@ export const QUADRANT_PRESETS: Record<QuadrantPreset, PresetSpec> = {
     ],
   },
   "asp-units": {
-    name: "ASP × Units Sold",
-    why: "Melihat posisi harga rata-rata terhadap volume penjualan.",
+    name: "Harga × Volume · ASP × Units",
+    purpose: "Lihat apakah produk bertahan lewat harga tinggi atau lewat jumlah terjual.",
+    why: "Sumbu X harga jual rata-rata, sumbu Y unit terjual.",
     x: {
       label: "ASP",
       value: (r) => (r.spProductSold > 0 ? r.spGmv / r.spProductSold : null),
@@ -74,8 +80,9 @@ export const QUADRANT_PRESETS: Record<QuadrantPreset, PresetSpec> = {
     ],
   },
   "commrate-growth": {
-    name: "Commission Rate × Growth",
-    why: "Mengecek apakah komisi yang lebih besar benar-benar berbuah pertumbuhan.",
+    name: "Imbal hasil komisi · Rate × Growth",
+    purpose: "Cek apakah komisi yang lebih besar benar-benar berbuah pertumbuhan.",
+    why: "Sumbu X porsi komisi terhadap GMV, sumbu Y pertumbuhan GMV.",
     x: {
       label: "Commission Rate",
       value: (r) => (r.spGmv > 0 ? (r.spCommission / r.spGmv) * 100 : null),
@@ -90,8 +97,9 @@ export const QUADRANT_PRESETS: Record<QuadrantPreset, PresetSpec> = {
     ],
   },
   "buyers-newshare": {
-    name: "Buyers × New Buyer Share",
-    why: "Memisahkan produk dengan basis pembeli mapan dari produk yang menarik pembeli baru.",
+    name: "Akuisisi pembeli · Buyers × New Share",
+    purpose: "Pisahkan produk berbasis pembeli lama dari produk yang menarik pembeli baru.",
+    why: "Sumbu X jumlah pembeli, sumbu Y porsi yang baru pertama kali membeli.",
     x: { label: "Buyers", value: (r) => r.spBuyers, format: plain },
     y: {
       label: "New Buyer Share",
@@ -159,7 +167,7 @@ function OutlierDot({
   if (cx === undefined || cy === undefined || !payload) return <g />
   const { pinX, pinY } = payload
   if (pinX === 0 && pinY === 0) {
-    return <circle cx={cx} cy={cy} r={3.2} fill={fill} fillOpacity={fillOpacity} />
+    return <circle data-pid={payload.pid} cx={cx} cy={cy} r={3.2} fill={fill} fillOpacity={fillOpacity} />
   }
   // SVG y grows downward, so an upper-fence pin points towards a smaller y.
   const chevron = (dx: number, dy: number) => {
@@ -169,7 +177,7 @@ function OutlierDot({
     return <path d={d} fill="none" stroke={fill} strokeWidth={1.3} strokeLinecap="round" strokeLinejoin="round" />
   }
   return (
-    <g>
+    <g data-pid={payload.pid}>
       <circle
         cx={cx}
         cy={cy}
@@ -190,13 +198,18 @@ export function ProductQuadrant({
   rows,
   preset,
   excludeOutliers,
+  selectedPids,
   onSelectAction,
+  onSelectManyAction,
   height = 560,
 }: {
   rows: PidProductRow[]
   preset: QuadrantPreset
   excludeOutliers: boolean
+  selectedPids: string[]
   onSelectAction: (pid: string) => void
+  /** Dragging a rectangle over the plot hands back every product inside it. */
+  onSelectManyAction: (pids: string[]) => void
   height?: number
 }) {
   const spec = QUADRANT_PRESETS[preset]
@@ -306,20 +319,110 @@ export function ProductQuadrant({
     </ResponsiveContainer>
   )
 
-  if (!excludeOutliers || pinnedCount === 0) return chart
-
   return (
     <div>
-      {chart}
-      <div className="mt-1.5 text-[11.5px] text-[var(--ov-faint)]">
-        {pinnedCount} produk di luar pagar — lingkaran putus-putus dengan panah di batas terluar sisinya, nilai
-        aslinya ada di tooltip.
+      <DragSelect onSelectManyAction={onSelectManyAction}>{chart}</DragSelect>
+      <div className="mt-1.5 flex flex-wrap gap-x-3 text-[11.5px] text-[var(--ov-faint)]">
+        <span>Tarik kursor di area chart untuk memilih beberapa produk sekaligus.</span>
+        {selectedPids.length > 0 && (
+          <span className="font-semibold text-[var(--accent-foreground)]">
+            {selectedPids.length} produk terpilih · tabel produk ikut disaring
+          </span>
+        )}
+        {excludeOutliers && pinnedCount > 0 && (
+          <span>
+            {pinnedCount} produk di luar pagar digambar di batas terluar; nilai aslinya ada di tooltip.
+          </span>
+        )}
       </div>
     </div>
   )
 }
 
-export function QuadrantLegendInfo({
+/**
+ * Rubber-band selection. Each dot carries its pid in the DOM, so the rectangle is hit-tested
+ * against the rendered circles — no access to the chart's internal scales needed.
+ */
+function DragSelect({
+  onSelectManyAction,
+  children,
+}: {
+  onSelectManyAction: (pids: string[]) => void
+  children: ReactNode
+}) {
+  const hostRef = useRef<HTMLDivElement>(null)
+  const startRef = useRef<{ x: number; y: number } | null>(null)
+  const [box, setBox] = useState<{ left: number; top: number; width: number; height: number } | null>(null)
+
+  const pointFrom = (e: React.PointerEvent) => {
+    const host = hostRef.current?.getBoundingClientRect()
+    if (!host) return null
+    return { x: e.clientX - host.left, y: e.clientY - host.top }
+  }
+
+  return (
+    <div
+      ref={hostRef}
+      className="relative touch-none select-none"
+      onPointerDown={(e) => {
+        if (e.button !== 0) return
+        const p = pointFrom(e)
+        if (!p) return
+        startRef.current = p
+        setBox({ left: p.x, top: p.y, width: 0, height: 0 })
+      }}
+      onPointerMove={(e) => {
+        const start = startRef.current
+        const p = start && pointFrom(e)
+        if (!start || !p) return
+        setBox({
+          left: Math.min(start.x, p.x),
+          top: Math.min(start.y, p.y),
+          width: Math.abs(p.x - start.x),
+          height: Math.abs(p.y - start.y),
+        })
+      }}
+      onPointerUp={() => {
+        const host = hostRef.current
+        const current = box
+        startRef.current = null
+        setBox(null)
+        // A click, not a drag: leave it to the dot's own click handler.
+        if (!host || !current || current.width < 6 || current.height < 6) return
+
+        const hostBox = host.getBoundingClientRect()
+        const picked: string[] = []
+        for (const node of host.querySelectorAll<SVGElement>("[data-pid]")) {
+          const r = node.getBoundingClientRect()
+          const cx = r.left + r.width / 2 - hostBox.left
+          const cy = r.top + r.height / 2 - hostBox.top
+          const pid = node.getAttribute("data-pid")
+          if (
+            pid &&
+            cx >= current.left &&
+            cx <= current.left + current.width &&
+            cy >= current.top &&
+            cy <= current.top + current.height
+          ) {
+            picked.push(pid)
+          }
+        }
+        onSelectManyAction(picked)
+      }}
+    >
+      {children}
+      {box && box.width > 2 && box.height > 2 && (
+        <div
+          className="pointer-events-none absolute rounded border-2 border-dashed border-[var(--ov-blue)] bg-[var(--ov-blue)]/10"
+          style={{ left: box.left, top: box.top, width: box.width, height: box.height }}
+        />
+      )}
+    </div>
+  )
+}
+
+/** The chart itself stays clean; everything explanatory lives behind this marker. */
+export function QuadrantInfo({
   preset,
   excludeOutliers = false,
 }: {
@@ -327,23 +430,39 @@ export function QuadrantLegendInfo({
   excludeOutliers?: boolean
 }) {
   const spec = QUADRANT_PRESETS[preset]
+
   return (
-    <div className="flex flex-col gap-1 text-[11.5px] text-[var(--ov-faint)]">
-      <div className="text-[var(--ov-mut2)]">{spec.why}</div>
-      <div className="mt-1 grid grid-cols-1 gap-x-6 gap-y-0.5 sm:grid-cols-2">
-        {spec.quadrants.map((q) => (
-          <div key={q.pos} className="grid grid-cols-[76px_minmax(0,1fr)] gap-2">
-            <span>{q.pos}</span>
-            <span className="text-[var(--ov-mut2)]">{q.label}</span>
-          </div>
-        ))}
-      </div>
-      <div className="mt-1">
-        Garis putus-putus = median masing-masing sumbu.
-        {excludeOutliers
-          ? " Skala mengikuti pagar IQR 1.5×; produk di luar pagar tetap tampil, dijepit ke batas terluar sisinya."
-          : ""}
-      </div>
-    </div>
+    <span className="group relative inline-flex">
+      <span
+        className="flex h-6 w-6 cursor-help items-center justify-center rounded-full border border-[var(--ov-line)] text-[11px] font-bold text-[var(--ov-faint)]"
+        aria-label="Keterangan quadrant"
+      >
+        i
+      </span>
+      <span className="pointer-events-none absolute top-full right-0 z-50 hidden pt-2 group-hover:block">
+        <span
+          className="block w-[360px] rounded-[10px] border border-[var(--ov-track)] p-3.5 text-[11.5px] shadow-[0_18px_40px_-16px_var(--ov-shadow)]"
+          style={{ background: "var(--ov-tooltip)" }}
+        >
+          <span className="block text-[12.5px] font-semibold text-[var(--ov-soft)]">{spec.purpose}</span>
+          <span className="mt-1.5 block text-[var(--ov-faint)]">{spec.why}</span>
+          <span className="mt-2.5 block border-t border-[var(--ov-line)] pt-2.5">
+            {spec.quadrants.map((q) => (
+              <span key={q.pos} className="mt-1 grid grid-cols-[76px_minmax(0,1fr)] gap-2">
+                <span className="text-[var(--ov-faint)]">{q.pos}</span>
+                <span className="text-[var(--ov-mut2)]">{q.label}</span>
+              </span>
+            ))}
+          </span>
+          <span className="mt-2.5 block border-t border-[var(--ov-line)] pt-2.5 text-[var(--ov-faint)]">
+            Garis putus-putus = median masing-masing sumbu. Tarik kursor di area chart untuk memilih
+            beberapa produk sekaligus.
+            {excludeOutliers
+              ? " Skala mengikuti pagar IQR 1.5×; produk di luar pagar tetap tampil, dijepit ke batas terluar sisinya."
+              : ""}
+          </span>
+        </span>
+      </span>
+    </span>
   )
 }

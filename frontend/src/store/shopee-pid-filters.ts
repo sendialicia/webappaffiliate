@@ -15,6 +15,10 @@ interface ShopeePidState {
   selectedPids: string[]
   /** Which count card is filtering the product table. */
   countFilter: "all" | "profit" | "decline"
+  /** Products picked by dragging a rectangle on the quadrant; also narrows the product table. */
+  quadrantSelection: string[]
+  /** How many rows the top creators table shows. */
+  creatorLimit: number
   quadrant: QuadrantPreset
   excludeOutliers: boolean
   search: string
@@ -33,6 +37,8 @@ interface ShopeePidState {
   setSelectedPids: (pids: string[]) => void
   toggleSelectedPid: (pid: string) => void
   setCountFilter: (filter: "all" | "profit" | "decline") => void
+  setQuadrantSelection: (pids: string[]) => void
+  setCreatorLimit: (limit: number) => void
   setQuadrant: (quadrant: QuadrantPreset) => void
   setExcludeOutliers: (exclude: boolean) => void
   setSearch: (search: string) => void
@@ -55,6 +61,8 @@ export const useShopeePidFilters = create<ShopeePidState>((set) => ({
   scope: null,
   selectedPids: [],
   countFilter: "all",
+  quadrantSelection: [],
+  creatorLimit: 20,
   quadrant: "gmv-growth",
   excludeOutliers: false,
   search: "",
@@ -79,6 +87,8 @@ export const useShopeePidFilters = create<ShopeePidState>((set) => ({
         ? state.selectedPids.filter((p) => p !== pid)
         : [...state.selectedPids, pid],
     })),
+  setQuadrantSelection: (quadrantSelection) => set({ quadrantSelection }),
+  setCreatorLimit: (creatorLimit) => set({ creatorLimit }),
   setCountFilter: (countFilter) =>
     set((state) => ({ countFilter: state.countFilter === countFilter ? "all" : countFilter })),
   setQuadrant: (quadrant) => set({ quadrant }),

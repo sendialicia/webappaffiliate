@@ -10,7 +10,7 @@ import { CategoryTable } from "@/components/shopee-pid/category-table"
 import { ProductTable } from "@/components/shopee-pid/product-table"
 import { ProductDetail } from "@/components/shopee-pid/product-detail"
 import { TopCreatorsTable } from "@/components/shopee-pid/top-creators-table"
-import { ProductQuadrant, QUADRANT_PRESETS, QuadrantLegendInfo } from "@/components/charts/product-quadrant"
+import { ProductQuadrant, QUADRANT_PRESETS, QuadrantInfo } from "@/components/charts/product-quadrant"
 import {
   Area,
   AreaChart,
@@ -32,6 +32,9 @@ import type {
   PidTrendPoint,
   QuadrantPreset,
 } from "@/types/shopee-pid"
+
+/** How many lassoed products the combined deep dive will load at once. */
+const DEEP_DIVE_LIMIT = 50
 
 const SECTION_NAV = [
   { id: "pp-sec-1", label: "1 · Category" },
@@ -68,6 +71,8 @@ function ShopeePidPageInner() {
     scope,
     selectedPids,
     countFilter,
+    quadrantSelection,
+    creatorLimit,
     quadrant,
     excludeOutliers,
     search,
@@ -80,6 +85,8 @@ function ShopeePidPageInner() {
     setSelectedPids,
     toggleSelectedPid,
     setCountFilter,
+    setQuadrantSelection,
+    setCreatorLimit,
   } = filters
 
   const prevParams =
@@ -92,6 +99,8 @@ function ShopeePidPageInner() {
   const [creators, setCreators] = useState<PidCreatorsResult | null>(null)
   const [showPillars, setShowPillars] = useState(true)
   const [showShopee, setShowShopee] = useState(true)
+  // Which section the reader last touched, so the download menu can offer it first.
+  const [lastSection, setLastSection] = useState<string | null>(null)
   const [scopeRowVisible, setScopeRowVisible] = useState(true)
   const scopeRowRef = useRef<HTMLDivElement>(null)
   const [error, setError] = useState<string | null>(null)
@@ -201,19 +210,20 @@ function ShopeePidPageInner() {
         ...scopeQuery,
         pillar: creatorPillar ?? undefined,
         managed: creatorManaged === null ? undefined : String(creatorManaged),
-        limit: "25",
+        limit: String(creatorLimit),
       })}`,
     )
       .then(setCreators)
       .catch((e) => setError(e instanceof Error ? e.message : "Gagal memuat creator"))
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [brand, from, to, level, scope, creatorPillar, creatorManaged])
+  }, [brand, from, to, level, scope, creatorPillar, creatorManaged, creatorLimit])
 
   const visibleProducts = useMemo(() => {
     if (!products) return []
     const q = search.trim().toLowerCase()
     return products.rows
       .filter((r) => r.inScope)
+      .filter((r) => quadrantSelection.length === 0 || quadrantSelection.includes(r.pid))
       .filter((r) =>
         countFilter === "profit"
           ? r.gmv > 0
@@ -222,7 +232,7 @@ function ShopeePidPageInner() {
             : true,
       )
       .filter((r) => !q || r.name.toLowerCase().includes(q) || r.pid.toLowerCase().includes(q))
-  }, [products, search, countFilter])
+  }, [products, search, countFilter, quadrantSelection])
 
   const scopeLabel = scope ?? "Seluruh kategori"
 
@@ -295,7 +305,12 @@ function ShopeePidPageInner() {
       active="shopee-pid"
       sectionNav={SECTION_NAV}
     >
-      <FilterBar brandOptions={BRAND_OPTIONS} mergeScope={!scopeRowVisible} downloads={downloads} />
+      <FilterBar
+        brandOptions={BRAND_OPTIONS}
+        mergeScope={!scopeRowVisible}
+        downloads={downloads}
+        lastSection={lastSection}
+      />
 
       {error && (
         <div className="mx-6 mt-4 rounded-lg border border-[var(--ov-red)]/40 bg-[var(--ov-red)]/10 px-4 py-3 text-sm text-[var(--ov-red-ink)] md:mx-8">
@@ -331,7 +346,10 @@ function ShopeePidPageInner() {
               total={categories.total}
               rows={categories.rows}
               scope={scope}
-              onScopeAction={setScope}
+              onScopeAction={(name) => {
+                setScope(name)
+                setLastSection("kategori")
+              }}
               showPillars={showPillars}
               showShopee={showShopee}
             />
@@ -455,16 +473,31 @@ function ShopeePidPageInner() {
                   ))}
                 </SelectContent>
               </Select>
+              <QuadrantInfo preset={quadrant} excludeOutliers={excludeOutliers} />
+              {quadrantSelection.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setQuadrantSelection([])}
+                  className="rounded-full border border-[var(--ov-line)] px-3 py-1.5 text-xs font-semibold text-[var(--ov-soft)] hover:bg-[var(--ov-fill1)]"
+                >
+                  Lepas {quadrantSelection.length} produk terpilih
+                </button>
+              )}
             </div>
-          </div>
-          <div className="mb-2.5">
-            <QuadrantLegendInfo preset={quadrant} excludeOutliers={excludeOutliers} />
           </div>
           {products ? (
             <ProductQuadrant
               rows={products.rows}
               preset={quadrant}
               excludeOutliers={excludeOutliers}
+              selectedPids={quadrantSelection}
+              onSelectManyAction={(pids) => {
+                setQuadrantSelection(pids)
+                // The detail endpoint takes the ids in the query string, so a huge lasso
+                // narrows the table but only opens a readable slice in the deep dive.
+                setSelectedPids(pids.slice(0, DEEP_DIVE_LIMIT))
+                setLastSection("quadrant")
+              }}
               onSelectAction={(pid) => setSelectedPids([pid])}
             />
           ) : (
@@ -505,8 +538,14 @@ function ShopeePidPageInner() {
             <ProductTable
               rows={visibleProducts}
               selectedPids={selectedPids}
-              onSelectAction={(pid) => setSelectedPids([pid])}
-              onToggleAction={toggleSelectedPid}
+              onSelectAction={(pid) => {
+                setSelectedPids([pid])
+                setLastSection("produk")
+              }}
+              onToggleAction={(pid) => {
+                toggleSelectedPid(pid)
+                setLastSection("produk")
+              }}
               onSetSelectionAction={setSelectedPids}
               showPillars={showPillars}
               showShopee={showShopee}
@@ -577,6 +616,21 @@ function ShopeePidPageInner() {
                     <SelectItem value="__all__">Semua</SelectItem>
                     <SelectItem value="true">Managed</SelectItem>
                     <SelectItem value="false">Organic</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select
+                  value={String(creatorLimit)}
+                  onValueChange={(v) => v && setCreatorLimit(Number(v))}
+                >
+                  <SelectTrigger className="h-7 w-24 bg-[var(--input)] text-xs">
+                    <SelectValue>{(v: string) => `Top ${v}`}</SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {[10, 20, 50, 100].map((n) => (
+                      <SelectItem key={n} value={String(n)}>
+                        Top {n}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -680,13 +734,20 @@ function CountCard({
       type="button"
       onClick={onClickAction}
       title="Klik untuk menyaring tabel produk di bawah"
-      className="rounded-xl border p-4 text-left shadow-[0_18px_34px_-22px_var(--ov-shadow)] hover:border-[var(--accent)]"
+      className="rounded-xl border-2 p-4 text-left shadow-[0_18px_34px_-22px_var(--ov-shadow)] hover:border-[var(--accent)]"
       style={{
-        background: "var(--ov-card-gradient)",
-        borderColor: active ? "var(--accent)" : "var(--ov-line)",
+        background: active ? "var(--ov-card-gradient-soft)" : "var(--ov-card-gradient)",
+        borderColor: active ? "var(--accent-foreground)" : "var(--ov-line)",
       }}
     >
-      <div className="text-[13px] leading-snug font-semibold text-[var(--ov-mut)]">{label}</div>
+      <div className="flex items-center gap-2 text-[13px] leading-snug font-semibold text-[var(--ov-mut)]">
+        {label}
+        {active && (
+          <span className="ml-auto rounded-full bg-[var(--accent)] px-2 py-0.5 text-[10px] font-bold text-[var(--accent-foreground)]">
+            menyaring tabel
+          </span>
+        )}
+      </div>
       <div
         className="mt-2 text-3xl font-bold tracking-tight font-(family-name:--font-archivo)"
         style={{ color: color ?? "var(--ov-ink)" }}

@@ -25,12 +25,14 @@ export function FilterBar({
   /** True once the in-page detail row has scrolled away, so it merges in here. */
   mergeDetail,
   downloads,
+  lastSection,
 }: {
   brandOptions: string[]
   marketplaceOptions: string[]
   dimensionOptions: FilterOption[]
   mergeDetail: boolean
   downloads: DownloadItem[]
+  lastSection?: string | null
 }) {
   const {
     brand,
@@ -164,7 +166,7 @@ export function FilterBar({
       )}
 
       <div className="ml-auto flex flex-none items-center gap-1.5 pl-1.5">
-        <DownloadMenu items={downloads} filePrefix={FILE_PREFIX} />
+        <DownloadMenu items={downloads} filePrefix={FILE_PREFIX} highlightId={lastSection} />
         <button
           type="button"
           onClick={() => {
