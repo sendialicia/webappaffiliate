@@ -1,0 +1,1379 @@
+<title>Product Deep Dive</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700&family=Barlow:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+
+<style>
+  /* Dark-only on purpose: this previews a section inside an app whose dark theme
+     is the reference. Every colour is painted explicitly so it holds on any host. */
+  :root {
+    --page: #0a1628;
+    --card: linear-gradient(160deg, #152c49 0%, #102138 100%);
+    --card-soft: linear-gradient(160deg, #1c3a5e 0%, #16294a 100%);
+    --line: rgba(122, 162, 208, 0.15);
+    --track: rgba(122, 162, 208, 0.16);
+    --fill1: rgba(122, 162, 208, 0.08);
+    --fill2: rgba(122, 162, 208, 0.05);
+    --ink: #e9f0f8;
+    --soft: #c6d7e9;
+    --mut: #93aac6;
+    --faint: #7f96b2;
+    --dim: #5f748d;
+    --gold: #f2c14e;
+    --blue: #4aa3e0;
+    --red: #ef5f7a;
+    --green: #2ec27e;
+    --violet: #bdb5ff;
+    --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+    --head: "Archivo", "Segoe UI", system-ui, sans-serif;
+    --body: "Barlow", "Segoe UI", system-ui, sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--page);
+    color: var(--ink);
+    font-family: var(--body);
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  .wrap {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding-inline: 16px;
+    padding-block: 28px 64px;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+  }
+
+  h1, h2, h3 { font-family: var(--head); text-wrap: balance; margin: 0; }
+
+  .eyebrow {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--faint);
+  }
+
+  .num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+  .pos { color: var(--green); }
+  .neg { color: var(--red); }
+
+  /* ---------- page header ---------- */
+  .pagehead { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 16px; }
+  .pagehead h1 { font-size: 30px; font-weight: 700; letter-spacing: -0.02em; }
+  .pagehead p { margin: 4px 0 0; color: var(--mut); font-size: 13.5px; max-width: 62ch; }
+
+  .mp-toggle {
+    margin-left: auto;
+    display: flex;
+    gap: 2px;
+    padding: 3px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: var(--fill1);
+  }
+  .mp-toggle button {
+    border: 0;
+    background: transparent;
+    color: var(--mut);
+    font: 600 12.5px var(--body);
+    padding: 7px 16px;
+    border-radius: 999px;
+    cursor: pointer;
+  }
+  .mp-toggle button[aria-pressed="true"] {
+    background: linear-gradient(100deg, #1b3f6b 0%, #17355c 100%);
+    color: #fff;
+  }
+  .mp-toggle button:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+
+  /* ---------- notice ---------- */
+  .notice {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 22px;
+    padding: 14px 16px;
+    border: 1px dashed rgba(242, 193, 78, 0.38);
+    border-radius: 12px;
+    background: rgba(242, 193, 78, 0.06);
+    font-size: 12.5px;
+    color: var(--soft);
+  }
+  .notice b { color: var(--gold); font-weight: 600; }
+  .notice > span { flex: 1 1 260px; }
+
+  /* ---------- cards ---------- */
+  .card {
+    position: relative;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 18px;
+    box-shadow: 0 10px 30px -22px rgba(0, 0, 0, 0.9);
+  }
+  .card > header { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+  .card h2 { font-size: 16px; font-weight: 700; }
+  .card header .sub { font-size: 12px; color: var(--faint); }
+
+  .row2 { display: grid; gap: 18px; grid-template-columns: minmax(0, 55fr) minmax(0, 45fr); }
+  @media (max-width: 940px) { .row2 { grid-template-columns: minmax(0, 1fr); } }
+
+  .step {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--faint);
+  }
+  .step i {
+    width: 19px; height: 19px;
+    display: grid; place-items: center;
+    border-radius: 6px;
+    border: 1px solid var(--track);
+    background: var(--fill1);
+    font-family: var(--mono);
+    font-size: 10px;
+    font-style: normal;
+    color: var(--gold);
+  }
+
+  /* ---------- product table stub ---------- */
+  .stub { border: 1px solid var(--line); border-radius: 14px; overflow: hidden; background: var(--fill2); }
+  .stub .cap { padding: 9px 14px; font-size: 11.5px; color: var(--faint); border-bottom: 1px solid var(--line); }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { text-align: left; padding: 9px 14px; font-size: 12.5px; }
+  th { font-size: 10.5px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--faint); font-weight: 700; }
+  tbody tr { border-top: 1px solid var(--line); }
+  td.n, th.n { text-align: right; font-family: var(--mono); font-variant-numeric: tabular-nums; }
+  th.n { font-family: var(--body); }
+  tr.on { background: rgba(74, 163, 224, 0.13); }
+  tr.on td:first-child { box-shadow: inset 3px 0 0 var(--gold); }
+
+  /* ---------- baris A ---------- */
+  .identity { display: flex; gap: 16px; align-items: flex-start; flex-wrap: wrap; }
+  .shot {
+    width: 74px; height: 74px; flex: none;
+    border-radius: 12px;
+    border: 1px solid var(--track);
+    background: linear-gradient(150deg, #27547f, #1b3a63);
+    display: grid; place-items: center;
+    color: var(--blue); font-size: 24px;
+  }
+  .identity .meta { min-width: 220px; flex: 1 1 320px; }
+  .identity h3 { font-size: 18px; font-weight: 700; line-height: 1.3; }
+  .badges { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .badge {
+    font-size: 10.5px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+    padding: 3px 9px; border-radius: 999px;
+    border: 1px solid var(--track); color: var(--mut); background: var(--fill1);
+  }
+  .badge.pid { font-family: var(--mono); letter-spacing: 0; text-transform: none; color: var(--soft); }
+
+  .kpis {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(118px, 1fr));
+    gap: 1px;
+    margin-top: 16px;
+    background: var(--line);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .kpi { background: #102138; padding: 11px 13px; }
+  .kpi .k { font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--faint); font-weight: 700; }
+  .kpi .v { font-family: var(--mono); font-variant-numeric: tabular-nums; font-size: 17px; font-weight: 600; margin-top: 3px; }
+  .kpi .d { font-size: 11.5px; margin-top: 2px; color: var(--dim); }
+  .kpi .d .num { font-size: 11.5px; }
+  .kpi .x { font-size: 11px; color: var(--faint); margin-top: 1px; }
+
+  /* The KPI whose delta can be taken apart says so, and opens on hover or focus. */
+  .kpi.hoverable { position: relative; cursor: help; }
+  .kpi.hoverable:hover, .kpi.hoverable:focus-visible { background: #16294a; outline: none; }
+  .kpi .why {
+    display: inline-grid; place-items: center;
+    width: 13px; height: 13px; border-radius: 999px;
+    border: 1px solid var(--track); background: var(--fill1);
+    font-size: 8.5px; font-weight: 700; color: var(--faint);
+    vertical-align: 1px;
+  }
+  #kpipop {
+    position: absolute; z-index: 20;
+    width: 330px; max-width: calc(100% - 36px);
+    padding: 13px 14px;
+    background: #12263d;
+    border: 1px solid var(--track);
+    border-radius: 12px;
+    box-shadow: 0 22px 50px -18px rgba(0, 0, 0, 0.95);
+    opacity: 0; visibility: hidden; transform: translateY(-4px);
+    transition: opacity 0.12s ease, transform 0.12s ease;
+    pointer-events: none;
+  }
+  #kpipop.on { opacity: 1; visibility: visible; transform: translateY(0); }
+  @media (prefers-reduced-motion: reduce) { #kpipop { transition: none; } }
+  .poptitle {
+    font-family: var(--head); font-size: 12.5px; font-weight: 600; color: var(--ink);
+    padding-bottom: 9px; margin-bottom: 8px; border-bottom: 1px solid var(--line);
+  }
+  .popline {
+    display: grid; grid-template-columns: 112px minmax(0, 1fr) 78px;
+    gap: 9px; align-items: center; padding: 4px 0;
+  }
+  .popline > span:first-child { font-size: 12px; color: var(--soft); }
+  .popline small { display: block; font-size: 10.5px; color: var(--faint); font-family: var(--mono); }
+  .popbar { height: 8px; background: var(--fill2); border-radius: 3px; overflow: hidden; }
+  .popbar i { display: block; height: 100%; border-radius: 3px; }
+  .popline b { text-align: right; font-size: 12px; }
+  .popfoot {
+    margin-top: 9px; padding-top: 8px; border-top: 1px solid var(--line);
+    font-size: 11px; line-height: 1.55; color: var(--faint);
+  }
+  .popfoot b { color: var(--mut); font-weight: 600; }
+
+  /* ---------- trend ---------- */
+  .chartwrap { position: relative; user-select: none; touch-action: none; }
+  .chartwrap svg { display: block; width: 100%; height: auto; cursor: crosshair; }
+  .legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 11.5px; color: var(--mut); margin-bottom: 10px; }
+  .legend i { display: inline-block; width: 16px; height: 0; border-top-width: 2px; border-top-style: solid; vertical-align: middle; margin-right: 6px; }
+
+  .pillars { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); }
+  .pilbar { display: flex; height: 10px; border-radius: 5px; overflow: hidden; background: var(--fill2); }
+  .pilbar i { display: block; height: 100%; }
+  .pilkeys { display: flex; flex-wrap: wrap; gap: 8px 18px; margin-top: 9px; }
+  .pilkey { display: flex; align-items: baseline; gap: 6px; font-size: 12px; color: var(--soft); }
+  .pilkey > i { width: 8px; height: 8px; border-radius: 2px; flex: none; align-self: center; }
+  .pilkey b { font-size: 12.5px; font-weight: 600; }
+  .pilkey small { font-size: 11px; }
+  .pilnote { margin: 9px 0 0; font-size: 11.5px; color: var(--faint); line-height: 1.5; }
+  .pilnote b { color: var(--mut); font-weight: 600; }
+
+  .rangebar {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+    margin-top: 10px; font-size: 12px; color: var(--mut);
+  }
+  .chip {
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 4px 11px; border-radius: 999px;
+    border: 1px solid rgba(242, 193, 78, 0.45);
+    background: rgba(242, 193, 78, 0.12);
+    color: var(--gold); font-weight: 600; font-size: 11.5px;
+  }
+  .chip button {
+    border: 0; background: transparent; color: inherit; cursor: pointer;
+    font-size: 14px; line-height: 1; padding: 0; opacity: 0.75;
+  }
+  .chip button:hover { opacity: 1; }
+  .hint { font-size: 11.5px; color: var(--faint); }
+
+  /* ---------- waterfall ---------- */
+  .wf { display: flex; flex-direction: column; gap: 3px; }
+  .wf .anchor {
+    display: flex; justify-content: space-between; align-items: baseline; gap: 12px;
+    padding: 9px 11px; border-radius: 9px; background: var(--fill1);
+    font-size: 12.5px; color: var(--soft);
+  }
+  .wf .anchor b { font-family: var(--head); font-size: 12.5px; font-weight: 600; }
+  .wfrow .bar { position: relative; height: 20px; }
+  .wfrow .bar::before {
+    content: ""; position: absolute; left: 50%; top: -3px; bottom: -3px;
+    width: 1px; background: rgba(122, 162, 208, 0.34);
+  }
+  .wfrow .bar span {
+    position: absolute; top: 3px; height: 14px; border-radius: 3px;
+  }
+  .wfrow .amt { text-align: right; font-family: var(--mono); font-variant-numeric: tabular-nums; font-size: 12.5px; }
+  .wfrow {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 96px 92px;
+    align-items: center;
+    gap: 10px;
+    padding: 7px 11px 7px 24px;
+    border-radius: 8px;
+  }
+  .wfrow:hover { background: var(--fill2); }
+  .wfrow .lbl { font-size: 12.5px; color: var(--soft); line-height: 1.35; }
+  .wfrow .lbl em { font-style: normal; color: var(--faint); }
+  .wfrow .lbl small {
+    display: block; margin-top: 1px;
+    font-size: 11px; color: var(--faint);
+    font-family: var(--mono); font-variant-numeric: tabular-nums;
+  }
+  .wfband {
+    display: flex; justify-content: space-between; align-items: baseline; gap: 12px;
+    margin-top: 10px; padding: 0 11px 5px;
+    border-bottom: 1px solid var(--track);
+    font-family: var(--head); font-size: 13px; font-weight: 600; color: var(--ink);
+  }
+  .wfband small {
+    display: block; margin-top: 1px;
+    font-family: var(--mono); font-size: 11px; font-weight: 400; color: var(--faint);
+  }
+  .wfband b { font-size: 14px; }
+  .wfformula {
+    margin: 0 0 10px;
+    padding: 8px 12px;
+    background: var(--fill1);
+    border-radius: 8px;
+    font-size: 12px;
+    color: var(--mut);
+    text-align: center;
+  }
+  #tip {
+    position: absolute; z-index: 30;
+    max-width: min(420px, calc(100% - 24px));
+    padding: 9px 12px;
+    background: #12263d;
+    border: 1px solid var(--track);
+    border-radius: 9px;
+    box-shadow: 0 18px 44px -16px rgba(0, 0, 0, 0.95);
+    font-family: var(--mono); font-size: 11px; line-height: 1.7; color: var(--soft);
+    opacity: 0; visibility: hidden;
+    transition: opacity 0.1s ease;
+    pointer-events: none;
+  }
+  #tip.on { opacity: 1; visibility: visible; }
+  #tip b { color: var(--gold); font-weight: 600; }
+  #tip u { text-decoration: none; color: var(--ink); font-weight: 600; }
+  @media (prefers-reduced-motion: reduce) { #tip { transition: none; } }
+  .wfrow[data-tip] { cursor: help; }
+
+  details.calc { margin-top: 12px; border-top: 1px solid var(--line); padding-top: 10px; }
+  details.calc summary {
+    cursor: pointer; font-size: 12px; font-weight: 600; color: var(--blue); list-style: none;
+  }
+  details.calc summary::-webkit-details-marker { display: none; }
+  details.calc summary::before { content: "▸ "; }
+  details.calc[open] summary::before { content: "▾ "; }
+  details.calc summary:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+  .formula {
+    margin: 10px 0 8px; padding: 10px 12px;
+    background: var(--fill1); border-radius: 9px;
+    font-family: var(--mono); font-size: 12.5px; color: var(--ink); text-align: center;
+  }
+  .calcgrid { margin-top: 10px; overflow-x: auto; }
+  .calcgrid table { font-size: 11.5px; }
+  .calcgrid th, .calcgrid td { padding: 6px 8px; white-space: nowrap; }
+  .calcgrid table { min-width: 100%; }
+  .calcgrid td.swap { color: var(--gold); font-weight: 600; }
+  .calcgrid tbody tr:last-child td { border-top: 1px solid var(--track); }
+  .wfnote { margin-top: 12px; font-size: 11.5px; color: var(--faint); line-height: 1.55; }
+  .wfnote b { color: var(--mut); font-weight: 600; }
+
+  /* ---------- funnel ---------- */
+  .fn { display: flex; flex-direction: column; gap: 2px; }
+  .fnrow {
+    display: grid;
+    grid-template-columns: 128px minmax(0, 1fr) 150px;
+    gap: 12px; align-items: center;
+    padding: 9px 11px; border-radius: 9px;
+  }
+  .fnrow.weak { background: rgba(239, 95, 122, 0.1); box-shadow: inset 2px 0 0 var(--red); }
+  .fnrow .stage { font-family: var(--mono); font-variant-numeric: tabular-nums; font-size: 13.5px; color: var(--ink); }
+  .fnrow .stage small { display: block; color: var(--faint); font-size: 11px; font-family: var(--body); margin-top: 1px; }
+  .fnbar.plain { background: transparent; display: flex; align-items: center; }
+  .fnbar.plain em { font-style: normal; font-size: 11px; color: var(--dim); }
+  .fnbar { position: relative; height: 22px; background: var(--fill2); border-radius: 4px; overflow: hidden; }
+  .fnbar > i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--blue); opacity: 0.55; border-radius: 4px; }
+  .fnbar > u {
+    position: absolute; top: -4px; bottom: -4px; width: 2px;
+    background: var(--gold); text-decoration: none;
+  }
+  .fnrow .cmp { text-align: right; font-size: 12px; }
+  .fnrow .cmp .num { font-size: 13px; font-weight: 600; }
+  .fnrow .cmp small { display: block; color: var(--faint); font-size: 11px; font-family: var(--mono); }
+
+  .verdict {
+    margin-top: 14px; padding: 12px 14px;
+    border-left: 2px solid var(--gold);
+    background: var(--fill2); border-radius: 0 9px 9px 0;
+    font-size: 13px; color: var(--soft); line-height: 1.6;
+  }
+  .verdict .why { display: block; margin-top: 5px; font-size: 11.5px; color: var(--faint); }
+
+  /* ---------- creators ---------- */
+  .tabs { display: flex; flex-wrap: wrap; gap: 4px; }
+  .tabs button {
+    border: 1px solid var(--line); background: var(--fill1); color: var(--mut);
+    font: 600 12px var(--body); padding: 7px 14px; border-radius: 999px; cursor: pointer;
+  }
+  .tabs button[aria-selected="true"] { background: rgba(74, 163, 224, 0.16); border-color: rgba(74, 163, 224, 0.5); color: #cfe6f8; }
+  .tabs button:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+  .tabs .count { font-family: var(--mono); font-size: 11px; opacity: 0.8; margin-left: 5px; }
+
+  .tabnote { font-size: 12px; color: var(--faint); margin: 12px 0 8px; line-height: 1.55; }
+  .scroller { overflow-x: auto; }
+  .pill { font-size: 9.5px; font-weight: 700; letter-spacing: 0.07em; padding: 2px 7px; border-radius: 999px; }
+  .pill.m { background: rgba(242, 193, 78, 0.16); color: var(--gold); }
+  .pill.o { background: var(--fill1); color: var(--faint); }
+  .est { color: var(--violet); }
+
+  .foot { font-size: 12px; color: var(--faint); padding-top: 4px; }
+
+  .open {
+    display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    font-size: 12.5px; color: var(--soft);
+  }
+  .open div { padding: 12px 14px; border: 1px solid var(--line); border-radius: 11px; background: var(--fill2); }
+  .open b { display: block; color: var(--gold); font-family: var(--head); font-size: 12px; font-weight: 600; margin-bottom: 4px; }
+
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="wrap">
+
+  <div class="pagehead">
+    <div>
+      <div class="eyebrow">Mockup · Shopee PID &amp; TikTok PID</div>
+      <h1>Product Deep Dive</h1>
+      <p>Angka di halaman ini dummy, tapi hitungannya nyata — waterfall dan corong
+         dihitung ulang dari total, jadi bisa dipakai untuk menilai apakah alurnya masuk akal.</p>
+    </div>
+    <div class="mp-toggle" role="group" aria-label="Marketplace">
+      <button type="button" id="mp-tt" aria-pressed="true">TikTok</button>
+      <button type="button" id="mp-sp" aria-pressed="false">Shopee</button>
+    </div>
+  </div>
+
+  <div class="notice">
+    <span><b>3 usulan dari spec.</b> Ditandai di panel masing-masing.</span>
+    <span><b>Baris D digabung</b> jadi satu panel 3 segmen — termasuk <i>Creator teratas</i>
+      produk ini, yang hilang di spec padahal itu yang dibutuhkan buat brief.</span>
+    <span><b>Panel penggerak memakai TT&nbsp;GMV / SP&nbsp;GMV</b>, bukan GMV Affiliate: kolom
+      impresi dan klik itu angka seluruh produk, termasuk pembeli non-affiliate. Kalau dipasang
+      ke GMV Affiliate, jumlah batangnya tidak akan sama dengan selisih angkanya.</span>
+    <span><b>Add to cart dikeluarkan dari tuas</b>, dan tuasnya dikelompokkan jadi
+      <i>efek order</i> + <i>efek AOV</i> — jadi GMV = Order × AOV kebaca langsung.</span>
+    <span><b>Konten tidak bisa jadi penggerak</b> di halaman produk — tabel konten tidak punya
+      product_id. Tapi <b>GMV per format</b> (live/video/product card) ada, dari kolom PILLAR di
+      tabel order — dipasang di bawah grafik tren.</span>
+    <span><b>Hover delta GMV Affiliate</b> di kartu KPI: pecahan jumlah creator vs GMV per
+      creator — sisi pasokan, pelengkap waterfall.</span>
+    <span><b>Sudah diputuskan:</b> deep dive hanya untuk satu produk, penanda kampanye
+      ditiadakan, dan rentang yang ditarik dibandingkan ke jendela sepanjang itu juga
+      tepat sebelumnya.</span>
+    <span><b>Batang menyebar dari nol</b>, bukan waterfall bertingkat, supaya sumbunya tidak
+      perlu dipotong. Hitungan tiap batang ada di tooltip, bukan memenuhi panel.</span>
+  </div>
+
+  <div class="stub">
+    <div class="cap">Tabel produk (sudah ada) — baris yang diklik menjadi produk di bawah</div>
+    <table>
+      <thead>
+        <tr>
+          <th>Produk</th><th>Kategori</th><th class="n">GMV Affiliate</th>
+          <th class="n">Growth</th><th class="n">Creators</th>
+        </tr>
+      </thead>
+      <tbody id="stub-rows"></tbody>
+    </table>
+  </div>
+
+  <!-- BARIS A -->
+  <section class="card">
+    <header>
+      <span class="step"><i>1</i> Produk ini seberapa besar?</span>
+    </header>
+    <div class="identity">
+      <div class="shot" aria-hidden="true">◧</div>
+      <div class="meta">
+        <h3 id="p-name">Wardah Colorfit Velvet Matte Lip Mousse 4.2g — Shade 05 Ruby Nude</h3>
+        <div class="badges">
+          <span class="badge pid" id="p-pid">PID 8829417766</span>
+          <span class="badge" id="p-cat">Skincare</span>
+          <span class="badge" id="p-sub">Lip</span>
+          <span class="badge" id="p-fmt">Single</span>
+        </div>
+      </div>
+    </div>
+    <div class="kpis" id="kpis"></div>
+    <div id="kpipop" role="note"></div>
+    <div class="foot" style="margin-top:12px">
+      Delta dibanding <span class="num" id="cmp-label">1–30 Agu 2026</span>.
+      Metrik rasio (CTR, CO rate, ROI, AOV) dihitung ulang dari total, bukan dirata-rata.
+    </div>
+  </section>
+
+  <!-- BARIS B -->
+  <div class="row2">
+    <section class="card">
+      <header>
+        <span class="step"><i>2</i> Bergerak ke mana, kapan?</span>
+        <h2 style="flex-basis:100%">Tren harian GMV</h2>
+      </header>
+      <div class="legend">
+        <span><i style="border-color:var(--gold)"></i>Periode ini</span>
+        <span><i style="border-color:var(--dim);border-top-style:dashed"></i>Periode pembanding</span>
+        <span><i style="border-color:var(--blue);border-top-style:dotted"></i>Median harian</span>
+      </div>
+      <div class="chartwrap" id="chartwrap"></div>
+      <div class="pillars" id="pillars"></div>
+      <div class="rangebar">
+        <span class="hint" id="range-hint">Tarik kursor di grafik untuk mempersempit rentang.</span>
+        <span class="chip" id="range-chip" hidden>
+          <span id="range-text"></span>
+          <button type="button" id="range-reset" aria-label="Kembali ke periode penuh">×</button>
+        </span>
+      </div>
+    </section>
+
+    <section class="card">
+      <header>
+        <span class="step"><i>3</i> Kenapa berubah?</span>
+        <h2 style="flex-basis:100%">Apa yang bikin GMV berubah? <span class="sub">vs periode pembanding</span></h2>
+      </header>
+      <p class="wfformula num" id="wfformula"></p>
+      <div class="wf" id="wf"></div>
+      <div class="wfnote" id="wfnote"></div>
+      <div id="tip" role="tooltip"></div>
+    </section>
+  </div>
+
+  <!-- BARIS C -->
+  <section class="card">
+    <header>
+      <span class="step"><i>4</i> Seberapa jauh dari wajar?</span>
+      <h2 style="flex-basis:100%">Corong produk ini <span class="sub">vs median sub-kategori <span id="fn-sub">Lip</span> di <span id="fn-mp">TikTok</span></span></h2>
+    </header>
+    <div class="fn" id="fn"></div>
+    <div class="verdict" id="verdict"></div>
+  </section>
+
+  <!-- BARIS D -->
+  <section class="card">
+    <header>
+      <span class="step"><i>5</i> Apa yang bisa ditambah, oleh siapa?</span>
+      <h2 style="flex-basis:100%">Creator di produk ini</h2>
+    </header>
+    <div class="tabs" role="tablist">
+      <button type="button" role="tab" aria-selected="true" data-seg="top">Creator teratas <span class="count">24</span></button>
+      <button type="button" role="tab" aria-selected="false" data-seg="new">Baru &amp; langsung jalan <span class="count">5</span></button>
+      <button type="button" role="tab" aria-selected="false" data-seg="opp">Peluang <span class="count">20</span></button>
+    </div>
+    <p class="tabnote" id="seg-note"></p>
+    <div class="scroller"><table id="seg-table"></table></div>
+    <p class="foot" id="seg-foot"></p>
+  </section>
+
+
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  /* ---------------- data ---------------- */
+
+  function rng(seed) {
+    var s = seed >>> 0;
+    return function () {
+      s = (Math.imul(s, 1664525) + 1013904223) >>> 0;
+      return s / 4294967296;
+    };
+  }
+
+  var DAYS = 30;
+  // Campaign dates would need a source the warehouse does not have, so the chart
+  // marks none rather than hardcoding a calendar that quietly goes stale.
+  var CAMPAIGN = [];
+
+  // Per-day series. Rates are never stored — they are always recomputed from these
+  // counts, which is exactly how the real page has to do it.
+  function series(seed, cfg) {
+    var r = rng(seed), out = [];
+    for (var d = 1; d <= DAYS; d++) {
+      var lift = CAMPAIGN.indexOf(d) >= 0 ? cfg.spike : 1;
+      var wobble = 0.78 + r() * 0.44;
+      var top = Math.round(cfg.top * wobble * lift);
+      var s = {};
+      if (cfg.kind === "tt") {
+        s.imp = top;
+        // Content is upstream of reach: more posts, more impressions, with the
+        // per-post yield wobbling on its own.
+        s.content = Math.max(1, Math.round((top / cfg.impPerContent) * (0.84 + r() * 0.32)));
+        s.clicks = Math.round(top * cfg.ctr * (0.86 + r() * 0.28));
+        s.atc = Math.round(s.clicks * cfg.atc * (0.86 + r() * 0.28));
+        s.orders = Math.round(s.atc * cfg.co * (0.86 + r() * 0.28));
+      } else {
+        s.clicks = top;
+        s.orders = Math.round(top * cfg.co * (0.86 + r() * 0.28));
+      }
+      s.gmv = Math.round(s.orders * cfg.aov * (0.92 + r() * 0.16));
+      s.affGmv = Math.round(s.gmv * (cfg.affShare + (r() - 0.5) * 0.06));
+
+      // PILLAR lives on the order table, so the live/video/product-card split of GMV
+      // is real at product grain — only the *count* of new content is not.
+      var live = cfg.pillar[0] + (r() - 0.5) * 0.12;
+      var vid = cfg.pillar[1] + (r() - 0.5) * 0.12;
+      var tot = live + vid + cfg.pillar[2];
+      s.live = Math.round((s.gmv * live) / tot);
+      s.video = Math.round((s.gmv * vid) / tot);
+      s.card = s.gmv - s.live - s.video;
+
+      // Which creators sold that day. Creator count is a distinct count, so it can
+      // never be summed across days — the window has to re-count the union.
+      s.crew = [];
+      for (var c = 0; c < cfg.pool; c++) {
+        if (r() < cfg.active) s.crew.push(c);
+      }
+      if (!s.crew.length) s.crew.push(0);
+      out.push(s);
+    }
+    return out;
+  }
+
+  var MARKETS = {
+    tt: {
+      key: "tt",
+      label: "TikTok",
+      gmvLabel: "TT GMV",
+      product: "Wardah Colorfit Velvet Matte Lip Mousse 4.2g — Shade 05 Ruby Nude",
+      pid: "PID 8829417766",
+      cat: "Make Up", sub: "Lip", fmt: "Single",
+      levers: ["Impressions", "CTR", "CO rate", "AOV"],
+      cur: series(20260901, { kind: "tt", top: 503000, ctr: 0.0286, atc: 0.094, co: 0.218, aov: 119500,
+                              spike: 2.4, impPerContent: 52500, affShare: 0.82, pool: 34, active: 0.19,
+                              pillar: [0.54, 0.33, 0.13] }),
+      prev: series(20260801, { kind: "tt", top: 413000, ctr: 0.031, atc: 0.09, co: 0.21, aov: 115800,
+                              spike: 1.9, impPerContent: 56800, affShare: 0.80, pool: 26, active: 0.20,
+                              pillar: [0.46, 0.37, 0.17] }),
+      // median sub-kategori, dari produk sejenis di marketplace yang sama
+      median: { imp: 11900000, ctr: 0.0331, co: 0.0198, aov: 112400 },
+      peers: 34
+    },
+    sp: {
+      key: "sp",
+      label: "Shopee",
+      gmvLabel: "SP GMV (confirmed)",
+      product: "Wardah Colorfit Velvet Matte Lip Mousse 4.2g — Shade 05 Ruby Nude",
+      pid: "PID 21884390117",
+      cat: "Make Up", sub: "Lip", fmt: "Single",
+      levers: ["Clicks", "CO rate", "AOV"],
+      cur: series(20260902, { kind: "sp", top: 15600, co: 0.0144, aov: 101200,
+                              spike: 2.7, affShare: 0.86, pool: 29, active: 0.18,
+                              pillar: [0.31, 0.27, 0.42] }),
+      prev: series(20260802, { kind: "sp", top: 14000, co: 0.0151, aov: 96500,
+                              spike: 2.1, affShare: 0.84, pool: 24, active: 0.18,
+                              pillar: [0.27, 0.29, 0.44] }),
+      median: { clicks: 372000, co: 0.021, aov: 94800 },
+      peers: 41
+    }
+  };
+
+  var CREATORS = {
+    top: [
+      ["ratuglowup", 1, 184203000, 612, 301000, "Livestream", 41],
+      ["beautybyicha", 1, 122840000, 448, 274200, "Video", 33],
+      ["ninaaurelia.id", 0, 96117000, 351, 273800, "Livestream", 28],
+      ["dindaskincare", 1, 74502000, 268, 278000, "Video", 24],
+      ["glowwithmey", 0, 61330000, 240, 255500, "Video", 19],
+      ["tasyaa.beauty", 0, 48870000, 192, 254500, "Product Card", 17],
+      ["mamahsiskaa", 1, 41205000, 149, 276500, "Livestream", 22]
+    ],
+    "new": [
+      ["salsabeautydiary", 1, 38904000, 142, 274000, "Livestream", "4 Sep", 14],
+      ["kayla.glowid", 0, 27650000, 101, 273800, "Video", "7 Sep", 12],
+      ["riohaircare", 0, 19430000, 71, 273700, "Video", "12 Sep", 9],
+      ["nadyaa.mkup", 1, 14880000, 55, 270500, "Product Card", "16 Sep", 7],
+      ["bundaelsaa", 0, 11240000, 42, 267600, "Livestream", "19 Sep", 6]
+    ],
+    opp: [
+      ["auliacantikk", 1, "Wardah, Emina", 6, 412800000, 68800000, "Livestream"],
+      ["shafanailart", 1, "Emina", 4, 268400000, 67100000, "Video"],
+      ["putribeauty.id", 1, "Wardah, Kahf", 5, 231500000, 46300000, "Livestream"],
+      ["citralipstick", 0, "Emina, Wardah", 7, 204900000, 29270000, "Video"],
+      ["zahraglowss", 0, "Wardah", 3, 118600000, 39530000, "Product Card"],
+      ["mbaklinaa", 0, "Kahf", 2, 74300000, 37150000, "Video"]
+    ]
+  };
+
+  /* ---------------- formatting ---------------- */
+
+  function rp(v) {
+    var a = Math.abs(v), s = v < 0 ? "-" : "";
+    if (a >= 1e9) return s + "Rp" + (a / 1e9).toFixed(1) + "B";
+    if (a >= 1e6) return s + "Rp" + (a / 1e6).toFixed(1) + "M";
+    if (a >= 1e3) return s + "Rp" + Math.round(a / 1e3) + "K";
+    return s + "Rp" + Math.round(a);
+  }
+  function rpFull(v) { return "Rp" + Math.round(v).toLocaleString("en-US"); }
+  // Enough precision that consecutive substitution steps are visibly different.
+  function rp3(v) {
+    var a = Math.abs(v), s = v < 0 ? "-" : "";
+    if (a >= 1e9) return s + "Rp" + (a / 1e9).toFixed(3) + "B";
+    if (a >= 1e6) return s + "Rp" + (a / 1e6).toFixed(1) + "M";
+    return s + rpFull(a);
+  }
+  function cnt(v) {
+    var a = Math.abs(v);
+    if (a >= 1e6) return (v / 1e6).toFixed(1) + "M";
+    return Math.round(v).toLocaleString("en-US");
+  }
+  // Full precision, for the places where a reader may want to redo the maths by hand.
+  function exact(v) { return Math.round(v).toLocaleString("en-US"); }
+  function pct(v, dp) { return (v * 100).toFixed(dp === undefined ? 2 : dp) + "%"; }
+  function signed(v, fn) { return (v > 0 ? "+" : "") + fn(v); }
+  function cls(v) { return v > 0 ? "pos" : v < 0 ? "neg" : ""; }
+  var MONTH = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
+
+  /* ---------------- aggregation ---------------- */
+
+  // Sum the counts, then derive every rate from those sums. A window of any length
+  // stays exact this way, which is what makes the drag interaction trustworthy.
+  function agg(rows, from, to) {
+    var t = { imp: 0, content: 0, clicks: 0, atc: 0, orders: 0, gmv: 0, affGmv: 0,
+              live: 0, video: 0, card: 0 };
+    var crew = {};
+    for (var i = from; i <= to; i++) {
+      var s = rows[i];
+      t.imp += s.imp || 0; t.content += s.content || 0; t.clicks += s.clicks;
+      t.atc += s.atc || 0; t.orders += s.orders; t.gmv += s.gmv; t.affGmv += s.affGmv;
+      t.live += s.live; t.video += s.video; t.card += s.card;
+      for (var k = 0; k < s.crew.length; k++) { crew[s.crew[k]] = 1; }
+    }
+    t.creators = Object.keys(crew).length;
+    t.impPerContent = t.content ? t.imp / t.content : 0;
+    t.ctr = t.imp ? t.clicks / t.imp : 0;
+    t.atcRate = t.clicks ? t.atc / t.clicks : 0;
+    t.coSP = t.clicks ? t.orders / t.clicks : 0; // orders per click, one meaning everywhere
+    t.aov = t.orders ? t.gmv / t.orders : 0;
+    t.perCreator = t.creators ? t.affGmv / t.creators : 0;
+    return t;
+  }
+
+  // Chain substitution: swap one lever at a time, in order. The deltas sum to the
+  // real GMV change exactly — no residual bar. The split does depend on the order,
+  // which the panel says out loud.
+  function decompose(mk, a, b) {
+    // Volume levers first, AOV last — so the volume levers add up to exactly the
+    // "Orders" term of GMV = Orders x AOV, and AOV's bar is exactly that identity's
+    // other term. The detailed chain is a zoom-in on the simple one, not a rival to it.
+    var f = mk.key === "tt"
+      ? [["Impressions", "imp"], ["CTR", "ctr"], ["CO rate", "coSP"], ["AOV", "aov"]]
+      : [["Clicks", "clicks"], ["CO rate", "coSP"], ["AOV", "aov"]];
+    var cur = f.map(function (x) { return a[x[1]]; });
+    var prod = function (v) { return v.reduce(function (p, c) { return p * c; }, 1); };
+    var base = prod(cur), out = [], run = base;
+    for (var i = 0; i < f.length; i++) {
+      cur[i] = b[f[i][1]];
+      var next = prod(cur);
+      out.push({ name: f[i][0], delta: next - run, running: next });
+      run = next;
+    }
+    return out;
+  }
+
+
+  // "Tau dari mana?" — the substitution table, with the numbers actually on screen.
+  // Each row swaps exactly one lever to this period and leaves the rest at last period's
+  // value; the jump in the product is that lever's bar.
+  function renderCalc(mk, a, b, parts) {
+    var p4 = function (v) { return pct(v, 4); };
+    var f = mk.key === "tt"
+      ? [["Impressions", "imp", exact], ["CTR", "ctr", p4],
+         ["CO rate", "coSP", p4], ["AOV", "aov", rpFull]]
+      : [["Clicks", "clicks", exact], ["CO rate", "coSP", p4], ["AOV", "aov", rpFull]];
+
+    var vals = f.map(function (x) { return a[x[1]]; });
+    var prod = function (v) { return v.reduce(function (p, c) { return p * c; }, 1); };
+
+    var head = "<tr><th>Tuas ditukar</th>" +
+      f.map(function (x) { return '<th class="n">' + x[0] + "</th>"; }).join("") +
+      '<th class="n">Hasil kali</th><th class="n">Selisih</th></tr>';
+
+    var body = '<tr><td>— semua nilai periode lalu</td>' +
+      f.map(function (x, i) { return '<td class="n">' + x[2](vals[i]) + "</td>"; }).join("") +
+      '<td class="n">' + rp3(prod(vals)) + "</td><td></td></tr>";
+
+    var run = prod(vals);
+    f.forEach(function (x, i) {
+      vals[i] = b[x[1]];
+      var next = prod(vals), d = next - run;
+      body += "<tr><td>" + x[0] + "</td>" +
+        f.map(function (y, j) {
+          return '<td class="n' + (j === i ? " swap" : "") + '">' + y[2](vals[j]) + "</td>";
+        }).join("") +
+        '<td class="n">' + rp3(next) + '</td><td class="n ' + cls(d) + '">' + signed(d, rp) + "</td></tr>";
+      run = next;
+    });
+
+    var formula = mk.key === "tt"
+      ? "GMV = Impressions &times; CTR &times; CO rate &times; AOV"
+      : "GMV = Clicks &times; CO rate &times; AOV";
+
+    $("wfcalc").innerHTML =
+      '<p class="formula">' + formula + "</p>" +
+      '<p class="wfnote" style="margin-top:0">Ini <b>identitas</b>, bukan model: CTR = klik &divide; ' +
+      "impresi, CO rate = order &divide; klik, AOV = GMV &divide; order. Kalau disubstitusi, semuanya " +
+      "saling mencoret dan sisanya persis GMV — makanya batangnya selalu menutup, untuk produk " +
+      "dan periode apa pun.</p>" +
+      '<div class="calcgrid"><table><thead>' + head + "</thead><tbody>" + body + "</tbody></table></div>" +
+      '<p class="wfnote" style="border:0;padding:0">Baris terakhir kolom <b>Hasil kali</b> = ' +
+      mk.gmvLabel + " periode ini, karena semua tuas sudah ditukar. Kolom <b>Selisih</b> itulah " +
+      "panjang batang di atas. Kalau urutan barisnya dibalik, angka per baris berubah " +
+      "(tuas tidak berdiri sendiri) — totalnya tetap sama. Urutan dikunci: dari paling hulu ke paling hilir.</p>";
+  }
+
+  /* ---------------- state ---------------- */
+
+  var state = { mk: "tt", from: 0, to: DAYS - 1 };
+  var $ = function (id) { return document.getElementById(id); };
+
+  /* ---------------- baris A ---------------- */
+
+  function renderStub(mk) {
+    var rows = [
+      [mk.product, mk.sub, 1057500000, 0.256, 24, true],
+      ["Wardah Colorfit Velvet Matte Lip Mousse 4.2g — Shade 02 Peach", mk.sub, 741200000, 0.081, 19, false],
+      ["Wardah Lightening Day Cream 30g", "Face Care", 612900000, -0.043, 31, false]
+    ];
+    $("stub-rows").innerHTML = rows.map(function (r) {
+      return '<tr class="' + (r[5] ? "on" : "") + '">' +
+        "<td>" + r[0] + "</td><td>" + r[1] + '</td><td class="n">' + rpFull(r[2]) + "</td>" +
+        '<td class="n ' + cls(r[3]) + '">' + signed(r[3], function (v) { return pct(v, 1); }) + "</td>" +
+        '<td class="n">' + r[4] + "</td></tr>";
+    }).join("");
+  }
+
+  var popStore = {};
+  function kpi(k, v, d, x, pop) {
+    var id = "";
+    if (pop) { id = "kp" + Object.keys(popStore).length; popStore[id] = pop; }
+    return '<div class="kpi' + (pop ? " hoverable" : "") + '"' +
+      (pop ? ' data-pop="' + id + '" tabindex="0"' : "") + ">" +
+      '<div class="k">' + k + '</div><div class="v">' + v + "</div>" +
+      (d ? '<div class="d">' + d + (pop ? ' <span class="why">?</span>' : "") + "</div>" : "") +
+      (x ? '<div class="x">' + x + "</div>" : "") + "</div>";
+  }
+
+  // One shared panel, moved under whichever KPI is hovered — so it can escape the
+  // grid's clipping and still stay inside the card at any width.
+  function bindPops() {
+    var pop = $("kpipop"), card = pop.parentNode;
+    function show(cell) {
+      pop.innerHTML = popStore[cell.getAttribute("data-pop")] || "";
+      pop.classList.add("on");
+      var cw = card.clientWidth, pw = Math.min(330, cw - 36);
+      pop.style.left = Math.max(18, Math.min(cell.offsetLeft, cw - pw - 18)) + "px";
+      pop.style.top = (cell.offsetTop + cell.offsetHeight - 4) + "px";
+    }
+    function hide() { pop.classList.remove("on"); }
+    Array.prototype.forEach.call(document.querySelectorAll(".kpi.hoverable"), function (cell) {
+      cell.addEventListener("mouseenter", function () { show(cell); });
+      cell.addEventListener("mouseleave", hide);
+      cell.addEventListener("focus", function () { show(cell); });
+      cell.addEventListener("blur", hide);
+    });
+  }
+
+  // GMV Affiliate = Creators x GMV per creator. Exact, because GMV per creator is
+  // defined as GMV / creators — so the split never needs a residual term. This is the
+  // supply-side reading of the same move the traffic waterfall reads demand-side.
+  function creatorSplit(a, b) {
+    var byCount = (b.creators - a.creators) * a.perCreator;
+    var byDepth = b.creators * (b.perCreator - a.perCreator);
+    var move = b.affGmv - a.affGmv;
+    var gross = Math.abs(byCount) + Math.abs(byDepth) || 1;
+
+    function line(label, note, v) {
+      var w = (Math.abs(v) / gross) * 100;
+      return '<div class="popline"><span>' + label + "<small>" + note + "</small></span>" +
+        '<span class="popbar"><i style="width:' + w.toFixed(0) + "%;background:" +
+        (v >= 0 ? "#2ec27e" : "#ef5f7a") + '"></i></span>' +
+        '<b class="num ' + cls(v) + '">' + signed(v, rp) + "</b></div>";
+    }
+
+    var lead = Math.abs(byCount) >= Math.abs(byDepth)
+      ? "Lebih banyak digerakkan oleh <b>jumlah creator</b> — cek tab <i>Baru &amp; langsung jalan</i>."
+      : "Lebih banyak digerakkan oleh <b>produktivitas per creator</b> — cek tab <i>Creator teratas</i>.";
+
+    return '<div class="poptitle">Perubahan GMV Affiliate ' + signed(move, rp) + "</div>" +
+      line("Jumlah creator", a.creators + " &rarr; " + b.creators + " creator", byCount) +
+      line("GMV per creator", rpFull(a.perCreator) + " &rarr; " + rpFull(b.perCreator), byDepth) +
+      '<div class="popfoot">' + lead +
+      "<br>Efek jumlah creator = (" + b.creators + " &minus; " + a.creators + ") x GMV/creator lama. " +
+      "Efek produktivitas = " + b.creators + " x selisih GMV/creator. Dijumlah, dua-duanya " +
+      "persis sama dengan " + signed(move, rp) + ", tanpa sisa.<br><b>Creator itu distinct count</b> — tidak bisa dijumlah antar hari, " +
+      "jadi angkanya dihitung ulang sebagai gabungan creator unik di rentang yang sedang dipilih.</div>";
+  }
+  function delta(a, b, fn) {
+    var d = a - b;
+    return '<span class="num ' + cls(d) + '">' + signed(d, fn) + "</span>";
+  }
+  function deltaPct(a, b) {
+    if (!b) return '<span class="num">—</span>';
+    var d = a / b - 1;
+    return '<span class="num ' + cls(d) + '">' + signed(d, function (v) { return pct(v, 1); }) + "</span>";
+  }
+
+  function renderKpis(mk, a, b) {
+    popStore = {};
+    var h = "";
+    h += kpi("GMV Affiliate", rp(a.affGmv), deltaPct(a.affGmv, b.affGmv), null, creatorSplit(b, a));
+    h += kpi("Creators", String(a.creators), delta(a.creators, b.creators, function (v) { return String(Math.round(v)); }));
+    h += kpi(mk.gmvLabel, rp(a.gmv), deltaPct(a.gmv, b.gmv));
+    h += kpi("Orders", cnt(a.orders), deltaPct(a.orders, b.orders));
+    if (mk.key === "tt") {
+      h += kpi("Impressions", cnt(a.imp), deltaPct(a.imp, b.imp), "CTR " + pct(a.ctr) + " · " + signed(a.ctr - b.ctr, function (v) { return pct(v); }));
+      h += kpi("Clicks", cnt(a.clicks), deltaPct(a.clicks, b.clicks), "CO rate " + pct(a.coSP) + " · " + signed(a.coSP - b.coSP, function (v) { return pct(v); }));
+      h += kpi("Add to Cart", cnt(a.atc), deltaPct(a.atc, b.atc), "di luar rantai tuas");
+      // Content lives at date x creator x brand — there is no product_id on that table,
+      // so at this grain the honest answer is that we do not have it.
+      h += kpi("Konten", "—", null, "tidak tersedia per produk");
+    } else {
+      h += kpi("Clicks", cnt(a.clicks), deltaPct(a.clicks, b.clicks), "CO rate " + pct(a.coSP) + " · " + signed(a.coSP - b.coSP, function (v) { return pct(v); }));
+      h += kpi("Buyers", cnt(Math.round(a.orders * 0.91)), deltaPct(a.orders * 0.91, b.orders * 0.91), "pembeli baru 38%");
+    }
+    h += kpi("AOV", rpFull(a.aov), deltaPct(a.aov, b.aov));
+    h += kpi(mk.key === "tt" ? "Commission" : "Est Commission", rp(a.affGmv * 0.094), deltaPct(a.affGmv * 0.094, b.affGmv * 0.094), "ROI 4.1x");
+    $("kpis").innerHTML = h;
+    bindPops();
+  }
+
+  /* ---------------- trend ---------------- */
+
+  var W = 560, H = 210, PADL = 56, PADR = 10, PADT = 12, PADB = 26;
+
+  function renderChart(mk) {
+    var cur = mk.cur, prev = mk.prev;
+    var max = 0, i;
+    for (i = 0; i < DAYS; i++) { max = Math.max(max, cur[i].gmv, prev[i].gmv); }
+    max *= 1.12;
+
+    var sorted = cur.map(function (s) { return s.gmv; }).sort(function (a, b) { return a - b; });
+    var med = sorted[Math.floor(DAYS / 2)];
+
+    var x = function (i) { return PADL + (i / (DAYS - 1)) * (W - PADL - PADR); };
+    var y = function (v) { return PADT + (1 - v / max) * (H - PADT - PADB); };
+
+    function path(rows) {
+      return rows.map(function (s, i) { return (i ? "L" : "M") + x(i).toFixed(1) + " " + y(s.gmv).toFixed(1); }).join(" ");
+    }
+
+    var svg = '<svg viewBox="0 0 ' + W + " " + H + '" role="img" aria-label="Tren GMV harian">';
+
+    // horizontal grid
+    for (i = 0; i <= 3; i++) {
+      var gv = (max / 3) * i, gy = y(gv);
+      svg += '<line x1="' + PADL + '" y1="' + gy.toFixed(1) + '" x2="' + (W - PADR) + '" y2="' + gy.toFixed(1) +
+        '" stroke="rgba(122,162,208,0.13)" stroke-width="1"/>';
+      svg += '<text x="' + (PADL - 7) + '" y="' + (gy + 3.5).toFixed(1) + '" text-anchor="end" fill="#7f96b2" ' +
+        'font-size="9" font-family="IBM Plex Mono, monospace">' + rp(gv) + "</text>";
+    }
+
+
+    // selection band
+    if (state.from > 0 || state.to < DAYS - 1) {
+      var sx = x(state.from), ex = x(state.to);
+      svg += '<rect x="' + sx.toFixed(1) + '" y="' + PADT + '" width="' + Math.max(2, ex - sx).toFixed(1) +
+        '" height="' + (H - PADT - PADB) + '" fill="#f2c14e" opacity="0.1"/>';
+      svg += '<line x1="' + sx.toFixed(1) + '" y1="' + PADT + '" x2="' + sx.toFixed(1) + '" y2="' + (H - PADB) + '" stroke="#f2c14e" stroke-width="1"/>';
+      svg += '<line x1="' + ex.toFixed(1) + '" y1="' + PADT + '" x2="' + ex.toFixed(1) + '" y2="' + (H - PADB) + '" stroke="#f2c14e" stroke-width="1"/>';
+    }
+
+    // median of this product's own daily GMV
+    svg += '<line x1="' + PADL + '" y1="' + y(med).toFixed(1) + '" x2="' + (W - PADR) + '" y2="' + y(med).toFixed(1) +
+      '" stroke="#4aa3e0" stroke-width="1" stroke-dasharray="1 3" opacity="0.8"/>';
+
+    // comparison period, aligned day-on-day
+    svg += '<path d="' + path(prev) + '" fill="none" stroke="#5f748d" stroke-width="1.4" stroke-dasharray="4 3"/>';
+
+    // current period
+    svg += '<path d="' + path(cur) + " L" + x(DAYS - 1).toFixed(1) + " " + y(0).toFixed(1) +
+      " L" + x(0).toFixed(1) + " " + y(0).toFixed(1) + ' Z" fill="#f2c14e" opacity="0.1"/>';
+    svg += '<path d="' + path(cur) + '" fill="none" stroke="#f2c14e" stroke-width="1.9" stroke-linejoin="round"/>';
+
+    // x labels
+    [0, 9, 19, 29].forEach(function (i) {
+      var anchor = i === 0 ? "start" : i === 29 ? "end" : "middle";
+      svg += '<text x="' + x(i).toFixed(1) + '" y="' + (H - 8) + '" text-anchor="' + anchor + '" fill="#7f96b2" ' +
+        'font-size="9" font-family="IBM Plex Mono, monospace">' + (i + 1) + " Sep</text>";
+    });
+
+    svg += "</svg>";
+    $("chartwrap").innerHTML = svg;
+    attachDrag();
+  }
+
+  function attachDrag() {
+    var wrap = $("chartwrap"), svg = wrap.querySelector("svg");
+    var dragging = false, a = null;
+
+    function idx(ev) {
+      var r = svg.getBoundingClientRect();
+      var px = ((ev.clientX - r.left) / r.width) * W;
+      var t = (px - PADL) / (W - PADL - PADR);
+      return Math.max(0, Math.min(DAYS - 1, Math.round(t * (DAYS - 1))));
+    }
+    svg.addEventListener("pointerdown", function (ev) {
+      dragging = true; a = idx(ev); svg.setPointerCapture(ev.pointerId);
+    });
+    svg.addEventListener("pointermove", function (ev) {
+      if (!dragging) return;
+      var b = idx(ev);
+      state.from = Math.min(a, b); state.to = Math.max(a, b);
+      if (state.to - state.from < 1) state.to = Math.min(DAYS - 1, state.from + 1);
+      render(false);
+    });
+    svg.addEventListener("pointerup", function () { dragging = false; });
+    svg.addEventListener("pointercancel", function () { dragging = false; });
+  }
+
+  /* ---------------- pillar split ---------------- */
+
+  // Which format carried the product. Real at product grain because PILLAR is a column
+  // on the order table — unlike the count of new content, which has no product_id.
+  var PILLARS = [
+    { k: "live", label: "Livestream", color: "#f2c14e" },
+    { k: "video", label: "Video", color: "#4aa3e0" },
+    { k: "card", label: "Product Card", color: "#bdb5ff" }
+  ];
+
+  function renderPillars(a, b) {
+    var rows = PILLARS.map(function (p) {
+      var share = b.gmv ? b[p.k] / b.gmv : 0;
+      var growth = a[p.k] ? b[p.k] / a[p.k] - 1 : null;
+      return { p: p, share: share, growth: growth, gmv: b[p.k], delta: b[p.k] - a[p.k] };
+    });
+
+    var bar = '<div class="pilbar">' + rows.map(function (r) {
+      return '<i style="width:' + (r.share * 100).toFixed(1) + "%;background:" + r.p.color +
+        '" title="' + r.p.label + " " + pct(r.share, 1) + '"></i>';
+    }).join("") + "</div>";
+
+    var keys = rows.map(function (r) {
+      return '<span class="pilkey"><i style="background:' + r.p.color + '"></i>' +
+        r.p.label + ' <b class="num">' + pct(r.share, 0) + "</b>" +
+        '<small class="num ' + cls(r.delta) + '">' + signed(r.delta, rp) + "</small></span>";
+    }).join("");
+
+    var moved = rows.slice().sort(function (x, y) { return Math.abs(y.delta) - Math.abs(x.delta); })[0];
+    var note = "Pergerakan terbesar dari <b>" + moved.p.label + "</b> (" + signed(moved.delta, rp) + ")." +
+      " Ini pecahan GMV per format — jumlah konten baru per format tidak tersedia di grain produk.";
+
+    $("pillars").innerHTML = bar + '<div class="pilkeys">' + keys + "</div>" +
+      '<p class="pilnote">' + note + "</p>";
+  }
+
+  /* ---------------- waterfall ---------------- */
+
+  // Each lever's row carries the metric name and its before/after; the arithmetic that
+  // produced the bar lives in a tooltip, so the panel stays short for a reader who just
+  // wants the answer.
+  function leverPair(name, a, b) {
+    if (name === "Impressions") return [cnt(a.imp), cnt(b.imp), exact(a.imp), exact(b.imp)];
+    if (name === "Clicks") return [cnt(a.clicks), cnt(b.clicks), exact(a.clicks), exact(b.clicks)];
+    if (name === "CTR") return [pct(a.ctr), pct(b.ctr), pct(a.ctr, 4), pct(b.ctr, 4)];
+    if (name === "CO rate") return [pct(a.coSP), pct(b.coSP), pct(a.coSP, 4), pct(b.coSP, 4)];
+    return [rpFull(a.aov), rpFull(b.aov), rpFull(a.aov), rpFull(b.aov)];
+  }
+
+  // "Swap this one lever, hold the rest at last period" — written out for this row only.
+  function leverMath(mk, name, a, b) {
+    var chain = mk.key === "tt" ? ["Impressions", "CTR", "CO rate", "AOV"] : ["Clicks", "CO rate", "AOV"];
+    var i = chain.indexOf(name);
+    var parts = chain.map(function (other, j) {
+      var pair = leverPair(other, a, b);
+      if (j === i) return '<b>(' + pair[3] + " &minus; " + pair[2] + ")</b>";
+      // Levers before this one already hold this period's value; the rest are still old.
+      return other + " " + (j < i ? pair[3] : pair[2]);
+    });
+    return parts.join(" &times; ");
+  }
+
+  function renderWaterfall(mk, a, b) {
+    var parts = decompose(mk, a, b);
+    var span = Math.max.apply(null, parts.map(function (p) { return Math.abs(p.delta); })) || 1;
+    var move = b.gmv - a.gmv;
+
+    // Everything except AOV drives the order count; AOV drives the value of each order.
+    var vol = parts.slice(0, -1), val = parts[parts.length - 1];
+    var volSum = vol.reduce(function (t, p) { return t + p.delta; }, 0);
+
+    function row(p) {
+      var w = (Math.abs(p.delta) / span) * 46;
+      var style = p.delta >= 0
+        ? "left:50%;width:" + w.toFixed(1) + "%;background:#2ec27e"
+        : "right:50%;width:" + w.toFixed(1) + "%;background:#ef5f7a";
+      var pair = leverPair(p.name, a, b);
+      var tip = leverMath(mk, p.name, a, b) + " = <u>" + signed(p.delta, rp) + "</u>";
+      return '<div class="wfrow" data-tip="' + tip.replace(/"/g, "&quot;") + '">' +
+        '<span class="lbl">' + p.name +
+        '<small>' + pair[0] + " \u2192 " + pair[1] + "</small></span>" +
+        '<span class="bar"><span style="' + style + '"></span></span>' +
+        '<span class="amt ' + cls(p.delta) + '">' + signed(p.delta, rp) + "</span></div>";
+    }
+    function band(title, note, v) {
+      return '<div class="wfband"><span>' + title + "<small>" + note + "</small></span>" +
+        '<b class="num ' + cls(v) + '">' + signed(v, rp) + "</b></div>";
+    }
+
+    var h = '<div class="anchor"><span>' + mk.gmvLabel + " periode pembanding</span><b class=\"num\">" + rpFull(a.gmv) + "</b></div>";
+    h += band("Karena jumlah order", cnt(a.orders) + " \u2192 " + cnt(b.orders) + " order", volSum);
+    vol.forEach(function (p) { h += row(p); });
+    h += band("Karena nilai per order", rpFull(a.aov) + " \u2192 " + rpFull(b.aov), val.delta);
+    h += '<div class="anchor"><span>' + mk.gmvLabel + " periode ini</span><b class=\"num\">" + rpFull(b.gmv) + "</b></div>";
+    $("wf").innerHTML = h;
+    bindTips();
+
+    $("wfformula").innerHTML = mk.key === "tt"
+      ? "GMV = Impressions &times; CTR &times; CO rate &times; AOV"
+      : "GMV = Clicks &times; CO rate &times; AOV";
+
+    var biggest = parts.slice().sort(function (p, q) { return Math.abs(q.delta) - Math.abs(p.delta); })[0];
+    var lead = Math.abs(volSum) >= Math.abs(val.delta) ? "jumlah order" : "nilai per order";
+
+    $("wfnote").innerHTML =
+      mk.gmvLabel + " " + (move >= 0 ? "naik " : "turun ") + rp(Math.abs(move)) + ", terutama karena <b>" +
+      lead + "</b>; penggerak terbesar <b>" + biggest.name + "</b> (" + signed(biggest.delta, rp) + ")." +
+      " Semua batang kalau dijumlah persis sama dengan selisih GMV di atas dan di bawah, " +
+      "tanpa sisa dan tanpa batang &ldquo;lain-lain&rdquo;." +
+      "<br>Arahkan kursor ke tiap baris untuk melihat hitungannya.";
+  }
+
+  // One floating tooltip shared by every row that carries a data-tip.
+  function bindTips() {
+    var tip = $("tip");
+    Array.prototype.forEach.call(document.querySelectorAll("[data-tip]"), function (el) {
+      el.addEventListener("mouseenter", function () {
+        tip.innerHTML = el.getAttribute("data-tip");
+        tip.classList.add("on");
+        var host = tip.parentNode, r = el.getBoundingClientRect(), hr = host.getBoundingClientRect();
+        tip.style.top = (r.bottom - hr.top + 4) + "px";
+        tip.style.left = Math.max(12, Math.min(r.left - hr.left, host.clientWidth - tip.offsetWidth - 12)) + "px";
+      });
+      el.addEventListener("mouseleave", function () { tip.classList.remove("on"); });
+    });
+  }
+
+  /* ---------------- funnel vs median ---------------- */
+
+  function renderFunnel(mk, b) {
+    var stages = mk.key === "tt"
+      ? [
+          { n: "Impressions", v: b.imp, f: cnt, rate: "Volume tayang", act: b.imp,
+            med: mk.median.imp, vol: true },
+          { n: "Clicks", v: b.clicks, f: cnt, rate: "CTR", act: b.ctr, med: mk.median.ctr, dp: 2 },
+          { n: "Orders", v: b.orders, f: cnt, rate: "CO rate", act: b.coSP, med: mk.median.co, dp: 2 },
+          { n: mk.gmvLabel, v: b.gmv, f: rp, rate: "AOV", act: b.aov, med: mk.median.aov, dp: 0, money: true }
+        ]
+      : [
+          { n: "Clicks", v: b.clicks, f: cnt, rate: "Volume klik", act: b.clicks,
+            med: mk.median.clicks, vol: true },
+          { n: "Orders", v: b.orders, f: cnt, rate: "CO rate", act: b.coSP, med: mk.median.co, dp: 2 },
+          { n: mk.gmvLabel, v: b.gmv, f: rp, rate: "AOV", act: b.aov, med: mk.median.aov, dp: 0, money: true }
+        ];
+
+    var weak = null;
+    stages.forEach(function (s) {
+      if (!s.rate) return;
+      s.gap = s.act / s.med - 1;
+      // Only rates compete for "mata rantai terlemah". A product can sit below the
+      // median on raw volume simply because it is a smaller product — that is a fact
+      // about its size, not a leak in the funnel.
+      if (!s.vol && (!weak || s.gap < weak.gap)) weak = s;
+    });
+
+    // Each bar is scaled to its own stage, not to the stage above: CTR, ATC rate and
+    // AOV share no unit, so one length scale across them would be meaningless. The
+    // track is sized so the larger of (produk, median) fills 78%, and the median sits
+    // where it falls — the only reading the bar is for is "di atas atau di bawah tanda".
+    $("fn").innerHTML = stages.map(function (s) {
+      var bar;
+      if (s.rate) {
+        var ceil = Math.max(s.act, s.med) / 0.78;
+        bar = '<span class="fnbar"><i style="width:' + ((s.act / ceil) * 100).toFixed(1) + '%"></i>' +
+          '<u style="left:' + ((s.med / ceil) * 100).toFixed(1) + '%" title="median sub-kategori"></u></span>';
+      } else {
+        bar = '<span class="fnbar plain"></span>';
+      }
+      var show = s.money ? rpFull : s.vol ? cnt : function (v) { return pct(v, s.dp); };
+      var cmp = s.rate
+        ? '<span class="num ' + cls(s.gap) + '">' + show(s.act) + "</span>" +
+          "<small>median " + show(s.med) + " · " + signed(s.gap, function (v) { return pct(v, 0); }) + "</small>"
+        : "";
+      return '<div class="fnrow ' + (s === weak ? "weak" : "") + '">' +
+        '<span class="stage">' + s.f(s.v) + "<small>" + s.n +
+          (s.rate && !s.vol ? " \u00b7 " + s.rate : "") + "</small></span>" +
+        bar +
+        '<span class="cmp">' + cmp + "</span></div>";
+    }).join("");
+
+    var head = b.gmv * (weak.med / weak.act) - b.gmv;
+    var strong = stages.filter(function (s) { return s.rate && !s.vol && s.gap > 0; })
+      .sort(function (p, q) { return q.gap - p.gap; })[0];
+
+    $("verdict").innerHTML =
+      (strong ? "<b>" + strong.rate + "</b> di atas median sub-kategori (" +
+        (strong.money ? rpFull(strong.act) : pct(strong.act, strong.dp)) + " vs " +
+        (strong.money ? rpFull(strong.med) : pct(strong.med, strong.dp)) + "). " : "") +
+      "<b>" + weak.rate + "</b> " + (weak.money ? rpFull(weak.act) : pct(weak.act, weak.dp)) +
+      " vs median " + (weak.money ? rpFull(weak.med) : pct(weak.med, weak.dp)) + " — tertinggal " +
+      pct(Math.abs(weak.gap), 0) + ". Kalau disamakan dengan median, tambahannya sekitar <b>" + rp(head) + "</b>." +
+      '<span class="why">Aturan: tahap dengan selisih rasio paling negatif terhadap median ditandai. ' +
+      "Headroom = " + mk.gmvLabel + " × (median ÷ aktual − 1), menahan tahap lain tetap. " +
+      "Median dari " + mk.peers + " produk di sub-kategori " + mk.sub + " pada " + mk.label +
+      " — median antar-marketplace tidak dicampur. Panel disembunyikan kalau peer &lt; 8 produk. " +
+      "Tahap teratas juga dibandingkan ke median, tapi tidak ikut dipilih sebagai mata rantai " +
+      "terlemah: volume rendah biasanya berarti produknya memang lebih kecil, bukan corongnya bocor.</span>";
+
+    $("fn-sub").textContent = mk.sub;
+    $("fn-mp").textContent = mk.label;
+  }
+
+  /* ---------------- creators ---------------- */
+
+  var SEG = {
+    top: {
+      note: "Creator yang <b>sedang</b> menggerakkan produk ini pada periode berjalan, diurutkan " +
+        "dari GMV terbesar. Ini yang tidak ada di spec — tanpanya, dua tab lain tidak punya " +
+        "pembanding dan brief-nya menggantung.",
+      head: ["Creator", "", "GMV", "Orders", "GMV/hari aktif", "Pillar dominan", "Hari aktif"],
+      rows: function () {
+        return CREATORS.top.map(function (r) {
+          return [
+            r[0], r[1],
+            ['<span class="num">' + rpFull(r[2]) + "</span>", "n"],
+            ['<span class="num">' + r[3] + "</span>", "n"],
+            ['<span class="num">' + rpFull(r[4]) + "</span>", "n"],
+            r[5],
+            ['<span class="num">' + r[6] + "</span>", "n"]
+          ];
+        });
+      },
+      foot: "7 creator teratas menyumbang 76.1% GMV produk ini. Sisanya 17 creator di bawah Rp10M."
+    },
+    "new": {
+      note: "Creator yang <b>baru pertama kali</b> jual PID ini — tidak ada penjualan sepanjang " +
+        "180 hari sebelum periode ini — <b>dan</b> GMV per hari aktifnya sudah ≥ median seluruh " +
+        "creator di produk ini.",
+      head: ["Creator", "", "Jualan pertama", "Hari aktif", "GMV", "GMV/hari aktif", "Pillar dominan"],
+      rows: function () {
+        // [user, managed, gmv, orders, gmvPerActiveDay, pillar, firstSale, activeDays]
+        return CREATORS["new"].map(function (r) {
+          return [
+            r[0], r[1], r[6],
+            ['<span class="num">' + r[7] + "</span>", "n"],
+            ['<span class="num">' + rpFull(r[2]) + "</span>", "n"],
+            ['<span class="num">' + rpFull(r[4]) + "</span>", "n"],
+            r[5]
+          ];
+        });
+      },
+      foot: "5 creator baru masuk periode ini, menyumbang Rp112,104,000 (10.6% GMV produk). " +
+        "Syarat tambahan: minimal 5 hari aktif — tanpa itu satu order besar di satu hari " +
+        "terbaca sebagai bintang."
+    },
+    opp: {
+      note: "Creator yang jual produk <b>lain</b> di sub-kategori sama periode ini, tapi belum pernah " +
+        "menyentuh PID ini selama 180 hari + periode ini. Minimal 2 produk sekategori.",
+      head: ["Creator", "", "Brand yang dijual", "Produk sekategori", "GMV di sub-kategori", "Estimasi peluang", "Pillar dominan"],
+      rows: function () {
+        return CREATORS.opp.map(function (r) {
+          return [
+            r[0], r[1], r[2],
+            ['<span class="num">' + r[3] + "</span>", "n"],
+            ['<span class="num">' + rpFull(r[4]) + "</span>", "n"],
+            ['<span class="num est">' + rpFull(r[5]) + "</span>", "n"],
+            r[6]
+          ];
+        });
+      },
+      foot: "Estimasi peluang = GMV creator itu di sub-kategori ÷ jumlah produk sekategori yang dia jual. " +
+        "Ini <b>estimasi kasar</b>, bukan prediksi — tidak memperhitungkan bahwa produk ini bisa jauh " +
+        "lebih kecil atau besar dari produk yang biasa dia jual. MANAGED diurutkan dulu. 20 teratas."
+    }
+  };
+
+  function renderSeg(key) {
+    var s = SEG[key];
+    $("seg-note").innerHTML = s.note;
+    var head = "<thead><tr>" + s.head.map(function (h, i) {
+      return '<th class="' + (i >= 2 && /GMV|Orders|Produk|Hari|Estimasi/.test(h) ? "n" : "") + '">' + h + "</th>";
+    }).join("") + "</tr></thead>";
+    var body = "<tbody>" + s.rows().map(function (r) {
+      var tds = "";
+      r.forEach(function (c, i) {
+        if (i === 0) { tds += "<td>@" + c + "</td>"; return; }
+        if (i === 1) {
+          tds += '<td><span class="pill ' + (c ? "m" : "o") + '">' + (c ? "MANAGED" : "ORGANIC") + "</span></td>";
+          return;
+        }
+        if (Array.isArray(c)) { tds += '<td class="' + c[1] + '">' + c[0] + "</td>"; }
+        else { tds += "<td>" + c + "</td>"; }
+      });
+      return "<tr>" + tds + "</tr>";
+    }).join("") + "</tbody>";
+    $("seg-table").innerHTML = head + body;
+    $("seg-foot").innerHTML = s.foot;
+  }
+
+  /* ---------------- render ---------------- */
+
+  function render(full) {
+    var mk = MARKETS[state.mk];
+    var a = agg(mk.prev, state.from, state.to);
+    var b = agg(mk.cur, state.from, state.to);
+
+    if (full) {
+      renderStub(mk);
+      $("p-name").textContent = mk.product;
+      $("p-pid").textContent = mk.pid;
+      $("p-cat").textContent = mk.cat;
+      $("p-sub").textContent = mk.sub;
+      $("p-fmt").textContent = mk.fmt;
+    }
+    renderKpis(mk, b, a);
+    renderChart(mk);
+    renderPillars(a, b);
+    renderWaterfall(mk, a, b);
+    renderFunnel(mk, b);
+
+    var narrowed = state.from > 0 || state.to < DAYS - 1;
+    $("range-chip").hidden = !narrowed;
+    $("range-hint").hidden = narrowed;
+    if (narrowed) {
+      var n = state.to - state.from + 1;
+      $("range-text").textContent = (state.from + 1) + "–" + (state.to + 1) + " Sep · " + n + " hari" +
+        " · dibandingkan " + n + " hari sebelumnya";
+      $("cmp-label").textContent = n + " hari sebelum " + (state.from + 1) + " Sep";
+    } else {
+      $("cmp-label").textContent = "1–30 Agu 2026";
+    }
+  }
+
+  /* ---------------- wiring ---------------- */
+
+  $("mp-tt").addEventListener("click", function () { setMarket("tt"); });
+  $("mp-sp").addEventListener("click", function () { setMarket("sp"); });
+  function setMarket(k) {
+    state.mk = k; state.from = 0; state.to = DAYS - 1;
+    $("mp-tt").setAttribute("aria-pressed", String(k === "tt"));
+    $("mp-sp").setAttribute("aria-pressed", String(k === "sp"));
+    render(true);
+  }
+
+  $("range-reset").addEventListener("click", function () {
+    state.from = 0; state.to = DAYS - 1; render(false);
+  });
+
+  Array.prototype.forEach.call(document.querySelectorAll('[data-seg]'), function (btn) {
+    btn.addEventListener("click", function () {
+      Array.prototype.forEach.call(document.querySelectorAll("[data-seg]"), function (b) {
+        b.setAttribute("aria-selected", String(b === btn));
+      });
+      renderSeg(btn.getAttribute("data-seg"));
+    });
+  });
+
+  render(true);
+  renderSeg("top");
+})();
+</script>
