@@ -37,14 +37,20 @@ app.use(commentsRouter)
 
 app.use(errorHandler)
 
-const PORT = process.env.PORT || 4000
-app.listen(PORT, () => {
-  console.log(`Backend running on http://localhost:${PORT}`)
-  warmNameCaches()
-  warmDefaultViews()
-  // Comments are a side feature: if Postgres is down the analytics pages must still work.
-  migrate().catch((e) => console.warn('Postgres belum siap, fitur komentar nonaktif:', e.message))
-})
+// On Vercel the app runs as a function: Vercel owns the listener, and there is no long-lived
+// process for boot-time cache warming to pay off in. Locally it is a normal server.
+export default app
+
+if (!process.env.VERCEL) {
+  const PORT = process.env.PORT || 4000
+  app.listen(PORT, () => {
+    console.log(`Backend running on http://localhost:${PORT}`)
+    warmNameCaches()
+    warmDefaultViews()
+    // Comments are a side feature: if Postgres is down the analytics pages must still work.
+    migrate().catch((e) => console.warn('Postgres belum siap, fitur komentar nonaktif:', e.message))
+  })
+}
 
 /**
  * Resolving the latest product name is a full table scan on this table, so it is cached. Warming

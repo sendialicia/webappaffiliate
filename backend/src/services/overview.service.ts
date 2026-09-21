@@ -767,16 +767,20 @@ export async function getSpend(
       SELECT
         ${bucketExpr} AS bucket,
         SUM(GMV) AS gmv,
-        uniqExactIf(AFFILIATE_USERNAME, AFFILIATE_USERNAME NOT IN (
-          SELECT DISTINCT AFFILIATE_USERNAME
-          FROM ${TABLE_SUMMARY_ORDER}
-          WHERE REGION_CODE = 'id'
-            AND ITEM_MARKETPLACE_FLAG = TRUE
-            AND IS_AFFILIATE = TRUE
-            AND DATE >= {prevFrom:Date} AND DATE <= {prevTo:Date}
-            ${acqFilter}
-        )) AS newCreators
+        uniqExactIf(AFFILIATE_USERNAME, prevUsername IS NULL) AS newCreators
       FROM ${TABLE_SUMMARY_ORDER}
+      -- Anti-join rather than NOT IN (subquery) inside the aggregate: Snowflake cannot evaluate a
+      -- subquery there. The right side is one row per username, so it cannot fan out GMV.
+      LEFT JOIN (
+        SELECT DISTINCT AFFILIATE_USERNAME AS prevUsername
+        FROM ${TABLE_SUMMARY_ORDER}
+        WHERE REGION_CODE = 'id'
+          AND ITEM_MARKETPLACE_FLAG = TRUE
+          AND IS_AFFILIATE = TRUE
+          AND AFFILIATE_USERNAME IS NOT NULL
+          AND DATE >= {prevFrom:Date} AND DATE <= {prevTo:Date}
+          ${acqFilter}
+      ) prev ON AFFILIATE_USERNAME = prev.prevUsername
       WHERE REGION_CODE = 'id'
         AND ITEM_MARKETPLACE_FLAG = TRUE
         AND IS_AFFILIATE = TRUE

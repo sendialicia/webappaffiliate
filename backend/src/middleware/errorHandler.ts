@@ -1,6 +1,6 @@
 import type { NextFunction, Request, Response } from 'express'
 
-/** ClickHouse is on an internal network, so "VPN is off" is the usual cause here. */
+/** A network-level failure reaching the warehouse, as opposed to a query error. */
 function isUnreachable(message: string): boolean {
   return /timeout|ETIMEDOUT|ENETUNREACH|ECONNREFUSED|EHOSTUNREACH|socket hang up/i.test(message)
 }
@@ -12,7 +12,7 @@ export function errorHandler(err: unknown, _req: Request, res: Response, _next: 
   if (isUnreachable(message)) {
     res.status(503).json({
       error:
-        'Tidak bisa menghubungi ClickHouse. Biasanya ini karena VPN belum aktif — nyalakan VPN lalu muat ulang halaman.',
+        'Tidak bisa menghubungi Snowflake. Coba muat ulang halaman; kalau terus berulang, cek koneksi internet atau kredensial Snowflake di .env.',
     })
     return
   }

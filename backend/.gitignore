@@ -1,3 +1,7 @@
 node_modules
 .env
 dist
+# Snowflake key-pair and any other private keys; never commit these.
+secrets/
+*.p8
+*.pem
