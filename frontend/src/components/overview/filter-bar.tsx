@@ -146,7 +146,7 @@ export function FilterBar({
                   <button type="button" className={pillControlClass}>
                     Dimensi PID
                     {activeCount > 0 && (
-                      <span className="rounded-full bg-[var(--accent)] px-1.5 py-0.5 text-[10px] font-bold text-[var(--accent-foreground)]">
+                      <span className="rounded-full bg-[var(--accent)] px-1.5 py-0.5 text-[11.5px] font-bold text-[var(--accent-foreground)]">
                         {activeCount}
                       </span>
                     )}
@@ -155,15 +155,15 @@ export function FilterBar({
               />
               <PopoverContent className="w-[520px] p-4" align="end">
                 <div className="mb-3 flex items-center gap-2">
-                  <span className="text-[11px] font-bold tracking-wider text-[var(--ov-faint)] uppercase">
+                  <span className="text-[12px] font-bold tracking-wider text-[var(--ov-faint)] uppercase">
                     Filter rincian
                   </span>
-                  <span className="text-[11px] text-[var(--ov-faint)]">mengikat Summary dan seksi di bawahnya</span>
+                  <span className="text-[12px] text-[var(--ov-faint)]">mengikat Summary dan seksi di bawahnya</span>
                   {activeCount > 0 && (
                     <button
                       type="button"
                       onClick={clearDraftFilters}
-                      className="ml-auto text-[11px] font-semibold text-[var(--accent-foreground)]"
+                      className="ml-auto text-[12px] font-semibold text-[var(--accent-foreground)]"
                     >
                       Reset
                     </button>

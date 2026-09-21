@@ -155,19 +155,46 @@ function overviewUrls() {
   return [...urls]
 }
 
-function shopeePidUrls() {
+/** Both PID pages expose the same five endpoints under their own prefix. */
+const PID_PAGES = ["shopee-pid", "tiktok-pid"]
+
+function pidUrls() {
+  const urls = new Set()
+
+  for (const page of PID_PAGES) {
+    for (const sc of PID_SCENARIOS) {
+      const { from, to } = presetRange(sc.preset)
+      const compare = sc.compare ?? "prev"
+      const base = { from, to, brand: sc.brand, compare }
+
+      for (const level of PID_LEVELS) {
+        urls.add(`/api/${page}/categories${query({ ...base, level })}`)
+        urls.add(`/api/${page}/products${query({ ...base, level })}`)
+        urls.add(`/api/${page}/trend${query({ ...base, level, granularity: "day" })}`)
+        urls.add(`/api/${page}/top-creators${query({ ...base, level, limit: 25 })}`)
+      }
+    }
+  }
+
+  return [...urls]
+}
+
+/** The SKU page is one grain but two populations, selected by the bundle-split control. */
+function skuUrls() {
   const urls = new Set()
 
   for (const sc of PID_SCENARIOS) {
     const { from, to } = presetRange(sc.preset)
     const compare = sc.compare ?? "prev"
-    const base = { from, to, brand: sc.brand, compare }
-
-    for (const level of PID_LEVELS) {
-      urls.add(`/api/shopee-pid/categories${query({ ...base, level })}`)
-      urls.add(`/api/shopee-pid/products${query({ ...base, level })}`)
-      urls.add(`/api/shopee-pid/trend${query({ ...base, level, granularity: "day" })}`)
-      urls.add(`/api/shopee-pid/top-creators${query({ ...base, level, limit: 25 })}`)
+    for (const bundleSplit of [undefined, "false"]) {
+      const base = { from, to, brand: sc.brand, compare, bundleSplit }
+      urls.add(`/api/sku/filter-options${query({ from, to })}`)
+      for (const level of PID_LEVELS) {
+        urls.add(`/api/sku/categories${query({ ...base, level })}`)
+        urls.add(`/api/sku/products${query({ ...base, level })}`)
+        urls.add(`/api/sku/trend${query({ ...base, level, granularity: "day" })}`)
+        urls.add(`/api/sku/top-creators${query({ ...base, level, limit: 25 })}`)
+      }
     }
   }
 
@@ -179,25 +206,42 @@ async function discoveredUrls(fetchJson) {
   const urls = new Set()
   const { from, to } = presetRange("mtd")
 
-  for (const level of PID_LEVELS) {
-    const cats = await fetchJson(`/api/shopee-pid/categories${query({ from, to, level, compare: "prev" })}`)
-    const names = (cats?.rows ?? []).slice(0, 5).map((r) => r.name)
-    for (const scope of names) {
-      const base = { from, to, level, scope, compare: "prev" }
-      urls.add(`/api/shopee-pid/products${query(base)}`)
-      urls.add(`/api/shopee-pid/trend${query({ ...base, granularity: "day" })}`)
-      urls.add(`/api/shopee-pid/top-creators${query({ ...base, limit: 25 })}`)
-      for (const pillar of ["Livestream", "Video", "Product Card"]) {
-        urls.add(`/api/shopee-pid/top-creators${query({ ...base, pillar, limit: 25 })}`)
+  for (const page of PID_PAGES) {
+    for (const level of PID_LEVELS) {
+      const cats = await fetchJson(`/api/${page}/categories${query({ from, to, level, compare: "prev" })}`)
+      const names = (cats?.rows ?? []).slice(0, 5).map((r) => r.name)
+      for (const scope of names) {
+        const base = { from, to, level, scope, compare: "prev" }
+        urls.add(`/api/${page}/products${query(base)}`)
+        urls.add(`/api/${page}/trend${query({ ...base, granularity: "day" })}`)
+        urls.add(`/api/${page}/top-creators${query({ ...base, limit: 25 })}`)
+        for (const pillar of ["Livestream", "Video", "Product Card"]) {
+          urls.add(`/api/${page}/top-creators${query({ ...base, crPillar: pillar, limit: 25 })}`)
+        }
       }
+    }
+
+    // Deep dive for the biggest products, which is what anyone clicks first.
+    const products = await fetchJson(`/api/${page}/products${query({ from, to, level: "category", compare: "prev" })}`)
+    const topPids = (products?.rows ?? []).slice(0, 20).map((r) => r.pid)
+    for (const pid of topPids) {
+      urls.add(`/api/${page}/product-detail${query({ pid, from, to, compare: "prev", granularity: "day" })}`)
     }
   }
 
-  // Deep dive for the biggest products, which is what anyone clicks first.
-  const products = await fetchJson(`/api/shopee-pid/products${query({ from, to, level: "category", compare: "prev" })}`)
-  const topPids = (products?.rows ?? []).slice(0, 20).map((r) => r.pid)
-  for (const pid of topPids) {
-    urls.add(`/api/shopee-pid/product-detail${query({ pid, from, to, compare: "prev", granularity: "day" })}`)
+  for (const level of PID_LEVELS) {
+    const cats = await fetchJson(`/api/sku/categories${query({ from, to, level, compare: "prev" })}`)
+    for (const scope of (cats?.rows ?? []).slice(0, 5).map((r) => r.name)) {
+      const base = { from, to, level, scope, compare: "prev" }
+      urls.add(`/api/sku/products${query(base)}`)
+      urls.add(`/api/sku/trend${query({ ...base, granularity: "day" })}`)
+      urls.add(`/api/sku/top-creators${query({ ...base, limit: 25 })}`)
+    }
+  }
+
+  const skus = await fetchJson(`/api/sku/products${query({ from, to, level: "category", compare: "prev" })}`)
+  for (const barcode of (skus?.rows ?? []).slice(0, 20).map((r) => r.barcode)) {
+    urls.add(`/api/sku/detail${query({ barcode, from, to, compare: "prev", granularity: "day" })}`)
   }
 
   return [...urls]
@@ -209,7 +253,8 @@ async function main() {
   const fetchJson = async (p, attempts = 3) => {
     for (let i = 1; ; i++) {
       try {
-        const res = await fetch(`${API}${p}`)
+        // The backend refuses anything without the internal secret (see backend internalAuth).
+        const res = await fetch(`${API}${p}`, { headers: { "x-internal-secret": process.env.INTERNAL_API_SECRET ?? "" } })
         if (!res.ok) throw new Error(`HTTP ${res.status}`)
         return await res.json()
       } catch (e) {
@@ -225,7 +270,7 @@ async function main() {
   console.log(`Backend: ${API}`)
   process.stdout.write("Menyiapkan daftar URL… ")
   const discovered = await discoveredUrls(fetchJson)
-  const urls = [...new Set([...overviewUrls(), ...shopeePidUrls(), ...discovered])]
+  const urls = [...new Set([...overviewUrls(), ...pidUrls(), ...skuUrls(), ...discovered])]
   console.log(`${urls.length} permintaan`)
 
   if (existsSync(OUT_DIR) && !onlyMissing) await rm(OUT_DIR, { recursive: true })

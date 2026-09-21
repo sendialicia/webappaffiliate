@@ -33,9 +33,9 @@ function RangeField({ from, to, children }: { from: string; to: string; children
     <Popover>
       <PopoverTrigger
         render={
-          <button type="button" className={`${pillControlClass} font-mono text-[11.5px]`}>
+          <button type="button" className={`${pillControlClass} font-mono text-[12.5px]`}>
             {from} → {to}
-            <span className="font-sans text-[9px] text-[var(--ov-faint)]">▼</span>
+            <span className="font-sans text-[10.5px] text-[var(--ov-faint)]">▼</span>
           </button>
         }
       />
@@ -127,7 +127,7 @@ export function CurrentPeriodField({
         onSelectAction={onPresetAction}
       />
       <DateInputs from={from} to={to} onChangeAction={onRangeAction} />
-      <div className="mt-2 text-[11px] leading-relaxed text-[var(--ov-faint)]">
+      <div className="mt-2 text-[12px] leading-relaxed text-[var(--ov-faint)]">
         Mengubah tanggal langsung memakai mode custom.
       </div>
     </RangeField>
@@ -171,7 +171,7 @@ export function PreviousPeriodField({
         }}
       />
       {basis === "custom" && <DateInputs from={resolvedFrom} to={resolvedTo} onChangeAction={onRangeAction} />}
-      <div className="mt-2 text-[11px] leading-relaxed text-[var(--ov-faint)]">
+      <div className="mt-2 text-[12px] leading-relaxed text-[var(--ov-faint)]">
         {basis === "custom"
           ? "Rentang pembanding dikunci ke tanggal di atas."
           : "Mengikuti panjang periode berjalan secara otomatis."}

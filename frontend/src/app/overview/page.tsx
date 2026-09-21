@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { FilterBar } from "@/components/overview/filter-bar"
 import { FindingsFeed } from "@/components/overview/findings-feed"
 import { MonthlyPerformanceChart } from "@/components/charts/monthly-performance-chart"
+import { AnnotationLane } from "@/components/charts/annotation-lane"
 import { DailyPerformanceChart } from "@/components/charts/daily-performance-chart"
 import { PaceGauge } from "@/components/charts/pace-gauge"
 import { ProgressBars } from "@/components/charts/progress-bars"
@@ -18,12 +19,19 @@ import { CompositionTable, DIMENSION_COLORS } from "@/components/overview/compos
 import { CompositionDetail } from "@/components/overview/composition-detail"
 import { GmvDecomposition } from "@/components/overview/gmv-decomposition"
 import type { DownloadItem } from "@/components/download-menu"
-import { DriverChart, DriverLegend } from "@/components/charts/driver-chart"
+import {
+  DRIVER_LABEL_WIDTH,
+  DRIVER_MAX_HEIGHT,
+  DriverChart,
+  DriverLegend,
+  driverChartHeight,
+} from "@/components/charts/driver-chart"
 import { GmvCommissionChart, ROI_THRESHOLD, RoiChart } from "@/components/charts/roi-chart"
 import { AcquisitionChart } from "@/components/charts/acquisition-chart"
 import { SpendTable } from "@/components/overview/spend-table"
 import { ContentFunnel } from "@/components/overview/content-funnel"
 import { apiFetch } from "@/lib/api"
+import { useMediaQuery } from "@/lib/use-media-query"
 import { computeFindings } from "@/lib/findings"
 import { formatIdr, formatMonthLabelFull, formatPercent, formatRp, formatRpFull } from "@/lib/format"
 import { currentMonth } from "@/lib/date-range"
@@ -56,22 +64,38 @@ const SECTION_NAV = [
 ]
 
 /** Both sides of the driver chart pick from the same list; a side cannot pick what the other holds. */
+/** Same list and order as the composition dropdown above, so both sections offer the same cuts. */
 const DRIVER_FIELD_LABELS: Record<DriverField, string> = {
+  pillar: "Pillar",
+  subpillar: "Sub Pillar",
   brand: "Brand",
   marketplace: "Marketplace",
-  pillar: "Pillar",
   pidCategory: "PID Category",
   pidSubCategory: "PID Sub Category",
-  pidFormat: "Product Format",
+  pidFormat: "PID Format",
+  productCategory: "Product Category",
+  productSubCategory: "Product Sub Category",
+  productFormat: "Product Format",
 }
 
 const DRIVER_FIELDS = Object.keys(DRIVER_FIELD_LABELS) as DriverField[]
 
+/** Insertion order drives the dropdown; the labels say PID where the column is PID-level. */
+/** Insertion order drives the dropdown; labels say PID where the column is PID-level. */
 const DIMENSION_LABELS: Record<CompositionDimension, string> = {
   pillar: "Pillar",
-  category: "Category",
-  format: "Format",
+  subpillar: "Sub Pillar",
+  brand: "Brand",
+  marketplace: "Marketplace",
+  category: "PID Category",
+  pidSubCategory: "PID Sub Category",
+  format: "PID Format",
+  productCategory: "Product Category",
+  productSubCategory: "Product Sub Category",
+  productFormat: "Product Format",
 }
+
+const DIMENSION_OPTIONS = Object.keys(DIMENSION_LABELS) as CompositionDimension[]
 
 /** Multi-value filters travel as one comma separated parameter. */
 function csv(values: string[]): string | undefined {
@@ -94,6 +118,8 @@ function OverviewPageInner() {
   const hydrated = useRef(false)
 
   const filters = useOverviewFilters()
+  // Matches Tailwind's lg breakpoint, where the driver panels sit side by side.
+  const sideBySide = useMediaQuery("(min-width: 1024px)")
   const {
     brand,
     marketplace,
@@ -168,39 +194,72 @@ function OverviewPageInner() {
 
 
   useEffect(() => {
+    let stale = false
     apiFetch<FilterOptionsResult>(
       `/api/overview/filter-options${buildQuery({ from, to, brand: csv(brand), marketplace: csv(marketplace) })}`,
     )
-      .then(setFilterOptions)
-      .catch((e) => setError(e instanceof Error ? e.message : "Failed to load filter options"))
+      .then((data) => {
+        if (!stale) setFilterOptions(data)
+      })
+      .catch((e) => {
+        if (!stale) setError(e instanceof Error ? e.message : "Failed to load filter options")
+      })
+    return () => {
+      stale = true
+    }
   }, [from, to, brand, marketplace])
 
   useEffect(() => {
+    let stale = false
     const year = new Date().getFullYear()
     apiFetch<MonthlyPerformanceResult>(
       `/api/overview/monthly-performance${buildQuery({ year: String(year), brand: csv(brand), marketplace: csv(marketplace) })}`,
     )
-      .then(setMonthly)
-      .catch((e) => setError(e instanceof Error ? e.message : "Failed to load monthly performance"))
+      .then((data) => {
+        if (!stale) setMonthly(data)
+      })
+      .catch((e) => {
+        if (!stale) setError(e instanceof Error ? e.message : "Failed to load monthly performance")
+      })
+    return () => {
+      stale = true
+    }
   }, [brand, marketplace])
 
   useEffect(() => {
+    let stale = false
     apiFetch<DailyPerformancePoint[]>(
       `/api/overview/daily-performance${buildQuery({ month, brand: csv(brand), marketplace: csv(marketplace) })}`,
     )
-      .then(setDaily)
-      .catch((e) => setError(e instanceof Error ? e.message : "Failed to load daily performance"))
+      .then((data) => {
+        if (!stale) setDaily(data)
+      })
+      .catch((e) => {
+        if (!stale) setError(e instanceof Error ? e.message : "Failed to load daily performance")
+      })
+    return () => {
+      stale = true
+    }
   }, [month, brand, marketplace])
 
   useEffect(() => {
+    let stale = false
     apiFetch<ProgressResult>(
       `/api/overview/progress${buildQuery({ month, brand: csv(brand), marketplace: csv(marketplace) })}`,
     )
-      .then(setProgress)
-      .catch((e) => setError(e instanceof Error ? e.message : "Failed to load progress"))
+      .then((data) => {
+        if (!stale) setProgress(data)
+      })
+      .catch((e) => {
+        if (!stale) setError(e instanceof Error ? e.message : "Failed to load progress")
+      })
+    return () => {
+      stale = true
+    }
   }, [month, brand, marketplace])
 
   useEffect(() => {
+    let stale = false
     apiFetch<SummaryResult>(
       `/api/overview/summary${buildQuery({
         from,
@@ -213,12 +272,20 @@ function OverviewPageInner() {
         ...prevParams,
       })}`,
     )
-      .then(setSummary)
-      .catch((e) => setError(e instanceof Error ? e.message : "Failed to load summary"))
+      .then((data) => {
+        if (!stale) setSummary(data)
+      })
+      .catch((e) => {
+        if (!stale) setError(e instanceof Error ? e.message : "Failed to load summary")
+      })
+    return () => {
+      stale = true
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [from, to, compare, trendGranularity, brand, marketplace, detailKey, prevFrom, prevTo])
 
   useEffect(() => {
+    let stale = false
     apiFetch<CompositionResult>(
       `/api/overview/composition${buildQuery({
         from,
@@ -232,12 +299,20 @@ function OverviewPageInner() {
         ...prevParams,
       })}`,
     )
-      .then(setComposition)
-      .catch((e) => setError(e instanceof Error ? e.message : "Failed to load composition"))
+      .then((data) => {
+        if (!stale) setComposition(data)
+      })
+      .catch((e) => {
+        if (!stale) setError(e instanceof Error ? e.message : "Failed to load composition")
+      })
+    return () => {
+      stale = true
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [from, to, compare, trendGranularity, dimension, brand, marketplace, detailKey, prevFrom, prevTo])
 
   useEffect(() => {
+    let stale = false
     apiFetch<DriversResult>(
       `/api/overview/drivers${buildQuery({
         from,
@@ -251,12 +326,20 @@ function OverviewPageInner() {
         ...prevParams,
       })}`,
     )
-      .then(setDrivers)
-      .catch((e) => setError(e instanceof Error ? e.message : "Failed to load drivers"))
+      .then((data) => {
+        if (!stale) setDrivers(data)
+      })
+      .catch((e) => {
+        if (!stale) setError(e instanceof Error ? e.message : "Failed to load drivers")
+      })
+    return () => {
+      stale = true
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [from, to, compare, driverEntity, driverDimension, brand, marketplace, detailKey, prevFrom, prevTo])
 
   useEffect(() => {
+    let stale = false
     apiFetch<SpendResult>(
       `/api/overview/spend${buildQuery({
         from,
@@ -270,12 +353,20 @@ function OverviewPageInner() {
         ...prevParams,
       })}`,
     )
-      .then(setSpend)
-      .catch((e) => setError(e instanceof Error ? e.message : "Failed to load spend"))
+      .then((data) => {
+        if (!stale) setSpend(data)
+      })
+      .catch((e) => {
+        if (!stale) setError(e instanceof Error ? e.message : "Failed to load spend")
+      })
+    return () => {
+      stale = true
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [from, to, compare, trendGranularity, spendEntity, brand, marketplace, detailKey, prevFrom, prevTo])
 
   useEffect(() => {
+    let stale = false
     apiFetch<FunnelResult>(
       `/api/overview/funnel${buildQuery({
         from,
@@ -283,11 +374,20 @@ function OverviewPageInner() {
         compare,
         brand: csv(brand),
         marketplace: csv(marketplace),
+        ...prevParams,
       })}`,
     )
-      .then(setFunnel)
-      .catch((e) => setError(e instanceof Error ? e.message : "Failed to load funnel"))
-  }, [from, to, compare, brand, marketplace])
+      .then((data) => {
+        if (!stale) setFunnel(data)
+      })
+      .catch((e) => {
+        if (!stale) setError(e instanceof Error ? e.message : "Failed to load funnel")
+      })
+    return () => {
+      stale = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [from, to, compare, brand, marketplace, prevFrom, prevTo])
 
   const onMonthClick = useCallback((clickedMonth: string) => setMonth(clickedMonth), [setMonth])
 
@@ -498,7 +598,7 @@ function OverviewPageInner() {
                     <div className="text-base font-bold font-(family-name:--font-archivo)">
                       {formatPercent(monthly.pace.expectedPct)}
                     </div>
-                    <div className="mt-0.5 text-[11px] text-[var(--ov-faint)]">
+                    <div className="mt-0.5 text-[12px] text-[var(--ov-faint)]">
                       bulan ini sudah lewat sejauh ini
                     </div>
                   </div>
@@ -533,7 +633,15 @@ function OverviewPageInner() {
             </span>
           </div>
           {daily ? (
-            <DailyPerformanceChart days={daily} />
+            <>
+              <DailyPerformanceChart days={daily} />
+              {/* Only this chart carries annotations — the day grain is what people annotate. */}
+              <AnnotationLane
+                days={daily.map((d) => d.date)}
+                brands={brand}
+                marketplaces={marketplace}
+              />
+            </>
           ) : (
             <div className="flex h-[280px] items-center justify-center text-sm text-[var(--ov-faint)]">Loading…</div>
           )}
@@ -693,9 +801,11 @@ function OverviewPageInner() {
                 <SelectValue>{(v: string) => DIMENSION_LABELS[v as CompositionDimension] ?? v}</SelectValue>
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="pillar">Pillar</SelectItem>
-                <SelectItem value="category">Category</SelectItem>
-                <SelectItem value="format">Format</SelectItem>
+                {DIMENSION_OPTIONS.map((d) => (
+                  <SelectItem key={d} value={d}>
+                    {DIMENSION_LABELS[d]}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
             <span className="text-lg font-semibold font-(family-name:--font-archivo)">?</span>
@@ -705,7 +815,7 @@ function OverviewPageInner() {
             <>
               <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
                 <div>
-                  <div className="text-[11.5px] font-bold tracking-wider text-[var(--ov-head)] uppercase">
+                  <div className="text-[12.5px] font-bold tracking-wider text-[var(--ov-head)] uppercase">
                     Kontribusi tiap {DIMENSION_LABELS[dimension].toLowerCase()} pada perubahan GMV
                   </div>
                   <div className="mt-0.5 text-xs text-[var(--ov-faint)]">
@@ -722,6 +832,14 @@ function OverviewPageInner() {
                   />
                   <div className="mt-2 text-xs text-[var(--ov-faint)]">
                     Klik baris untuk membuka detail dan menyorotnya pada grafik di bawah.
+                    {composition.hidden.rows > 0 && (
+                      <>
+                        {" "}
+                        Menampilkan {composition.rows.length} teratas; {composition.hidden.rows} nilai lain
+                        senilai {formatIdr(composition.hidden.gmv)} tidak ditampilkan, jadi batangnya tidak
+                        menjumlah ke total.
+                      </>
+                    )}
                   </div>
                 </div>
               </div>
@@ -736,7 +854,7 @@ function OverviewPageInner() {
               )}
 
               <div className="mt-5">
-                <div className="mb-2 text-[11.5px] font-bold tracking-wider text-[var(--ov-head)] uppercase">
+                <div className="mb-2 text-[12.5px] font-bold tracking-wider text-[var(--ov-head)] uppercase">
                   Over the time in current period
                 </div>
                 <CompositionTrendChart
@@ -793,27 +911,73 @@ function OverviewPageInner() {
           </div>
 
           {drivers ? (
-            <div className="grid grid-cols-1 gap-3.5 lg:grid-cols-[1fr_1fr_1fr_auto]">
-              <div>
-                <div className="mb-2 rounded-md border border-[var(--accent)] bg-[var(--accent)] p-1.5 text-center text-[11.5px] font-bold tracking-wider text-[var(--ov-head)] uppercase">
-                  Composition
-                </div>
-                <DriverChart rows={drivers.composition} names={drivers.names} />
+            (() => {
+              // The row count swings from 2 (marketplace) to 64 (PID format), so the block is
+              // sized from the data and only scrolls once it would run past a screenful. The
+              // three charts share one scroll container so their rows stay aligned.
+              const chartHeight = driverChartHeight(drivers.composition.length)
+              // Legend column is sized from its longest label so header and chart rows line up.
+              const legendWidth = 34 + 7 * Math.max(0, ...drivers.names.map((n) => n.length))
+              const scrolls = chartHeight > DRIVER_MAX_HEIGHT
+              // Side by side, only the first panel carries the entity names; it gets their width
+              // on top of an equal share (flex-basis) so the three plotting areas stay the same
+              // size. Stacked on a narrow screen, every panel needs its own names again.
+              const cols = "flex flex-col gap-3.5 lg:flex-row"
+              const firstCol = { flex: `1 1 ${sideBySide ? DRIVER_LABEL_WIDTH : 0}px`, minWidth: 0 }
+              const restCol = { flex: "1 1 0px", minWidth: 0 }
+              const head =
+                "rounded-md border border-[var(--accent)] bg-[var(--accent)] p-1.5 text-center text-[12.5px] font-bold tracking-wider text-[var(--ov-head)] uppercase"
+
+              return (
+            <>
+              {/* Headers sit outside the scroller so they stay put while the rows move. */}
+              <div className={`${cols} mb-2`}>
+                <div className={head} style={firstCol}>Composition</div>
+                <div className={`${head} hidden lg:block`} style={restCol}>Growth GMV</div>
+                <div className={`${head} hidden lg:block`} style={restCol}>GMV Difference</div>
+                <div className="hidden lg:block" style={{ width: legendWidth }} />
               </div>
-              <div>
-                <div className="mb-2 rounded-md border border-[var(--accent)] bg-[var(--accent)] p-1.5 text-center text-[11.5px] font-bold tracking-wider text-[var(--ov-head)] uppercase">
-                  Growth GMV
+              <div
+                className={scrolls ? "overflow-y-auto pr-1" : ""}
+                style={scrolls ? { maxHeight: DRIVER_MAX_HEIGHT } : undefined}
+              >
+                <div className={cols}>
+                  <div style={firstCol}>
+                    <DriverChart rows={drivers.composition} names={drivers.names} unit="share" height={chartHeight} />
+                  </div>
+                  <div style={restCol}>
+                    {!sideBySide && <div className={`${head} mb-2`}>Growth GMV</div>}
+                    <DriverChart
+                      rows={drivers.growth}
+                      names={drivers.names}
+                      unit="pp"
+                      height={chartHeight}
+                      showLabels={!sideBySide}
+                    />
+                  </div>
+                  <div style={restCol}>
+                    {!sideBySide && <div className={`${head} mb-2`}>GMV Difference</div>}
+                    <DriverChart
+                      rows={drivers.difference}
+                      names={drivers.names}
+                      height={chartHeight}
+                      showLabels={!sideBySide}
+                    />
+                  </div>
+                  <div className="flex-none" style={sideBySide ? { width: legendWidth } : undefined}>
+                    <DriverLegend names={drivers.names} />
+                  </div>
                 </div>
-                <DriverChart rows={drivers.growth} names={drivers.names} unit="pp" />
               </div>
-              <div>
-                <div className="mb-2 rounded-md border border-[var(--accent)] bg-[var(--accent)] p-1.5 text-center text-[11.5px] font-bold tracking-wider text-[var(--ov-head)] uppercase">
-                  GMV Difference
+              {scrolls && (
+                <div className="mt-2 text-[12.5px] text-[var(--ov-faint)]">
+                  {drivers.composition.length} baris — gulir di dalam blok ini; ketiga panel bergerak bersama
+                  supaya barisnya tetap sejajar.
                 </div>
-                <DriverChart rows={drivers.difference} names={drivers.names} />
-              </div>
-              <DriverLegend names={drivers.names} />
-            </div>
+              )}
+            </>
+              )
+            })()
           ) : (
             <div className="flex h-[330px] items-center justify-center text-sm text-[var(--ov-faint)]">Loading…</div>
           )}
@@ -834,7 +998,7 @@ function OverviewPageInner() {
           {funnel ? (
             <div className="grid grid-cols-1 gap-3.5 xl:grid-cols-2">
               {funnel.marketplaces.map((m) => (
-                <ContentFunnel key={m.name} marketplace={m} />
+                <ContentFunnel key={m.name} marketplace={m} periodTo={to} />
               ))}
             </div>
           ) : (
@@ -911,7 +1075,7 @@ function OverviewPageInner() {
             {summary ? (
               <>
                 <GmvCommissionChart trend={summary.trend} />
-                <div className="mt-1 text-[11px] text-[var(--ov-faint)]">
+                <div className="mt-1 text-[12px] text-[var(--ov-faint)]">
                   Diindeks 100 pada awal periode — garis yang naik lebih curam tumbuh lebih cepat. Nilai rupiah
                   aslinya ada di tooltip.
                 </div>

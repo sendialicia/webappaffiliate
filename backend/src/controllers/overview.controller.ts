@@ -40,6 +40,10 @@ const DRIVER_FIELDS: DriverField[] = [
   'pidCategory',
   'pidSubCategory',
   'pidFormat',
+  'subpillar',
+  'productCategory',
+  'productSubCategory',
+  'productFormat',
 ]
 
 function driverFieldOf(value: unknown, fallback: DriverField): DriverField {
@@ -131,9 +135,26 @@ export async function getCompositionHandler(req: Request, res: Response) {
   const granularity: TrendGranularity =
     req.query.granularity === 'week' || req.query.granularity === 'month' ? req.query.granularity : 'day'
   const dimensionParam = str(req.query.dimension)
-  const dimension: CompositionDimension =
-    dimensionParam === 'category' || dimensionParam === 'format' ? dimensionParam : 'pillar'
-  const limit = Math.min(Number(str(req.query.limit)) || 12, 30)
+  const COMPOSITION_DIMENSIONS = [
+    'pillar',
+    'subpillar',
+    'brand',
+    'marketplace',
+    'category',
+    'pidSubCategory',
+    'format',
+    'productCategory',
+    'productSubCategory',
+    'productFormat',
+  ] as const
+  const dimension: CompositionDimension = (COMPOSITION_DIMENSIONS as readonly string[]).includes(
+    dimensionParam ?? '',
+  )
+    ? (dimensionParam as CompositionDimension)
+    : 'pillar'
+  // 20 covers brand (15) and both sub-category lists (~18) whole; only the format lists,
+  // at ~61 values, still get cut — and there a full list would be unreadable anyway.
+  const limit = Math.min(Number(str(req.query.limit)) || 20, 40)
 
   const data = await getComposition(from, to, basis, filtersFromQuery(req), granularity, dimension, limit, detailFromQuery(req), prevRangeFromQuery(req))
   res.json(data)
@@ -168,7 +189,7 @@ export async function getFunnelHandler(req: Request, res: Response) {
   const from = str(req.query.from) ?? defaultFrom(to)
   const basis: ComparisonBasis = basisFromQuery(req)
 
-  const data = await getFunnel(from, to, basis, filtersFromQuery(req))
+  const data = await getFunnel(from, to, basis, filtersFromQuery(req), prevRangeFromQuery(req))
   res.json(data)
 }
 

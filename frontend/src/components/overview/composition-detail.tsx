@@ -67,9 +67,9 @@ function DetailTile({
 }) {
   return (
     <div className="rounded-lg border border-[var(--ov-line)] bg-[var(--card)] px-3 py-2.5">
-      <div className="text-[11px] tracking-wider text-[var(--ov-faint)] uppercase">{label}</div>
+      <div className="text-[12px] tracking-wider text-[var(--ov-faint)] uppercase">{label}</div>
       <div className="mt-1 font-mono text-sm font-semibold">{value}</div>
-      <div className="mt-0.5 text-[11.5px]" style={{ color: subColor ?? "var(--ov-faint)" }}>
+      <div className="mt-0.5 text-[12.5px]" style={{ color: subColor ?? "var(--ov-faint)" }}>
         {sub}
       </div>
     </div>

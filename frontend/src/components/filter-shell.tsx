@@ -33,7 +33,7 @@ export function FilterItem({
 }) {
   return (
     <div className={`flex items-center gap-2 px-1.5 ${grow ? "min-w-[170px] flex-1" : "flex-none"}`}>
-      <span className="text-[9.5px] leading-tight font-bold tracking-wider whitespace-nowrap text-[var(--ov-faint)] uppercase">
+      <span className="text-[10.5px] leading-tight font-bold tracking-wider whitespace-nowrap text-[var(--ov-faint)] uppercase">
         {label}
       </span>
       {children}

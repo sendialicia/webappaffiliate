@@ -23,7 +23,7 @@ interface ShopeePidState {
   scope: string[]
   selectedPids: string[]
   /** Which count card is filtering the product table. */
-  countFilter: "all" | "profit" | "decline"
+  countFilter: "all" | "growing" | "decline"
   /** Products picked by dragging a rectangle on the quadrant; also narrows the product table. */
   quadrantSelection: string[]
   /** How many rows the top creators table shows. */
@@ -50,7 +50,7 @@ interface ShopeePidState {
   toggleScope: (value: string) => void
   setSelectedPids: (pids: string[]) => void
   toggleSelectedPid: (pid: string) => void
-  setCountFilter: (filter: "all" | "profit" | "decline") => void
+  setCountFilter: (filter: "all" | "growing" | "decline") => void
   setQuadrantSelection: (pids: string[]) => void
   setCreatorLimit: (limit: number) => void
   setQuadrant: (quadrant: QuadrantPreset) => void

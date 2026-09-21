@@ -1,0 +1,22 @@
+# Local Postgres for the comments and annotations feature. The internal database will be
+# provisioned separately by IT; nothing here is meant to run in production.
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: affiliate-comments-db
+    environment:
+      POSTGRES_USER: affiliate
+      POSTGRES_PASSWORD: affiliate
+      POSTGRES_DB: affiliate_comments
+    ports:
+      - "5433:5432"
+    volumes:
+      - comments-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U affiliate -d affiliate_comments"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  comments-data:

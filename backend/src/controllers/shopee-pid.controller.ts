@@ -1,5 +1,8 @@
+import type { SimilarityLevel } from '../services/opportunity.service'
 import type { Request, Response } from 'express'
 import {
+  getOpportunityCreators,
+  getPidCreatorDetail,
   getPidCategories,
   getPidProductDetail,
   getPidProducts,
@@ -80,6 +83,11 @@ function detailOf(req: Request): DetailFilters {
   return detail
 }
 
+/** Which attribute tier counts as "comparable" for the opportunity list; sub-category by default. */
+function oppLevelOf(value: unknown): SimilarityLevel {
+  return value === 'category' || value === 'format' ? value : 'subcategory'
+}
+
 export async function getPidCategoriesHandler(req: Request, res: Response) {
   const { from, to } = range(req)
   const level = levelOf(str(req.query.level))
@@ -121,11 +129,35 @@ export async function getPidProductDetailHandler(req: Request, res: Response) {
 
 export async function getPidTopCreatorsHandler(req: Request, res: Response) {
   const { from, to } = range(req)
-  const pillar = str(req.query.pillar) ?? null
+  // crPillar, not pillar: the detail filter already owns `pillar` and is an array there.
+  const pillar = str(req.query.crPillar) ?? null
   const managedParam = str(req.query.managed)
   const managed = managedParam === 'true' ? true : managedParam === 'false' ? false : null
   const limit = Number(str(req.query.limit)) || 25
+  // Present only when a product is selected; the table then answers "who sells this product".
+  const pids = list(req.query.pid)
 
-  const data = await getPidTopCreators(from, to, filtersOf(req), pillar, managed, limit)
+  const data = await getPidTopCreators(from, to, filtersOf(req), pillar, managed, limit, pids.length ? pids : undefined)
   res.json(data)
+}
+
+export async function getOpportunityCreatorsHandler(req: Request, res: Response) {
+  const pids = list(req.query.pid)
+  if (pids.length === 0) {
+    res.status(400).json({ error: 'pid is required' })
+    return
+  }
+  const { from, to } = range(req)
+  const limit = Number(str(req.query.limit)) || 20
+  res.json(await getOpportunityCreators(pids, from, to, filtersOf(req), limit, str(req.query.oppPillar), oppLevelOf(req.query.oppLevel)))
+}
+
+export async function getPidCreatorDetailHandler(req: Request, res: Response) {
+  const username = str(req.query.username)
+  if (!username) {
+    res.status(400).json({ error: 'username is required' })
+    return
+  }
+  const { from, to } = range(req)
+  res.json(await getPidCreatorDetail(username, from, to, filtersOf(req), granularityOf(req)))
 }

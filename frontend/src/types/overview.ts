@@ -86,7 +86,21 @@ export interface SummaryResult {
   trend: SummaryTrendPoint[]
 }
 
-export type CompositionDimension = "pillar" | "category" | "format"
+/**
+ * `category` and `format` keep their original keys so shared URLs stay valid; their labels now
+ * say PID explicitly, since the SKU-level product category sits alongside them.
+ */
+export type CompositionDimension =
+  | "pillar"
+  | "subpillar"
+  | "brand"
+  | "marketplace"
+  | "category"
+  | "pidSubCategory"
+  | "format"
+  | "productCategory"
+  | "productSubCategory"
+  | "productFormat"
 
 export interface CompositionRow {
   name: string
@@ -108,6 +122,8 @@ export interface CompositionTrendPoint {
 }
 
 export interface CompositionResult {
+  /** What the row limit left out, so the page can say the bars do not sum to the total. */
+  hidden: { rows: number; gmv: number }
   dimension: CompositionDimension
   current: { from: string; to: string }
   comparison: { from: string; to: string; basis: "prev" | "ly" }
@@ -126,6 +142,10 @@ export type DriverField =
   | "pidCategory"
   | "pidSubCategory"
   | "pidFormat"
+  | "subpillar"
+  | "productCategory"
+  | "productSubCategory"
+  | "productFormat"
 
 export interface DriverChartRow {
   entity: string
@@ -207,6 +227,8 @@ export interface FunnelContent {
   creatorsPostingDeltaPct: number | null
   totalNewContent: number
   totalNewContentDeltaPct: number | null
+  /** Last day the content table has data for this brand filter (TikTok only); loads lag per brand. */
+  lastDate: string | null
 }
 
 export interface FunnelMarketplace {

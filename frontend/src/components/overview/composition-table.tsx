@@ -74,11 +74,11 @@ export function CompositionTable({
                 key={col.key}
                 onClick={() => toggleSort(col.key)}
                 title="Klik untuk mengurutkan"
-                className="cursor-pointer border-b border-[var(--ov-line)] bg-[var(--accent)] p-2.5 text-[10.5px] font-bold tracking-wider whitespace-nowrap text-[var(--ov-head)] uppercase select-none"
+                className="cursor-pointer border-b border-[var(--ov-line)] bg-[var(--accent)] p-2.5 text-[12px] font-bold tracking-wider whitespace-nowrap text-[var(--ov-head)] uppercase select-none"
                 style={{ textAlign: col.align }}
               >
                 {col.label}
-                <span className="ml-1 text-[9px] text-[var(--ov-blue)]">
+                <span className="ml-1 text-[10.5px] text-[var(--ov-blue)]">
                   {sortKey === col.key ? (asc ? "▲" : "▼") : ""}
                 </span>
               </th>

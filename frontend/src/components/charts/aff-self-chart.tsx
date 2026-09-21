@@ -17,7 +17,7 @@ export function AffSelfChart({ trend }: { trend: SummaryTrendPoint[] }) {
   return (
     <ResponsiveContainer width="100%" height={220}>
       <AreaChart data={data} stackOffset="expand" margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-        <XAxis dataKey="label" tick={{ fill: "var(--ov-faint)", fontSize: 11 }} axisLine={{ stroke: "var(--ov-line)" }} tickLine={false} />
+        <XAxis dataKey="label" tick={{ fill: "var(--ov-faint)", fontSize: 12 }} axisLine={{ stroke: "var(--ov-line)" }} tickLine={false} />
         <Tooltip
           formatter={(value, name) => [formatPercent(Number(value)), String(name)]}
           contentStyle={{ background: "var(--ov-tooltip)", border: "1px solid var(--ov-line)", borderRadius: 8, fontSize: 12 }}

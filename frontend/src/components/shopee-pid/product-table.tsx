@@ -13,15 +13,14 @@ type SortKey =
   | "livestream"
   | "video"
   | "productCard"
-  | "spGmv"
-  | "spOrders"
+  | "orders"
   | "spClicks"
   | "spCoRate"
   | "spBuyers"
   | "spNewBuyers"
-  | "spProductSold"
-  | "spCommission"
-  | "spRoi"
+  | "itemsSold"
+  | "commission"
+  | "roi"
 
 const COLUMNS: Array<{ key: SortKey; label: string; group?: "pillar" | "shopee" }> = [
   { key: "name", label: "Produk" },
@@ -32,15 +31,14 @@ const COLUMNS: Array<{ key: SortKey; label: string; group?: "pillar" | "shopee" 
   { key: "livestream", label: "Livestream", group: "pillar" },
   { key: "video", label: "Video", group: "pillar" },
   { key: "productCard", label: "Product Card", group: "pillar" },
-  { key: "spGmv", label: "SP GMV", group: "shopee" },
-  { key: "spOrders", label: "Orders", group: "shopee" },
+  { key: "orders", label: "Orders", group: "shopee" },
   { key: "spClicks", label: "Clicks", group: "shopee" },
-  { key: "spCoRate", label: "CO Rate", group: "shopee" },
+  { key: "spCoRate", label: "CO Rate (centre)", group: "shopee" },
   { key: "spBuyers", label: "Buyers", group: "shopee" },
   { key: "spNewBuyers", label: "New Buyers", group: "shopee" },
-  { key: "spProductSold", label: "Sold", group: "shopee" },
-  { key: "spCommission", label: "Est Comm", group: "shopee" },
-  { key: "spRoi", label: "ROI", group: "shopee" },
+  { key: "itemsSold", label: "Items Sold", group: "shopee" },
+  { key: "commission", label: "Commission", group: "shopee" },
+  { key: "roi", label: "ROI", group: "shopee" },
 ]
 
 function valueOf(row: PidProductRow, key: SortKey): number | string | null {
@@ -60,8 +58,8 @@ function cellOf(row: PidProductRow, key: SortKey): { text: string; color?: strin
       }
     case "share":
       return { text: formatPercent(row.share, 2) }
-    case "spRoi":
-      return { text: row.spRoi !== null ? `${row.spRoi.toFixed(1)}x` : "—" }
+    case "roi":
+      return { text: row.roi !== null ? `${row.roi.toFixed(1)}x` : "—" }
     case "spCoRate":
       return { text: row.spCoRate !== null ? formatPercent(row.spCoRate, 2) : "—" }
     case "livestream":
@@ -69,8 +67,7 @@ function cellOf(row: PidProductRow, key: SortKey): { text: string; color?: strin
     case "productCard":
       return { text: formatCompact(row.pillars[key]) }
     case "gmv":
-    case "spGmv":
-    case "spCommission":
+    case "commission":
       return { text: formatCompact(row[key]) }
     default:
       return { text: formatIdr(Number(row[key] ?? 0)) }
@@ -154,7 +151,7 @@ export function ProductTable({
 
   return (
     <div className="max-h-[440px] overflow-auto rounded-lg border border-[var(--ov-line)]">
-      <table className="w-full border-collapse text-[12.5px]" style={{ minWidth: 340 + columns.length * 88 }}>
+      <table className="w-full border-collapse text-[13px]" style={{ minWidth: 340 + columns.length * 88 }}>
         <thead>
           <tr>
             <th className="sticky top-0 z-[2] w-9 bg-[var(--card)] p-2.5 shadow-[inset_0_-2px_0_var(--ov-track)]">
@@ -175,11 +172,11 @@ export function ProductTable({
                 key={col.key}
                 onClick={() => toggleSort(col.key)}
                 title="Klik untuk mengurutkan"
-                className="sticky top-0 z-[2] cursor-pointer bg-[var(--card)] p-2.5 text-[10.5px] font-bold tracking-wide whitespace-nowrap text-[var(--ov-head)] uppercase shadow-[inset_0_-2px_0_var(--ov-track)] select-none"
+                className="sticky top-0 z-[2] cursor-pointer bg-[var(--card)] p-2.5 text-[12px] font-bold tracking-wide whitespace-nowrap text-[var(--ov-head)] uppercase shadow-[inset_0_-2px_0_var(--ov-track)] select-none"
                 style={{ textAlign: i === 0 ? "left" : "right" }}
               >
                 {col.label}
-                <span className="ml-1 text-[9px] text-[var(--ov-blue)]">
+                <span className="ml-1 text-[10.5px] text-[var(--ov-blue)]">
                   {sortKey === col.key ? (asc ? "▲" : "▼") : ""}
                 </span>
               </th>
@@ -229,7 +226,7 @@ export function ProductTable({
                             style={{ background: row.inScope ? "var(--ov-gold)" : "transparent" }}
                           />
                           <span className="flex min-w-0 flex-col gap-0.5">
-                            <span className="font-mono text-[11px] text-[var(--ov-faint)]">{row.pid}</span>
+                            <span className="font-mono text-[12px] text-[var(--ov-faint)]">{row.pid}</span>
                             <span className="line-clamp-2">{row.name}</span>
                           </span>
                         </span>

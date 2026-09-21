@@ -11,9 +11,18 @@ duplicate rows per key (same METRIC_VALUE, different ETL_BATCH_TIME) — fixed
 as of [tanggal fix]. defensive practice: still dedup with
   QUALIFY ROW_NUMBER() OVER (
     PARTITION BY PERIOD_DATE, BRAND_NAME, MARKETPLACE_NAME, METRIC_NAME
-    ORDER BY ETL_BATCH_TIME DESC
+    ORDER BY DATA_EXTRACT_TIMESTAMP DESC, ETL_BATCH_TIME DESC
   ) = 1
 before aggregating, in case the bug regresses.
+
+second duplicate source — two target versions: some brand × marketplace keys carry
+two 'Actual GMV' rows with the SAME METRIC_VALUE and ETL_BATCH_TIME but DIFFERENT
+DAILY_POOL_TARGET, one per target-sheet extract (DATA_EXTRACT_TIMESTAMP 2026-03-23
+vs the revised 2026-08-18). Seen all year on Labore/Tavi Shopee, one month on Putri
+Tiktok and Biodef Shopee. ETL_BATCH_TIME ties there, so ordering by it alone picks a
+version at random — DATA_EXTRACT_TIMESTAMP DESC must come first to keep the latest
+target. A raw SUM(DAILY_POOL_TARGET) counts both versions (Jan 2026: 132.83B raw vs
+125.38B latest-only).
 
 METRIC_NAME (EAV): 'LY GMV', 'Actual GMV' — values live in METRIC_VALUE.
 LY_GMV_CONTRIBUTION_PCT, DAILY_POOL_TARGET, ACTUAL_ORDERS, ACTUAL_COMMISSION

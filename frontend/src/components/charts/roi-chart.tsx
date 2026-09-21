@@ -39,10 +39,10 @@ export function GmvCommissionChart({ trend, height = 150 }: { trend: SummaryTren
     <ResponsiveContainer width="100%" height={height}>
       <ComposedChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
         <CartesianGrid stroke="var(--ov-line)" vertical={false} />
-        <XAxis dataKey="bucket" tick={{ fill: "var(--ov-faint)", fontSize: 10 }} axisLine={false} tickLine={false} minTickGap={28} />
+        <XAxis dataKey="bucket" tick={{ fill: "var(--ov-faint)", fontSize: 11.5 }} axisLine={false} tickLine={false} minTickGap={28} />
         <YAxis
           tickFormatter={(v) => `${Math.round(Number(v))}`}
-          tick={{ fill: "var(--ov-faint)", fontSize: 10 }}
+          tick={{ fill: "var(--ov-faint)", fontSize: 11.5 }}
           axisLine={false}
           tickLine={false}
           width={44}
@@ -93,12 +93,12 @@ export function RoiChart({ trend, height = 118 }: { trend: SummaryTrendPoint[]; 
     <ResponsiveContainer width="100%" height={height}>
       <ComposedChart data={trend} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
         <CartesianGrid stroke="var(--ov-line)" vertical={false} />
-        <XAxis dataKey="bucket" tick={{ fill: "var(--ov-faint)", fontSize: 10 }} axisLine={false} tickLine={false} minTickGap={28} />
+        <XAxis dataKey="bucket" tick={{ fill: "var(--ov-faint)", fontSize: 11.5 }} axisLine={false} tickLine={false} minTickGap={28} />
         <YAxis
           domain={[0, axisMax]}
           allowDataOverflow
           tickFormatter={(v) => `${Math.round(Number(v))}x`}
-          tick={{ fill: "var(--ov-faint)", fontSize: 10 }}
+          tick={{ fill: "var(--ov-faint)", fontSize: 11.5 }}
           axisLine={false}
           tickLine={false}
           width={52}
@@ -112,7 +112,7 @@ export function RoiChart({ trend, height = 118 }: { trend: SummaryTrendPoint[]; 
           y={ROI_THRESHOLD}
           stroke="var(--accent-foreground)"
           strokeDasharray="4 4"
-          label={{ value: `${ROI_THRESHOLD.toFixed(1)}x`, fill: "var(--ov-faint)", fontSize: 10, position: "right" }}
+          label={{ value: `${ROI_THRESHOLD.toFixed(1)}x`, fill: "var(--ov-faint)", fontSize: 11.5, position: "right" }}
         />
         <Line dataKey="roi" name="ROI" stroke="var(--ov-green)" strokeWidth={2} dot={false} />
       </ComposedChart>

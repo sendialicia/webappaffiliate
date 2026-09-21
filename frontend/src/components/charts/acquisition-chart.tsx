@@ -9,11 +9,11 @@ export function AcquisitionChart({ data, height = 332 }: { data: AcquisitionPoin
     <ResponsiveContainer width="100%" height={height}>
       <ComposedChart data={data} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
         <CartesianGrid stroke="var(--ov-line)" vertical={false} />
-        <XAxis dataKey="bucket" tick={{ fill: "var(--ov-faint)", fontSize: 10 }} axisLine={false} tickLine={false} minTickGap={28} />
+        <XAxis dataKey="bucket" tick={{ fill: "var(--ov-faint)", fontSize: 11.5 }} axisLine={false} tickLine={false} minTickGap={28} />
         <YAxis
           yAxisId="gmv"
           tickFormatter={(v) => formatCompact(Number(v))}
-          tick={{ fill: "var(--ov-faint)", fontSize: 10 }}
+          tick={{ fill: "var(--ov-faint)", fontSize: 11.5 }}
           axisLine={false}
           tickLine={false}
           width={52}
@@ -22,7 +22,7 @@ export function AcquisitionChart({ data, height = 332 }: { data: AcquisitionPoin
           yAxisId="creators"
           orientation="right"
           tickFormatter={(v) => formatCompact(Number(v))}
-          tick={{ fill: "var(--ov-faint)", fontSize: 10 }}
+          tick={{ fill: "var(--ov-faint)", fontSize: 11.5 }}
           axisLine={false}
           tickLine={false}
           width={48}

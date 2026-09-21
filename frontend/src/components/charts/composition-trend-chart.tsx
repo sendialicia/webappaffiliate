@@ -22,14 +22,14 @@ export function CompositionTrendChart({
         <CartesianGrid stroke="var(--ov-line)" vertical={false} />
         <XAxis
           dataKey="bucket"
-          tick={{ fill: "var(--ov-faint)", fontSize: 10 }}
+          tick={{ fill: "var(--ov-faint)", fontSize: 11.5 }}
           axisLine={{ stroke: "var(--ov-line)" }}
           tickLine={false}
           minTickGap={24}
         />
         <YAxis
           tickFormatter={(v) => formatCompact(Number(v))}
-          tick={{ fill: "var(--ov-faint)", fontSize: 11 }}
+          tick={{ fill: "var(--ov-faint)", fontSize: 12 }}
           axisLine={false}
           tickLine={false}
           width={56}

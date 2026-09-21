@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import { Archivo, Barlow, IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
+import { auth } from "@/auth";
+import { AuthProvider } from "@/components/auth-provider";
+import { isSnapshot } from "@/lib/api";
 
 const archivo = Archivo({
   variable: "--font-archivo",
@@ -27,7 +30,10 @@ export const metadata: Metadata = {
 // Applies the saved theme before first paint, so a light-mode reader never sees a dark flash.
 const themeBootstrap = `try{var t=localStorage.getItem("ov-theme");document.documentElement.dataset.theme=t==="light"?"light":"dark"}catch(e){document.documentElement.dataset.theme="dark"}`;
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default async function RootLayout({ children }: LayoutProps<"/">) {
+  // A static snapshot has no request to read a session cookie from.
+  const session = isSnapshot ? null : await auth();
+
   return (
     <html
       lang="en"
@@ -40,7 +46,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <script dangerouslySetInnerHTML={{ __html: themeBootstrap }} />
       </head>
       <body className="min-h-full flex flex-col text-foreground font-(family-name:--font-barlow)">
-        {children}
+        <AuthProvider session={session}>{children}</AuthProvider>
       </body>
     </html>
   );

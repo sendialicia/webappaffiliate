@@ -37,6 +37,15 @@ function DeltaLine({
   )
 }
 
+/** The rupiah restatement of the delta, sitting under it inside the same hover target. */
+function NoteLine({ children }: { children: ReactNode }) {
+  return (
+    <div className="mt-2 border-t border-[var(--ov-line)] pt-2 font-mono text-[12.5px] text-[var(--ov-faint)]">
+      {children}
+    </div>
+  )
+}
+
 export function KpiCard({
   label,
   value,
@@ -77,20 +86,22 @@ export function KpiCard({
       >
         {value}
       </div>
+      {/* The percentage and the rupiah difference describe the same move, so when there is an
+          explanation to show they act as one hover target — reaching for the rupiah figure is
+          the more natural gesture, and it kept missing. The tooltip hangs below both. */}
       {deltaHover ? (
-        <div className="group relative w-max">
-          <div className="cursor-help border-b border-dotted border-[var(--ov-track)] pb-0.5">
+        <div className="group relative cursor-help">
+          <div className="w-max border-b border-dotted border-[var(--ov-track)] pb-0.5">
             <DeltaLine deltaPct={deltaPct} compareLabel={compareLabel} positiveIsGood={positiveIsGood} />
           </div>
+          {note && <NoteLine>{note}</NoteLine>}
           <div className="absolute top-full left-0 z-50 hidden pt-2 group-hover:block">{deltaHover}</div>
         </div>
       ) : (
-        <DeltaLine deltaPct={deltaPct} compareLabel={compareLabel} positiveIsGood={positiveIsGood} />
-      )}
-      {note && (
-        <div className="mt-2 border-t border-[var(--ov-line)] pt-2 font-mono text-[11.5px] text-[var(--ov-faint)]">
-          {note}
-        </div>
+        <>
+          <DeltaLine deltaPct={deltaPct} compareLabel={compareLabel} positiveIsGood={positiveIsGood} />
+          {note && <NoteLine>{note}</NoteLine>}
+        </>
       )}
       <div className="-mx-1 mt-auto pt-2">
         <ResponsiveContainer width="100%" height={large ? 120 : 56}>

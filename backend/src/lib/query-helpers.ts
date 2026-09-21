@@ -126,3 +126,81 @@ export function pctDelta(current: number, previous: number): number | null {
 export function ratio(numerator: number, denominator: number): number | null {
   return denominator > 0 ? numerator / denominator : null
 }
+
+/**
+ * The metrics every GMV trend returns per bucket, so a chart can plot up to three of them.
+ * All additive except creators (a true distinct count per bucket, not a sum of days) and AOV,
+ * which is recomputed from the bucket's own totals in toTrendMetrics.
+ */
+export const TREND_METRICS_SQL = `
+        SUM(GMV) AS gmv,
+        SUM(ITEMS_SOLD) AS itemsSold,
+        SUM(ATTRIBUTED_ORDERS) AS orders,
+        SUM(COMMISSION) AS commission,
+        uniqExact(AFFILIATE_USERNAME) AS creators`
+
+export interface TrendMetrics {
+  gmv: number
+  itemsSold: number
+  orders: number
+  commission: number
+  creators: number
+  aov: number | null
+}
+
+export function toTrendMetrics(row: Record<string, unknown>): TrendMetrics {
+  const gmv = Number(row.gmv || 0)
+  const orders = Number(row.orders || 0)
+  return {
+    gmv,
+    itemsSold: Number(row.itemsSold || 0),
+    orders,
+    commission: Number(row.commission || 0),
+    creators: Number(row.creators || 0),
+    aov: ratio(gmv, orders),
+  }
+}
+
+/**
+ * Order volume from the internal order data, for the current window. This is the headline
+ * source for orders, items and commission everywhere; the SP_/TT_ marketplace-centre columns
+ * count differently (Shopee's placed orders include cancelled ones, ~20% above) and are kept
+ * only for what the order data does not carry — clicks, impressions, buyers, new content.
+ * Needs `inCurrent` and the three columns selected in the inner query.
+ */
+export const ORDER_METRICS_SQL = `
+        sumIf(ATTRIBUTED_ORDERS, inCurrent) AS orders,
+        sumIf(ITEMS_SOLD, inCurrent) AS itemsSold,
+        sumIf(COMMISSION, inCurrent) AS orderCommission`
+
+export interface OrderMetrics {
+  orders: number
+  itemsSold: number
+  commission: number
+  aov: number | null
+  roi: number | null
+  commissionRate: number | null
+}
+
+export function toOrderMetrics(row: Record<string, unknown>, gmv: number): OrderMetrics {
+  const orders = Number(row.orders || 0)
+  const commission = Number(row.orderCommission || 0)
+  return {
+    orders,
+    itemsSold: Number(row.itemsSold || 0),
+    commission,
+    // Rates recomputed from the row's own totals, never averaged (CLAUDE.md).
+    aov: ratio(gmv, orders),
+    roi: ratio(gmv, commission),
+    commissionRate: ratio(commission, gmv),
+  }
+}
+
+/** Order metrics for a total row, rebuilt from the child rows' additive parts. */
+export function sumOrderMetrics(rows: OrderMetrics[], gmv: number): OrderMetrics {
+  const add = (pick: (r: OrderMetrics) => number) => rows.reduce((acc, r) => acc + pick(r), 0)
+  return toOrderMetrics(
+    { orders: add((r) => r.orders), itemsSold: add((r) => r.itemsSold), orderCommission: add((r) => r.commission) },
+    gmv,
+  )
+}

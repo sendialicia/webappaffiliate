@@ -1,4 +1,19 @@
+import type { TrendMetricPoint } from "@/components/charts/metric-trend"
 export type PidLevel = "category" | "subcategory" | "format"
+
+/**
+ * Order volume from the internal order data — the headline source for orders, items and
+ * commission. The SP_/TT_ centre attributes count differently (Shopee's include cancelled
+ * orders) and are kept only for what the order data lacks: clicks, buyers, impressions.
+ */
+export interface OrderMetrics {
+  orders: number
+  itemsSold: number
+  commission: number
+  aov: number | null
+  roi: number | null
+  commissionRate: number | null
+}
 
 export interface ShopeeAttributes {
   spGmv: number
@@ -18,7 +33,7 @@ export interface PillarSplit {
   productCard: number
 }
 
-export interface PidCategoryRow extends ShopeeAttributes {
+export interface PidCategoryRow extends ShopeeAttributes, OrderMetrics {
   name: string
   gmv: number
   gmvPrev: number
@@ -37,7 +52,7 @@ export interface PidCategoriesResult {
   comparison: { from: string; to: string; basis: "prev" | "ly" }
 }
 
-export interface PidProductRow extends ShopeeAttributes {
+export interface PidProductRow extends ShopeeAttributes, OrderMetrics {
   pid: string
   name: string
   category: string
@@ -56,16 +71,14 @@ export interface PidProductsResult {
   rows: PidProductRow[]
   scope: string | null
   countProduct: number
-  countProfitProduct: number
+  /** GMV above the comparison period, new products included. */
+  countGrowingProduct: number
   countDecliningProduct: number
   countScopeProduct: number
 }
 
-export interface PidTrendPoint {
-  bucket: string
-  gmv: number
-  spGmv: number
-}
+/** Every trend endpoint returns the shared metric set (GMV, items, orders, commission, creators, AOV). */
+export type PidTrendPoint = TrendMetricPoint
 
 export interface PidPillarContribution {
   name: string
@@ -95,7 +108,14 @@ export interface PidProductDetail {
   gmvPrev: number
   growth: number | null
   creators: number
+  /** Needed to split the GMV move into "more creators" versus "more per creator". */
+  creatorsPrev: number
+  /** Affiliate orders, both windows — the waterfall's denominator for CO rate and AOV. */
+  orders: number
+  ordersPrev: number
   attributes: ShopeeAttributes
+  /** Same shape for the comparison window — the lever waterfall needs both ends. */
+  attributesPrev: ShopeeAttributes
   trend: PidTrendPoint[]
   pillars: PidPillarContribution[]
 }
@@ -104,6 +124,8 @@ export interface PidCreatorRow {
   username: string
   isManaged: boolean
   gmv: number
+  /** GMV this creator produced per pillar; exact, since PILLAR sits on the row grain. */
+  pillars: PillarSplit
   share: number
   orders: number
   itemsSold: number
@@ -123,3 +145,27 @@ export type QuadrantPreset =
   | "asp-units"
   | "commrate-growth"
   | "buyers-newshare"
+
+/**
+ * A creator already active in this product's sub-category who has never touched this PID.
+ * A shortlist to approach, not a forecast — see `estimatedGmv`.
+ */
+export interface OpportunityCreatorRow {
+  username: string
+  isManaged: boolean
+  brands: string
+  productCount: number
+  subCategoryGmv: number
+  /**
+   * subCategoryGmv / productCount. Deliberately crude: it assumes this product would perform
+   * like the creator's average product in the sub-category, which it may well not.
+   */
+  estimatedGmv: number
+  dominantPillar: string
+}
+
+export interface OpportunityCreatorsResult {
+  subCategory: string
+  lookbackDays: number
+  rows: OpportunityCreatorRow[]
+}

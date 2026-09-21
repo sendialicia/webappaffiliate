@@ -39,10 +39,10 @@ export function DownloadMenu({
         }
       />
       <PopoverContent className="w-[290px] p-2" align="end">
-        <div className="px-2 py-1.5 text-[11px] font-bold tracking-wider text-[var(--ov-faint)] uppercase">
+        <div className="px-2 py-1.5 text-[12px] font-bold tracking-wider text-[var(--ov-faint)] uppercase">
           Unduh sebagai CSV
         </div>
-        <div className="px-2 pb-2 text-[11px] leading-relaxed text-[var(--ov-faint)]">
+        <div className="px-2 pb-2 text-[12px] leading-relaxed text-[var(--ov-faint)]">
           Isinya mengikuti filter yang sedang aktif di halaman ini.
         </div>
         <div className="flex flex-col">
@@ -54,11 +54,11 @@ export function DownloadMenu({
                 const rows = item.rows()
                 if (rows.length > 0) downloadCsv(`${filePrefix}-${item.id}-${stamp}`, rows)
               }}
-              className="flex items-center gap-2 rounded-md px-2 py-1.5 text-left text-[12.5px] font-medium text-[var(--ov-soft)] hover:bg-[var(--ov-fill1)]"
+              className="flex items-center gap-2 rounded-md px-2 py-1.5 text-left text-[13px] font-medium text-[var(--ov-soft)] hover:bg-[var(--ov-fill1)]"
             >
               {item.label}
               {item.id === highlightId && (
-                <span className="ml-auto rounded-full bg-[var(--accent)] px-1.5 py-0.5 text-[9.5px] font-bold text-[var(--accent-foreground)]">
+                <span className="ml-auto rounded-full bg-[var(--accent)] px-1.5 py-0.5 text-[10.5px] font-bold text-[var(--accent-foreground)]">
                   baru dilihat
                 </span>
               )}

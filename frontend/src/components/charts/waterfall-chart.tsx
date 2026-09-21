@@ -23,8 +23,12 @@ function buildSteps(result: CompositionResult): WaterfallStep[] {
     },
   ]
 
+  // Largest gain first, largest loss last: the bridge climbs, then steps down, so the
+  // biggest movers sit next to the totals they explain instead of wherever GMV rank puts them.
+  const byContribution = [...result.rows].sort((a, b) => b.delta - a.delta)
+
   let running = result.totals.previous
-  for (const row of result.rows) {
+  for (const row of byContribution) {
     const base = row.delta >= 0 ? running : running + row.delta
     steps.push({
       name: row.name,
@@ -74,7 +78,7 @@ export function WaterfallChart({ result, height = 296 }: { result: CompositionRe
       <BarChart data={steps} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
         <XAxis
           dataKey="name"
-          tick={{ fill: "var(--ov-faint)", fontSize: 10 }}
+          tick={{ fill: "var(--ov-faint)", fontSize: 11.5 }}
           axisLine={{ stroke: "var(--ov-line)" }}
           tickLine={false}
           interval={0}
@@ -84,7 +88,7 @@ export function WaterfallChart({ result, height = 296 }: { result: CompositionRe
         />
         <YAxis
           tickFormatter={(v) => formatCompact(Number(v))}
-          tick={{ fill: "var(--ov-faint)", fontSize: 11 }}
+          tick={{ fill: "var(--ov-faint)", fontSize: 12 }}
           axisLine={false}
           tickLine={false}
           width={56}
@@ -93,6 +97,8 @@ export function WaterfallChart({ result, height = 296 }: { result: CompositionRe
           cursor={{ fill: "var(--ov-fill1)" }}
           contentStyle={{ background: "var(--ov-tooltip)", border: "1px solid var(--ov-line)", borderRadius: 8, fontSize: 12 }}
           labelStyle={{ color: "var(--ov-head)" }}
+          // The value bar is coloured per Cell, so without this Recharts falls back to black text.
+          itemStyle={{ color: "var(--ov-ink)" }}
           formatter={(_value, _name, item) => {
             const step = item?.payload as WaterfallStep | undefined
             if (!step) return ["", ""]
@@ -100,7 +106,7 @@ export function WaterfallChart({ result, height = 296 }: { result: CompositionRe
             return [`${sign}${formatCompact(Math.abs(step.delta))}`, step.kind === "total" ? "Total" : "Kontribusi"]
           }}
         />
-        <Bar dataKey="base" stackId="w" fill="transparent" isAnimationActive={false} />
+        <Bar dataKey="base" stackId="w" fill="transparent" isAnimationActive={false} tooltipType="none" />
         <Bar dataKey="value" stackId="w" radius={[3, 3, 0, 0]}>
           {steps.map((step, i) => (
             <Cell key={i} fill={COLORS[step.kind]} />

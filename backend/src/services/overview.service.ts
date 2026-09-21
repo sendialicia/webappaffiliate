@@ -77,7 +77,7 @@ export async function getMonthlyPerformance(
           ${filterClause}
         QUALIFY ROW_NUMBER() OVER (
           PARTITION BY PERIOD_DATE, BRAND_NAME, MARKETPLACE_NAME, METRIC_NAME
-          ORDER BY ETL_BATCH_TIME DESC
+          ORDER BY DATA_EXTRACT_TIMESTAMP DESC, ETL_BATCH_TIME DESC
         ) = 1
       )
       SELECT
@@ -145,7 +145,7 @@ export async function getDailyPerformance(
           ${filterClause}
         QUALIFY ROW_NUMBER() OVER (
           PARTITION BY PERIOD_DATE, BRAND_NAME, MARKETPLACE_NAME, METRIC_NAME
-          ORDER BY ETL_BATCH_TIME DESC
+          ORDER BY DATA_EXTRACT_TIMESTAMP DESC, ETL_BATCH_TIME DESC
         ) = 1
       )
       SELECT
@@ -203,7 +203,7 @@ async function queryProgress(
           ${filterClause}
         QUALIFY ROW_NUMBER() OVER (
           PARTITION BY PERIOD_DATE, BRAND_NAME, MARKETPLACE_NAME, METRIC_NAME
-          ORDER BY ETL_BATCH_TIME DESC
+          ORDER BY DATA_EXTRACT_TIMESTAMP DESC, ETL_BATCH_TIME DESC
         ) = 1
       )
       SELECT ${groupColumn} AS name, SUM(METRIC_VALUE) AS actual, SUM(DAILY_POOL_TARGET) AS target
@@ -411,8 +411,15 @@ function bucketTrend(rows: SummaryRow[], granularity: TrendGranularity): Summary
 // ITEM_MARKETPLACE_FLAG = TRUE scope these queries use. PRODUCT_* would be SKU grain.
 const DIMENSION_COLUMNS: Record<CompositionDimension, string> = {
   pillar: 'PILLAR',
+  subpillar: 'SUBPILLAR',
+  brand: 'BRAND_NAME',
+  marketplace: 'MARKETPLACE_NAME',
   category: 'PID_CATEGORY',
+  pidSubCategory: 'PID_SUB_CATEGORY',
   format: 'PID_FORMAT',
+  productCategory: 'PRODUCT_CATEGORY',
+  productSubCategory: 'PRODUCT_SUB_CATEGORY',
+  productFormat: 'PRODUCT_FORMAT',
 }
 
 export async function getComposition(
@@ -523,8 +530,16 @@ export async function getComposition(
     }
   })
 
-  const rows = allRows.sort((a, b) => b.gmv - a.gmv).slice(0, limit)
+  const ranked = allRows.sort((a, b) => b.gmv - a.gmv)
+  const rows = ranked.slice(0, limit)
   const keptNames = new Set(rows.map((r) => r.name))
+  const dropped = ranked.slice(limit)
+  // Reported rather than folded into an "Other" row: creator counts are distinct counts and
+  // cannot be summed, so such a row would have to carry a fabricated creator figure.
+  const hidden = {
+    rows: dropped.length,
+    gmv: dropped.reduce((a, r) => a + r.gmv, 0),
+  }
 
   const buckets = new Map<string, CompositionTrendPoint>()
   for (const row of seriesRows) {
@@ -543,6 +558,7 @@ export async function getComposition(
     current: { from, to },
     comparison: { ...comparison, basis },
     totals: { current: totalCurrent, previous: totalPrevious, delta: totalCurrent - totalPrevious },
+    hidden,
     rows,
     trend,
   }
@@ -560,6 +576,10 @@ const DRIVER_FIELD_COLUMNS: Record<DriverField, string> = {
   pidCategory: 'PID_CATEGORY',
   pidSubCategory: 'PID_SUB_CATEGORY',
   pidFormat: 'PID_FORMAT',
+  subpillar: 'SUBPILLAR',
+  productCategory: 'PRODUCT_CATEGORY',
+  productSubCategory: 'PRODUCT_SUB_CATEGORY',
+  productFormat: 'PRODUCT_FORMAT',
 }
 
 export async function getDrivers(
@@ -785,13 +805,21 @@ export async function getSpend(
   return { entity, rows, acquisition }
 }
 
+/** Lower-case, letters and digits only: "Bright Now" and "brightnow" meet on "brightnow". */
+const CONTENT_BRAND_KEY = `replaceRegexpAll(lower(ifNull(BRAND_NAME, '')), '[^a-z0-9+]', '')`
+
+function brandKey(name: string): string {
+  return name.toLowerCase().replace(/[^a-z0-9+]/g, '')
+}
+
 export async function getFunnel(
   from: string,
   to: string,
   basis: ComparisonBasis,
   filters: OverviewFilters,
+  prevRange?: { from?: string; to?: string },
 ): Promise<FunnelResult> {
-  const comparison = computeComparisonRange(from, to, basis)
+  const comparison = computeComparisonRange(from, to, basis, prevRange)
   const params: Record<string, unknown> = {
     currentFrom: from,
     currentTo: to,
@@ -833,13 +861,16 @@ export async function getFunnel(
           MAX(TT_AFF_TOTAL_ORDERS) AS pTtOrders,
           MAX(SP_PLACED_CLICKS) AS pSpClicks,
           MAX(SP_PLACED_ORDERS) AS pSpOrders,
-          MAX(SP_PLACED_BUYERS) AS pSpBuyers
+          MAX(SP_PLACED_BUYERS) AS pSpBuyers,
+          ifNull(SP_CHANNEL_TYPE, '(none)') AS channel
         FROM ${TABLE_SUMMARY_ORDER}
         WHERE REGION_CODE = 'id'
           AND ITEM_MARKETPLACE_FLAG = TRUE
           ${TWO_WINDOW_CLAUSE}
           ${filterClause}
-        GROUP BY marketplace, date, pid, inCurrent, inPrev
+        -- Shopee splits SP_* across channels; TikTok rows have no channel, so this
+        -- adds a single group there and leaves the TT_* figures untouched.
+        GROUP BY marketplace, date, pid, channel, inCurrent, inPrev
       )
       GROUP BY marketplace
     `,
@@ -893,8 +924,13 @@ export async function getFunnel(
     prevFrom: comparison.from,
     prevTo: comparison.to,
   }
-  const contentFilter = filters.brand ? ' AND BRAND_NAME = {brand:String}' : ''
-  if (filters.brand) contentParams.brand = filters.brand
+  // The content table spells some brands differently from the order table ("brightnow" vs
+  // "Bright Now"), so brands are matched on a normalised key rather than the raw name.
+  let contentFilter = ''
+  if (filters.brand?.length) {
+    contentFilter = ` AND ${CONTENT_BRAND_KEY} IN {contentBrands:Array(String)}`
+    contentParams.contentBrands = filters.brand.map(brandKey)
+  }
 
   // Kept flat on purpose: wrapping this in a subquery stopped ClickHouse from
   // pruning by DATE and turned it into a full scan of ~15.7M rows.
@@ -927,6 +963,21 @@ export async function getFunnel(
   })
 
   const contentRows = await contentResult.json<Record<string, string | number | null>>()
+
+  // Content loads lag and stop per brand (Kahf's end on 12 Jul 2026 while orders continue), so
+  // the page says how far the content data reaches instead of implying the brand posted nothing.
+  const lastDateParams: Record<string, unknown> = { ...(contentParams.contentBrands ? { contentBrands: contentParams.contentBrands } : {}) }
+  const lastDateResult = await clickhouse.query({
+    query: `
+      SELECT toString(max(DATE)) AS lastDate
+      FROM ${TABLE_CONTENT_PERFORMANCE}
+      WHERE MARKETPLACE_NAME = 'Tiktok'
+        ${contentFilter}
+    `,
+    query_params: lastDateParams,
+    format: 'JSONEachRow',
+  })
+  const contentLastDate = (await lastDateResult.json<{ lastDate: string | null }>())[0]?.lastDate ?? null
   const contentByMarketplace = new Map(contentRows.map((r) => [String(r.marketplace), r]))
 
   const marketplaces: FunnelMarketplace[] = stageRows.map((row) => {
@@ -1011,6 +1062,7 @@ export async function getFunnel(
       creatorsPostingDeltaPct: pctDelta(cn('creatorsPosting'), cn('creatorsPostingPrev')),
       totalNewContent: cn('totalNewContent'),
       totalNewContentDeltaPct: pctDelta(cn('totalNewContent'), cn('totalNewContentPrev')),
+      lastDate: isTiktok && contentLastDate && contentLastDate !== '1970-01-01' ? contentLastDate : null,
     }
 
     return { name, stages, rates, pillars, content }

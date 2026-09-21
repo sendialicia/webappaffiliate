@@ -26,6 +26,8 @@ export function PerformanceComboChart({
       <ComposedChart
         data={data}
         margin={{ top: 8, right: 8, left: 0, bottom: 0 }}
+        barGap={1}
+        barCategoryGap="22%"
         onClick={(state: MouseHandlerDataParam) => {
           const index = Number(state.activeIndex)
           const point = Number.isFinite(index) ? data[index] : undefined
@@ -35,13 +37,13 @@ export function PerformanceComboChart({
         <CartesianGrid stroke="var(--ov-line)" vertical={false} />
         <XAxis
           dataKey="label"
-          tick={{ fill: "var(--ov-faint)", fontSize: 11 }}
+          tick={{ fill: "var(--ov-faint)", fontSize: 12 }}
           axisLine={{ stroke: "var(--ov-line)" }}
           tickLine={false}
         />
         <YAxis
           tickFormatter={(v) => formatCompact(Number(v))}
-          tick={{ fill: "var(--ov-faint)", fontSize: 11 }}
+          tick={{ fill: "var(--ov-faint)", fontSize: 12 }}
           axisLine={false}
           tickLine={false}
           width={56}
@@ -53,16 +55,16 @@ export function PerformanceComboChart({
           cursor={{ fill: "var(--ov-fill1)" }}
         />
         <Bar
-          dataKey="actualGmv"
-          name="Actual GMV"
-          fill="var(--ov-gold)"
+          dataKey="lyGmv"
+          name="LY GMV"
+          fill="var(--ov-blue)"
           radius={[3, 3, 0, 0]}
           style={{ cursor: onPointClick ? "pointer" : undefined }}
         />
         <Bar
-          dataKey="lyGmv"
-          name="LY GMV"
-          fill="var(--ov-blue)"
+          dataKey="actualGmv"
+          name="Actual GMV"
+          fill="var(--ov-gold)"
           radius={[3, 3, 0, 0]}
           style={{ cursor: onPointClick ? "pointer" : undefined }}
         />

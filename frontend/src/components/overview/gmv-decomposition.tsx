@@ -60,10 +60,10 @@ export function GmvDecomposition({
       className="w-[318px] rounded-[10px] border border-[var(--ov-track)] p-3.5 shadow-[0_18px_40px_-16px_var(--ov-shadow)]"
       style={{ background: "var(--ov-tooltip)" }}
     >
-      <div className="text-[10.5px] font-bold tracking-[0.1em] text-[var(--ov-faint)] uppercase">
+      <div className="text-[12px] font-bold tracking-[0.1em] text-[var(--ov-faint)] uppercase">
         Dari mana perubahan ini berasal
       </div>
-      <div className="mt-1 text-[11.5px] leading-relaxed text-[var(--ov-faint)]">
+      <div className="mt-1 text-[12.5px] leading-relaxed text-[var(--ov-faint)]">
         GMV ≡ Creators × GMV per Creator · {compareLabel}
       </div>
 
@@ -72,15 +72,15 @@ export function GmvDecomposition({
         return (
           <div key={p.label} className="mt-3">
             <div className="flex items-baseline justify-between gap-2.5">
-              <span className="text-[12.5px] font-semibold text-[var(--ov-soft)]">{p.label}</span>
-              <span className="font-mono text-[12.5px] font-semibold" style={{ color }}>
+              <span className="text-[13px] font-semibold text-[var(--ov-soft)]">{p.label}</span>
+              <span className="font-mono text-[13px] font-semibold" style={{ color }}>
                 {formatSignedPercent(p.pct, 2)}
               </span>
             </div>
             <div className="my-1.5 h-1.5 overflow-hidden rounded bg-[var(--ov-track)]">
               <span className="block h-full" style={{ width: `${p.share * 100}%`, background: color }} />
             </div>
-            <div className="text-[11.5px] text-[var(--ov-faint)]">
+            <div className="text-[12.5px] text-[var(--ov-faint)]">
               {p.contribution >= 0 ? "+" : "−"}
               {formatRp(Math.abs(p.contribution))} · {formatPercent(p.share, 0)} dari pergerakan kotor
             </div>
@@ -89,7 +89,7 @@ export function GmvDecomposition({
       })}
 
       <div className="mt-3 flex items-baseline justify-between gap-2.5 border-t border-[var(--ov-line)] pt-2.5">
-        <span className="text-[11.5px] text-[var(--ov-faint)]">Total perubahan GMV</span>
+        <span className="text-[12.5px] text-[var(--ov-faint)]">Total perubahan GMV</span>
         <span
           className="font-mono text-[13px] font-semibold"
           style={{ color: d.total >= 0 ? "var(--ov-green-ink)" : "var(--ov-red-ink)" }}

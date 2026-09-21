@@ -12,7 +12,7 @@ export function DetailFilterSelects({ options }: { options: FilterOption[] }) {
     <>
       {options.map((opt) => (
         <div key={opt.key} className="min-w-[132px] flex-1">
-          <div className="mb-1.5 text-[10.5px] font-bold tracking-wider text-[var(--ov-faint)] uppercase">
+          <div className="mb-1.5 text-[12px] font-bold tracking-wider text-[var(--ov-faint)] uppercase">
             {opt.label}
           </div>
           <MultiSelect

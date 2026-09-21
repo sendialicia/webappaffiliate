@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "snapshot:capture": "node scripts/capture-snapshot.mjs",
+    "snapshot:capture": "node --env-file=.env.local scripts/capture-snapshot.mjs",
     "snapshot:build": "NEXT_PUBLIC_SNAPSHOT=1 next build",
     "snapshot:serve": "npx --yes serve out"
   },
@@ -17,6 +17,7 @@
     "cn": "^0.3.0",
     "lucide-react": "^1.46.0",
     "next": "16.3.5",
+    "next-auth": "5.0.0-beta.32",
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "recharts": "^3.10.1",

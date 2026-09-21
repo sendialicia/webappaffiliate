@@ -1,7 +1,9 @@
 import { snapshotKey } from "@/lib/snapshot-key"
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL
 const SNAPSHOT = process.env.NEXT_PUBLIC_SNAPSHOT === "1"
+
+/** Snapshot builds have no backend, so anything that writes has to hide itself. */
+export const isSnapshot = SNAPSHOT
 
 export class ApiError extends Error {
   constructor(
@@ -13,19 +15,39 @@ export class ApiError extends Error {
   }
 }
 
+/**
+ * In the browser every call goes through the Next.js route at /api/backend, which checks the
+ * login session and forwards to Express with the internal secret — the browser never holds a
+ * token or talks to Express itself. Server components have no session cookie to forward and no
+ * relative origin to resolve, so they call Express directly with the secret instead.
+ */
+function resolve(path: string, init?: RequestInit): { url: string; init?: RequestInit } {
+  if (typeof window !== "undefined") return { url: `/api/backend${path}`, init }
+
+  const secret = process.env.INTERNAL_API_SECRET ?? ""
+  const headers = new Headers(init?.headers)
+  headers.set("x-internal-secret", secret)
+  return { url: `${process.env.BACKEND_URL ?? "http://localhost:4000"}${path}`, init: { ...init, headers } }
+}
+
 export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   if (SNAPSHOT) return snapshotFetch<T>(path)
 
-  if (!API_URL) {
-    throw new Error("NEXT_PUBLIC_API_URL is not set")
-  }
-
+  const target = resolve(path, init)
   let res: Response
   try {
-    res = await fetch(`${API_URL}${path}`, init)
+    res = await fetch(target.url, target.init)
   } catch {
-    // Backend not running at all, as opposed to the backend failing a query.
-    throw new ApiError(0, `Backend tidak merespons di ${API_URL}. Pastikan \`npm run dev\` di folder backend sedang jalan.`)
+    // Next.js itself unreachable (dev server stopped), as opposed to the backend failing a query.
+    throw new ApiError(0, "Server tidak merespons. Pastikan `npm run dev` di folder frontend dan backend sedang jalan.")
+  }
+
+  // The session ran out while the page was open: send the reader back through login rather
+  // than leaving every section showing an error.
+  if (res.status === 401 && typeof window !== "undefined") {
+    const back = `${window.location.pathname}${window.location.search}`
+    window.location.assign(`/login?callbackUrl=${encodeURIComponent(back)}`)
+    throw new ApiError(401, "Sesi login habis. Mengarahkan ke halaman login…")
   }
 
   if (!res.ok) {
@@ -37,6 +59,9 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
       .catch(() => undefined)
     throw new ApiError(res.status, message ?? `Request to ${path} failed with status ${res.status}`)
   }
+
+  // A 204 carries no body, which res.json() would choke on — DELETE endpoints return one.
+  if (res.status === 204 || res.headers.get("content-length") === "0") return undefined as T
 
   return res.json() as Promise<T>
 }

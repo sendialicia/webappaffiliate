@@ -13,14 +13,13 @@ type SortKey =
   | "livestream"
   | "video"
   | "productCard"
-  | "spGmv"
-  | "spOrders"
+  | "orders"
   | "spClicks"
   | "spBuyers"
   | "spNewBuyers"
-  | "spProductSold"
-  | "spCommission"
-  | "spRoi"
+  | "itemsSold"
+  | "commission"
+  | "roi"
   | "spCoRate"
 
 const COLUMNS: Array<{ key: SortKey; label: string; group?: "pillar" | "shopee" }> = [
@@ -32,15 +31,14 @@ const COLUMNS: Array<{ key: SortKey; label: string; group?: "pillar" | "shopee" 
   { key: "livestream", label: "GMV Livestream", group: "pillar" },
   { key: "video", label: "GMV Video", group: "pillar" },
   { key: "productCard", label: "GMV Product Card", group: "pillar" },
-  { key: "spGmv", label: "SP GMV", group: "shopee" },
-  { key: "spOrders", label: "Orders", group: "shopee" },
+  { key: "orders", label: "Orders", group: "shopee" },
   { key: "spClicks", label: "Clicks", group: "shopee" },
-  { key: "spCoRate", label: "CO Rate", group: "shopee" },
+  { key: "spCoRate", label: "CO Rate (centre)", group: "shopee" },
   { key: "spBuyers", label: "Buyers", group: "shopee" },
   { key: "spNewBuyers", label: "New Buyers", group: "shopee" },
-  { key: "spProductSold", label: "Product Sold", group: "shopee" },
-  { key: "spCommission", label: "Est Commission", group: "shopee" },
-  { key: "spRoi", label: "ROI", group: "shopee" },
+  { key: "itemsSold", label: "Items Sold", group: "shopee" },
+  { key: "commission", label: "Commission", group: "shopee" },
+  { key: "roi", label: "ROI", group: "shopee" },
 ]
 
 function valueOf(row: PidCategoryRow, key: SortKey): number | string | null {
@@ -65,8 +63,8 @@ function renderCell(row: PidCategoryRow, key: SortKey) {
         text: `${row.deltaRp >= 0 ? "+" : "−"}${formatCompact(Math.abs(row.deltaRp))}`,
         color: row.deltaRp >= 0 ? "var(--ov-green-ink)" : "var(--ov-red-ink)",
       }
-    case "spRoi":
-      return { text: row.spRoi !== null ? `${row.spRoi.toFixed(1)}x` : "—", color: undefined }
+    case "roi":
+      return { text: row.roi !== null ? `${row.roi.toFixed(1)}x` : "—", color: undefined }
     case "spCoRate":
       return { text: row.spCoRate !== null ? formatPercent(row.spCoRate, 2) : "—", color: undefined }
     case "livestream":
@@ -76,8 +74,7 @@ function renderCell(row: PidCategoryRow, key: SortKey) {
     case "productCard":
       return { text: formatCompact(row.pillars.productCard), color: undefined }
     case "gmv":
-    case "spGmv":
-    case "spCommission":
+    case "commission":
       return { text: formatIdr(row[key]), color: undefined }
     default:
       return { text: formatIdr(Number(row[key] ?? 0)), color: undefined }
@@ -130,7 +127,7 @@ export function CategoryTable({
 
   return (
     <div className="overflow-x-auto">
-      <table className="w-full border-separate border-spacing-0.5 text-[12.5px]" style={{ minWidth: 220 + columns.length * 92 }}>
+      <table className="w-full border-separate border-spacing-0.5 text-[13px]" style={{ minWidth: 220 + columns.length * 92 }}>
         <thead>
           <tr>
             <th className="w-9 bg-[var(--accent)] p-2.5">
@@ -141,11 +138,11 @@ export function CategoryTable({
                 key={col.key}
                 onClick={() => toggleSort(col.key)}
                 title="Klik untuk mengurutkan"
-                className="cursor-pointer rounded-md bg-[var(--accent)] p-2.5 text-[10.5px] font-bold tracking-wide whitespace-nowrap text-[var(--ov-head)] uppercase select-none"
+                className="cursor-pointer rounded-md bg-[var(--accent)] p-2.5 text-[12px] font-bold tracking-wide whitespace-nowrap text-[var(--ov-head)] uppercase select-none"
                 style={{ textAlign: i === 0 ? "left" : "right" }}
               >
                 {col.label}
-                <span className="ml-1 text-[9px] text-[var(--ov-blue)]">
+                <span className="ml-1 text-[10.5px] text-[var(--ov-blue)]">
                   {sortKey === col.key ? (asc ? "▲" : "▼") : ""}
                 </span>
               </th>

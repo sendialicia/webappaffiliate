@@ -28,7 +28,7 @@ export function FindingsFeed({ findings }: { findings: Finding[] }) {
           )}
           {findings.map((f) => (
             <div key={f.id} className="grid grid-cols-[190px_minmax(0,1fr)] gap-4 border-b border-[var(--ov-line)] px-5 py-3 last:border-b-0">
-              <div className="text-[10.5px] font-bold uppercase tracking-wider text-[var(--ov-faint)]">{f.rule}</div>
+              <div className="text-[12px] font-bold uppercase tracking-wider text-[var(--ov-faint)]">{f.rule}</div>
               <div className="text-sm text-[var(--ov-mut2)]">{f.text}</div>
             </div>
           ))}

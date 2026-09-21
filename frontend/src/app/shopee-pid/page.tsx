@@ -9,19 +9,13 @@ import { FilterBar, LEVEL_LABELS } from "@/components/shopee-pid/filter-bar"
 import { CategoryTable } from "@/components/shopee-pid/category-table"
 import { ProductTable } from "@/components/shopee-pid/product-table"
 import { ProductDetail } from "@/components/shopee-pid/product-detail"
+import { CreatorDetailModal } from "@/components/creator-detail-modal"
+import { OpportunityCreators } from "@/components/opportunity-creators"
 import { TopCreatorsTable } from "@/components/shopee-pid/top-creators-table"
 import { ProductQuadrant, QUADRANT_PRESETS, QuadrantInfo } from "@/components/charts/product-quadrant"
-import {
-  Area,
-  AreaChart,
-  CartesianGrid,
-  ResponsiveContainer,
-  Tooltip as RTooltip,
-  XAxis,
-  YAxis,
-} from "recharts"
+import { MetricTrend } from "@/components/charts/metric-trend"
 import { apiFetch } from "@/lib/api"
-import { formatCompact, formatIdr, formatPercent } from "@/lib/format"
+import { formatIdr, formatPercent } from "@/lib/format"
 import { pidFiltersToParams, useShopeePidFilters } from "@/store/shopee-pid-filters"
 import type { DownloadItem } from "@/components/download-menu"
 import type { FilterOptionsResult } from "@/types/overview"
@@ -119,6 +113,8 @@ function ShopeePidPageInner() {
   const [lastSection, setLastSection] = useState<string | null>(null)
   const [scopeRowVisible, setScopeRowVisible] = useState(true)
   const scopeRowRef = useRef<HTMLDivElement>(null)
+  // Which creator row opened the pop-up; null keeps it closed and unfetched.
+  const [openCreator, setOpenCreator] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -151,11 +147,17 @@ function ShopeePidPageInner() {
   ])
 
   useEffect(() => {
+    let stale = false
     apiFetch<FilterOptionsResult>(
       `/api/overview/filter-options${buildQuery({ from, to, marketplace: "Shopee" })}`,
     )
-      .then(setFilterOptions)
+      .then((data) => {
+        if (!stale) setFilterOptions(data)
+      })
       .catch(() => undefined)
+    return () => {
+      stale = true
+    }
   }, [from, to])
 
   useEffect(() => {
@@ -181,27 +183,51 @@ function ShopeePidPageInner() {
   }
 
   useEffect(() => {
+    let stale = false
     apiFetch<PidCategoriesResult>(
       `/api/shopee-pid/categories${buildQuery({ brand: csv(brand), from, to, compare, level, ...prevParams, ...detailParams })}`,
     )
-      .then(setCategories)
-      .catch((e) => setError(e instanceof Error ? e.message : "Gagal memuat kategori"))
+      .then((data) => {
+        if (!stale) setCategories(data)
+      })
+      .catch((e) => {
+        if (!stale) setError(e instanceof Error ? e.message : "Gagal memuat kategori")
+      })
+    return () => {
+      stale = true
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [brand, from, to, compare, prevFrom, prevTo, level, detailKey])
 
   useEffect(() => {
+    let stale = false
     apiFetch<PidProductsResult>(`/api/shopee-pid/products${buildQuery(scopeQuery)}`)
-      .then(setProducts)
-      .catch((e) => setError(e instanceof Error ? e.message : "Gagal memuat produk"))
+      .then((data) => {
+        if (!stale) setProducts(data)
+      })
+      .catch((e) => {
+        if (!stale) setError(e instanceof Error ? e.message : "Gagal memuat produk")
+      })
+    return () => {
+      stale = true
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [brand, from, to, compare, prevFrom, prevTo, level, scope, detailKey])
 
   useEffect(() => {
+    let stale = false
     apiFetch<PidTrendPoint[]>(
       `/api/shopee-pid/trend${buildQuery({ ...scopeQuery, granularity: trendGranularity })}`,
     )
-      .then(setTrend)
-      .catch((e) => setError(e instanceof Error ? e.message : "Gagal memuat trend"))
+      .then((data) => {
+        if (!stale) setTrend(data)
+      })
+      .catch((e) => {
+        if (!stale) setError(e instanceof Error ? e.message : "Gagal memuat trend")
+      })
+    return () => {
+      stale = true
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [brand, from, to, level, scope, trendGranularity, detailKey])
 
@@ -223,6 +249,7 @@ function ShopeePidPageInner() {
       })}`
     : null
 
+
   useEffect(() => {
     if (!detailUrl) return
     apiFetch<PidProductDetail>(detailUrl)
@@ -231,18 +258,38 @@ function ShopeePidPageInner() {
   }, [detailUrl])
 
   useEffect(() => {
+    let stale = false
     apiFetch<PidCreatorsResult>(
       `/api/shopee-pid/top-creators${buildQuery({
         ...scopeQuery,
-        pillar: creatorPillar ?? undefined,
+        // With a product selected the table answers "who sells this product"; without one it
+        // falls back to the active category, which is the question the page opens on.
+        pid: selectedKey || undefined,
+        crPillar: creatorPillar ?? undefined,
         managed: creatorManaged === null ? undefined : String(creatorManaged),
         limit: String(creatorLimit),
       })}`,
     )
-      .then(setCreators)
-      .catch((e) => setError(e instanceof Error ? e.message : "Gagal memuat creator"))
+      .then((data) => {
+        if (!stale) setCreators(data)
+      })
+      .catch((e) => {
+        if (!stale) setError(e instanceof Error ? e.message : "Gagal memuat creator")
+      })
+    return () => {
+      stale = true
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [brand, from, to, level, scope, creatorPillar, creatorManaged, creatorLimit, detailKey])
+  }, [brand, from, to, level, scope, creatorPillar, creatorManaged, creatorLimit, detailKey, selectedKey])
+
+  // One predicate for the count cards, shared by the product table and the quadrant, so a card
+  // narrows both instead of only the table.
+  const matchesCount = (r: { gmv: number; gmvPrev: number; growth: number | null }) =>
+    countFilter === "growing"
+      ? r.gmv > r.gmvPrev
+      : countFilter === "decline"
+        ? r.growth !== null && r.growth < 0
+        : true
 
   const visibleProducts = useMemo(() => {
     if (!products) return []
@@ -250,15 +297,18 @@ function ShopeePidPageInner() {
     return products.rows
       .filter((r) => r.inScope)
       .filter((r) => quadrantSelection.length === 0 || quadrantSelection.includes(r.pid))
-      .filter((r) =>
-        countFilter === "profit"
-          ? r.gmv > 0
-          : countFilter === "decline"
-            ? r.growth !== null && r.growth < 0
-            : true,
-      )
+      .filter(matchesCount)
       .filter((r) => !q || r.name.toLowerCase().includes(q) || r.pid.toLowerCase().includes(q))
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [products, search, countFilter, quadrantSelection])
+
+  // Products outside the active count card stay on the plot as grey context points, so the
+  // axes and medians do not jump when a card is clicked — only the highlighted set changes.
+  const quadrantRows = useMemo(
+    () => (products?.rows ?? []).map((r) => ({ ...r, inScope: r.inScope && matchesCount(r) })),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [products, countFilter],
+  )
 
   // The overview's filter-options endpoint already lists the PID dimension values.
   const dimensionOptions: Partial<Record<string, string[]>> = Object.fromEntries(
@@ -329,7 +379,13 @@ function ShopeePidPageInner() {
     {
       id: "top-creators",
       label: "Top creators",
-      rows: () => (creators?.rows ?? []).map((r) => ({ ...r })),
+      rows: () =>
+        (creators?.rows ?? []).map(({ pillars, ...r }) => ({
+          ...r,
+          livestream: pillars.livestream,
+          video: pillars.video,
+          productCard: pillars.productCard,
+        })),
     },
   ]
 
@@ -373,7 +429,7 @@ function ShopeePidPageInner() {
               <ToggleChip active={showShopee} onClickAction={() => setShowShopee((v) => !v)} label="Kolom Shopee" />
             </div>
           </div>
-          <div className="mb-3 text-[12.5px] leading-relaxed text-[var(--ov-faint)]">
+          <div className="mb-3 text-[13px] leading-relaxed text-[var(--ov-faint)]">
             Klik baris untuk mengikat seluruh seksi di bawah ke cakupan itu · growth, Δ Rp dan share dihitung{" "}
             {compare === "ly" ? "vs LY" : "vs periode sebelumnya"} · kolom Shopee (SP) memakai angka{" "}
             <span className="font-semibold text-[var(--ov-soft)]">confirmed</span>.
@@ -405,7 +461,7 @@ function ShopeePidPageInner() {
             <div className="rounded-lg border border-[var(--ov-gold)]/30 bg-[var(--ov-gold)]/10 px-4 py-2 text-base font-semibold text-[var(--ov-gold-ink)] font-(family-name:--font-archivo)">
               {LEVEL_LABELS[level]} Deep Dive
             </div>
-            <span className="rounded-full border border-[var(--accent)] bg-[var(--accent)] px-3 py-1.5 text-[12.5px] font-semibold text-[var(--accent-foreground)]">
+            <span className="rounded-full border border-[var(--accent)] bg-[var(--accent)] px-3 py-1.5 text-[13px] font-semibold text-[var(--accent-foreground)]">
               {scopeLabel}
             </span>
             {scope.length > 0 && (
@@ -417,7 +473,7 @@ function ShopeePidPageInner() {
                 Kembali ke seluruh {LEVEL_LABELS[level].toLowerCase()}
               </button>
             )}
-            <span className="text-[12.5px] text-[var(--ov-faint)]">
+            <span className="text-[13px] text-[var(--ov-faint)]">
               mengikat count card, GMV trend, quadrant, dan tabel produk di bawah
             </span>
           </div>
@@ -432,12 +488,12 @@ function ShopeePidPageInner() {
                 onClickAction={() => setCountFilter("all")}
               />
               <CountCard
-                label="Count Profit Product"
-                value={products ? formatIdr(products.countProfitProduct) : "…"}
-                note="produk dengan GMV di atas nol"
+                label="Count Growing Product"
+                value={products ? formatIdr(products.countGrowingProduct) : "…"}
+                note={`GMV-nya naik ${compare === "ly" ? "vs LY" : "vs periode pembanding"}, termasuk produk baru`}
                 color="var(--ov-green-ink)"
-                active={countFilter === "profit"}
-                onClickAction={() => setCountFilter("profit")}
+                active={countFilter === "growing"}
+                onClickAction={() => setCountFilter("growing")}
               />
               <CountCard
                 label="Count Declining Product"
@@ -452,34 +508,12 @@ function ShopeePidPageInner() {
               className="rounded-xl border border-[var(--ov-line)] p-4 lg:col-span-2"
               style={{ background: "var(--ov-card-gradient)" }}
             >
-              <div className="flex flex-wrap items-baseline gap-2.5">
-                <div className="flex-1 text-sm font-semibold text-[var(--ov-mut)]">GMV Trend · {scopeLabel}</div>
-                <div className="text-[11.5px] text-[var(--ov-faint)]">granularitas {trendGranularity}</div>
-              </div>
-              {trend ? (
-                <ResponsiveContainer width="100%" height={230}>
-                  <AreaChart data={trend} margin={{ top: 10, right: 8, left: 0, bottom: 0 }}>
-                    <CartesianGrid stroke="var(--ov-line)" vertical={false} />
-                    <XAxis dataKey="bucket" tick={{ fill: "var(--ov-faint)", fontSize: 10 }} axisLine={false} tickLine={false} minTickGap={24} />
-                    <YAxis
-                      tickFormatter={(v) => formatCompact(Number(v))}
-                      tick={{ fill: "var(--ov-faint)", fontSize: 10 }}
-                      axisLine={false}
-                      tickLine={false}
-                      width={52}
-                    />
-                    <RTooltip
-                      contentStyle={{ background: "var(--ov-tooltip)", border: "1px solid var(--ov-line)", borderRadius: 8, fontSize: 12 }}
-                      labelStyle={{ color: "var(--ov-head)" }}
-                      formatter={(value, name) => [formatIdr(Number(value)), name === "gmv" ? "GMV affiliate" : "SP GMV"]}
-                    />
-                    <Area type="monotone" dataKey="gmv" stroke="var(--ov-gold)" fill="var(--ov-gold)" fillOpacity={0.22} strokeWidth={2} />
-                    <Area type="monotone" dataKey="spGmv" stroke="var(--ov-blue)" fill="var(--ov-blue)" fillOpacity={0.12} strokeWidth={2} />
-                  </AreaChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="flex h-[230px] items-center justify-center text-sm text-[var(--ov-faint)]">Loading…</div>
-              )}
+              <MetricTrend
+                data={trend}
+                title={`Trend · ${scopeLabel}`}
+                picker="select"
+                headerExtra={<span className="text-[13px] text-[var(--ov-faint)]">granularitas {trendGranularity}</span>}
+              />
             </div>
           </div>
         </div>
@@ -514,7 +548,7 @@ function ShopeePidPageInner() {
                   ))}
                 </SelectContent>
               </Select>
-              <QuadrantInfo preset={quadrant} excludeOutliers={excludeOutliers} />
+              <QuadrantInfo spec={QUADRANT_PRESETS[quadrant]} excludeOutliers={excludeOutliers} />
               {quadrantSelection.length > 0 && (
                 <button
                   type="button"
@@ -528,8 +562,8 @@ function ShopeePidPageInner() {
           </div>
           {products ? (
             <ProductQuadrant
-              rows={products.rows}
-              preset={quadrant}
+              rows={quadrantRows}
+              spec={QUADRANT_PRESETS[quadrant]}
               excludeOutliers={excludeOutliers}
               selectedPids={quadrantSelection}
               onSelectManyAction={(pids) => {
@@ -597,19 +631,19 @@ function ShopeePidPageInner() {
         </div>
 
         {/* 4 · Product deep dive + creators */}
-        <div id="pp-sec-4" className="grid scroll-mt-24 grid-cols-1 items-start gap-4.5 xl:grid-cols-2">
+        <div id="pp-sec-4" className="grid scroll-mt-24 grid-cols-1 gap-4.5 xl:grid-cols-2">
           <div className="flex flex-col">
             <div className="mb-3.5 flex min-h-[42px] flex-wrap items-center gap-3">
               <div className="rounded-lg border border-[var(--ov-gold)]/30 bg-[var(--ov-gold)]/10 px-4 py-2 text-base font-semibold text-[var(--ov-gold-ink)] font-(family-name:--font-archivo)">
                 Product Deep Dive
               </div>
-              <span className="text-[12.5px] text-[var(--ov-faint)]">mengikuti baris produk yang dipilih di tabel atas</span>
+              <span className="text-[13px] text-[var(--ov-faint)]">mengikuti baris produk yang dipilih di tabel atas</span>
             </div>
             {detailUrl && detail?.key === detailUrl ? (
               <ProductDetail detail={detail.data} onRemoveAction={toggleSelectedPid} />
             ) : (
               <div
-                className="flex h-[240px] items-center justify-center rounded-xl border border-dashed border-[var(--ov-line)] px-6 text-center text-sm text-[var(--ov-faint)]"
+                className="flex min-h-[240px] flex-1 items-center justify-center rounded-xl border border-dashed border-[var(--ov-line)] px-6 text-center text-sm text-[var(--ov-faint)]"
                 style={{ background: "var(--ov-card-gradient)" }}
               >
                 {selectedKey
@@ -619,12 +653,19 @@ function ShopeePidPageInner() {
             )}
           </div>
 
-          <div className="flex flex-col">
+          {/* The creators column takes the deep-dive column's height instead of setting its own:
+              on xl it is pulled out of flow (absolute) so the left card alone sizes the row, and
+              the table scrolls inside. The min height keeps it usable before a product is picked. */}
+          <div className="flex flex-col xl:relative xl:min-h-[560px]">
+            <div className="flex flex-col xl:absolute xl:inset-0">
             <div className="mb-3.5 flex min-h-[42px] flex-wrap items-center gap-3.5">
               <div className="flex items-center gap-2.5">
                 <i className="block h-2.5 w-2.5 flex-none rounded-full" style={{ background: "var(--ov-gold)" }} />
                 <span className="text-[17px] font-semibold font-(family-name:--font-archivo)">
                   Who are the Top Creators by Pillars?
+                </span>
+                <span className="rounded-full border border-[var(--ov-line)] px-2.5 py-1 text-[12.5px] font-semibold text-[var(--ov-soft)]">
+                  {selectedKey ? "produk terpilih" : scopeLabel}
                 </span>
               </div>
               <div className="ml-auto flex flex-wrap items-center gap-2.5">
@@ -677,12 +718,14 @@ function ShopeePidPageInner() {
               </div>
             </div>
             <div
-              className="rounded-xl border border-[var(--ov-line)] p-5 shadow-[0_18px_34px_-22px_var(--ov-shadow)]"
+              className="flex min-h-0 flex-1 flex-col rounded-xl border border-[var(--ov-line)] p-5 shadow-[0_18px_34px_-22px_var(--ov-shadow)]"
               style={{ background: "var(--ov-card-gradient)" }}
             >
               {creators ? (
                 <>
-                  <TopCreatorsTable rows={creators.rows} />
+                  <div className="min-h-0 flex-1">
+                    <TopCreatorsTable rows={creators.rows} onSelectAction={setOpenCreator} />
+                  </div>
                   <div className="mt-3 border-t border-[var(--ov-line)] pt-2.5 text-xs leading-relaxed text-[var(--ov-faint)]">
                     10 creator teratas menyumbang {formatPercent(creators.concentrationTop10)} dari total GMV{" "}
                     {formatIdr(creators.totalGmv)} pada cakupan ini.
@@ -694,9 +737,25 @@ function ShopeePidPageInner() {
                 </div>
               )}
             </div>
+            </div>
           </div>
         </div>
+
+        {/* Full width: its table needs ~720px, too cramped beside the deep dive. */}
+        <OpportunityCreators
+          endpoint="/api/shopee-pid/opportunity-creators"
+          idParam="pid"
+          ids={selectedKey}
+          query={{ brand: csv(brand), from, to, ...detailParams }}
+        />
       </div>
+
+      <CreatorDetailModal
+        endpoint="/api/shopee-pid/creator-detail"
+        username={openCreator}
+        query={{ brand: csv(brand), from, to, granularity: trendGranularity, ...detailParams }}
+        onCloseAction={() => setOpenCreator(null)}
+      />
     </DashboardShell>
   )
 }
@@ -784,7 +843,7 @@ function CountCard({
       <div className="flex items-center gap-2 text-[13px] leading-snug font-semibold text-[var(--ov-mut)]">
         {label}
         {active && (
-          <span className="ml-auto rounded-full bg-[var(--accent)] px-2 py-0.5 text-[10px] font-bold text-[var(--accent-foreground)]">
+          <span className="ml-auto rounded-full bg-[var(--accent)] px-2 py-0.5 text-[11.5px] font-bold text-[var(--accent-foreground)]">
             menyaring tabel
           </span>
         )}
@@ -795,7 +854,7 @@ function CountCard({
       >
         {value}
       </div>
-      <div className="mt-1 text-[11.5px] leading-relaxed text-[var(--ov-faint)]">{note}</div>
+      <div className="mt-1 text-[12.5px] leading-relaxed text-[var(--ov-faint)]">{note}</div>
     </button>
   )
 }

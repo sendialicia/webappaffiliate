@@ -1,3 +1,4 @@
+import type { OrderMetrics, TrendMetrics } from '../lib/query-helpers'
 import type { ComparisonBasis, DetailFilters, OverviewFilters, TrendGranularity } from './overview'
 
 export type PidLevel = 'category' | 'subcategory' | 'format'
@@ -29,7 +30,7 @@ export interface PillarSplit {
   productCard: number
 }
 
-export interface PidCategoryRow extends ShopeeAttributes {
+export interface PidCategoryRow extends ShopeeAttributes, OrderMetrics {
   name: string
   gmv: number
   gmvPrev: number
@@ -48,7 +49,7 @@ export interface PidCategoriesResult {
   comparison: { from: string; to: string; basis: ComparisonBasis }
 }
 
-export interface PidProductRow extends ShopeeAttributes {
+export interface PidProductRow extends ShopeeAttributes, OrderMetrics {
   pid: string
   name: string
   category: string
@@ -67,15 +68,14 @@ export interface PidProductsResult {
   rows: PidProductRow[]
   scope: string | null
   countProduct: number
-  countProfitProduct: number
+  /** GMV above the comparison period, new products included. */
+  countGrowingProduct: number
   countDecliningProduct: number
   countScopeProduct: number
 }
 
-export interface PidTrendPoint {
+export interface PidTrendPoint extends TrendMetrics {
   bucket: string
-  gmv: number
-  spGmv: number
 }
 
 export interface PidPillarContribution {
@@ -106,7 +106,14 @@ export interface PidProductDetail {
   gmvPrev: number
   growth: number | null
   creators: number
+  /** Needed to split the GMV move into "more creators" versus "more per creator". */
+  creatorsPrev: number
+  /** Affiliate orders, both windows — the waterfall's denominator for CO rate and AOV. */
+  orders: number
+  ordersPrev: number
   attributes: ShopeeAttributes
+  /** Same shape for the comparison window — the lever waterfall needs both ends. */
+  attributesPrev: ShopeeAttributes
   trend: PidTrendPoint[]
   pillars: PidPillarContribution[]
 }
@@ -115,6 +122,8 @@ export interface PidCreatorRow {
   username: string
   isManaged: boolean
   gmv: number
+  /** GMV this creator produced per pillar; exact, since PILLAR is on the row grain. */
+  pillars: PillarSplit
   share: number
   orders: number
   itemsSold: number
@@ -134,3 +143,29 @@ export type QuadrantPreset =
   | 'asp-units'
   | 'commrate-growth'
   | 'buyers-newshare'
+
+/**
+ * A creator who already sells in this product's sub-category but has never touched this PID.
+ * The point is a shortlist to approach, not a forecast — see `estimatedGmv`.
+ */
+export interface OpportunityCreatorRow {
+  username: string
+  isManaged: boolean
+  /** Brands this creator already sells inside the sub-category. */
+  brands: string
+  productCount: number
+  subCategoryGmv: number
+  /**
+   * subCategoryGmv / productCount. Deliberately crude: it assumes this product would perform
+   * like the creator's average product in the sub-category, which it may well not.
+   */
+  estimatedGmv: number
+  dominantPillar: string
+}
+
+export interface OpportunityCreatorsResult {
+  subCategory: string
+  /** How far back "never touched this PID" was checked. */
+  lookbackDays: number
+  rows: OpportunityCreatorRow[]
+}

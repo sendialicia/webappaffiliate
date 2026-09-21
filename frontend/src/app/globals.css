@@ -104,13 +104,24 @@
   --ov-nav-on: linear-gradient(100deg, #1b3f6b 0%, #17355c 100%);
   --ov-nav-on-ink: #ffffff;
   --ov-logo: linear-gradient(150deg, #27547f 0%, #1b3a63 100%);
+  /* Paragon blue, identical in both themes — it is a brand colour, not a surface. */
+  --ov-brand: #2b5baf;
+  /* Quadrant fills. Two hues, not four: four chromatic hues cannot clear colour-vision
+     separation against each other on this surface, but blue-vs-amber clears it with room to
+     spare (ΔE 23.7 protan/deutan vs a threshold of 8). Hue carries the vertical half, the
+     -soft step carries the horizontal half, and corner labels name each quadrant so identity
+     never rests on colour alone. Validated for this surface in both themes. */
+  --ov-q-hi: #b8880f;
+  --ov-q-hi-soft: #8a6510;
+  --ov-q-lo: #3f97d6;
+  --ov-q-lo-soft: #2f6f9e;
   --ov-ink: #e9f0f8;
   --ov-soft: #c6d7e9;
   --ov-mut2: #a9bed6;
   --ov-mut: #93aac6;
   --ov-head: #9fb6cf;
   --ov-label: #8ba3bf;
-  --ov-faint: #7f96b2;
+  --ov-faint: #8ea4bf;
   --ov-dim: #5f748d;
   --ov-icon: #7bb8e8;
   --ov-line: rgba(122, 162, 208, 0.13);
@@ -184,13 +195,18 @@ html[data-theme="light"] {
   --ov-nav-on: linear-gradient(100deg, #1d6eb4 0%, #1a5f9d 100%);
   --ov-nav-on-ink: #ffffff;
   --ov-logo: linear-gradient(150deg, #e7f1fb 0%, #d7e7f7 100%);
+  --ov-brand: #2b5baf;
+  --ov-q-hi: #b07d08;
+  --ov-q-hi-soft: #d8ab4a;
+  --ov-q-lo: #1f7ab8;
+  --ov-q-lo-soft: #6aa8d4;
   --ov-ink: #14263c;
   --ov-soft: #33506e;
   --ov-mut2: #4f6a85;
   --ov-mut: #5b7590;
   --ov-head: #55708c;
   --ov-label: #64798f;
-  --ov-faint: #6b829b;
+  --ov-faint: #5b7189;
   --ov-dim: #91a3b6;
   --ov-icon: #1d6eb4;
   --ov-line: rgba(18, 52, 86, 0.1);
