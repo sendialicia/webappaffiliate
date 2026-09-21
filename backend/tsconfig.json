@@ -35,7 +35,9 @@
     // Recommended Options
     "strict": true,
     "jsx": "react-jsx",
-    "verbatimModuleSyntax": true,
+    // Off: this package runs as CommonJS (no "type": "module"), where verbatimModuleSyntax
+    // rejects every ES import and export — and Vercel's build type-checks the whole program.
+    "verbatimModuleSyntax": false,
     "isolatedModules": true,
     "noUncheckedSideEffectImports": true,
     "moduleDetection": "force",
