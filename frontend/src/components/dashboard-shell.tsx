@@ -146,6 +146,33 @@ function CollapseButton({ collapsed, onToggle }: { collapsed: boolean; onToggle:
   )
 }
 
+/** Shared feedback sheet (SharePoint Excel); opens in a new tab so the reader keeps their view. */
+const FEEDBACK_URL =
+  "https://paracorpgroup-my.sharepoint.com/:x:/p/sendi_palicia_intern/IQDE2Fd9_n9XQ4ETrvmpjtSIAU19hZSmf0hG7Tm5Mp7WIBs?e=gkOD1L"
+
+function FeedbackLink() {
+  return (
+    <a
+      href={FEEDBACK_URL}
+      target="_blank"
+      rel="noopener noreferrer"
+      title="Buka lembar feedback di tab baru"
+      className="flex h-8 items-center gap-1.5 rounded-full border px-3 text-[13px] font-semibold whitespace-nowrap hover:brightness-110"
+      style={{
+        borderColor: "var(--ov-gold)",
+        background: "color-mix(in srgb, var(--ov-gold) 16%, transparent)",
+        color: "var(--ov-gold-ink)",
+      }}
+    >
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+        <path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12Z" />
+        <path d="M8.5 10.5h7M8.5 13.5h4" />
+      </svg>
+      Kasih feedback
+    </a>
+  )
+}
+
 const CARRIED_PARAMS = [
   "brand",
   "marketplace",
@@ -353,6 +380,7 @@ export function DashboardShell({
             <div className="mt-1 text-sm text-[var(--ov-mut)]">{subtitle}</div>
           </div>
           <div className="flex flex-wrap items-center gap-2">
+            <FeedbackLink />
             <DataAvailability />
             <UserMenu />
             <ThemeToggle />
