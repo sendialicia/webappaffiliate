@@ -5,8 +5,9 @@ import { DIMENSION_COLORS } from "@/components/overview/composition-table"
 import { GmvSplitHover } from "@/components/charts/gmv-split-hover"
 import { LeverWaterfall } from "@/components/charts/lever-waterfall"
 import { CommentsPanel } from "@/components/comments-panel"
-import { formatCompact, formatIdr, formatPercent, formatRpFull, formatSignedPercent } from "@/lib/format"
+import { formatIdr, formatPercent, formatRpFull, formatSignedPercent } from "@/lib/format"
 import type { TtProductDetail } from "@/types/tiktok-pid"
+import { Num } from "@/components/num"
 
 export function TtProductDetailCard({
   detail,
@@ -71,7 +72,7 @@ export function TtProductDetailCard({
                 <span className="min-w-0 flex-1 truncate text-[var(--ov-soft)]" title={m.name}>
                   {m.name}
                 </span>
-                <span className="font-mono text-[var(--ov-mut)]">{formatCompact(m.gmv)}</span>
+                <span className="font-mono text-[var(--ov-mut)]"><Num value={m.gmv} /></span>
                 {onRemoveAction && (
                   <button
                     type="button"

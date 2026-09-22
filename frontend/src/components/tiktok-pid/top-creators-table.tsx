@@ -1,8 +1,9 @@
 "use client"
 
 import { useState } from "react"
-import { formatCompact, formatIdr, formatPercent } from "@/lib/format"
+import { formatIdr, formatPercent } from "@/lib/format"
 import type { TtCreatorRow } from "@/types/tiktok-pid"
+import { Num } from "@/components/num"
 
 /** Not a person: TikTok books agency sales under this one username. */
 export const AGENCY_USERNAME = "Agency"
@@ -104,7 +105,7 @@ export function TtTopCreatorsTable({ rows, onSelectAction }: { rows: TtCreatorRo
                   key={k}
                   className="border-b border-[var(--ov-fill1)] p-2.5 text-right font-mono text-[var(--ov-soft)]"
                 >
-                  {row.pillars[k] > 0 ? formatCompact(row.pillars[k]) : "—"}
+                  {row.pillars[k] > 0 ? <Num value={row.pillars[k]} /> : "—"}
                 </td>
               ))}
               <td className="border-b border-[var(--ov-fill1)] p-2.5 text-right font-mono font-semibold">

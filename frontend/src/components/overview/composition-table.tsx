@@ -31,6 +31,24 @@ export const DIMENSION_COLORS = [
   "#e0d68f",
 ]
 
+/** Marketplace identity colours, the same on every page: Shopee yellow, TikTok blue. */
+export const MARKETPLACE_COLORS: Record<string, string> = {
+  shopee: "#f2c14e",
+  tiktok: "#4aa3e0",
+}
+
+/**
+ * Colour for a series by name and position. Marketplaces keep their identity colour wherever
+ * they appear, the folded "Lainnya" stays grey, and everything else takes the palette slot —
+ * so Shopee is not blue just because TikTok sold more and took the first slot.
+ */
+export function seriesColor(name: string, index: number): string {
+  const key = name.toLowerCase()
+  if (MARKETPLACE_COLORS[key]) return MARKETPLACE_COLORS[key] as string
+  if (name === "Lainnya") return "var(--ov-dim)"
+  return DIMENSION_COLORS[index % DIMENSION_COLORS.length] as string
+}
+
 export function CompositionTable({
   rows,
   selected,
@@ -43,7 +61,7 @@ export function CompositionTable({
   const [sortKey, setSortKey] = useState<SortKey>("gmv")
   const [asc, setAsc] = useState(false)
 
-  const colorByName = new Map(rows.map((r, i) => [r.name, DIMENSION_COLORS[i % DIMENSION_COLORS.length]]))
+  const colorByName = new Map(rows.map((r, i) => [r.name, seriesColor(r.name, i)]))
 
   const sorted = [...rows].sort((a, b) => {
     const av = a[sortKey]

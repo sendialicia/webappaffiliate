@@ -1,6 +1,7 @@
 "use client"
 
 import { formatIdr, formatRp } from "@/lib/format"
+import { Num } from "@/components/num"
 
 /**
  * The product-level twin of the overview's GMV decomposition. Same identity —
@@ -68,7 +69,7 @@ export function GmvSplitHover({
         Perubahan GMV Affiliate{" "}
         <span style={{ color: total >= 0 ? "var(--ov-green-ink)" : "var(--ov-red-ink)" }}>
           {total >= 0 ? "+" : "−"}
-          {formatRp(Math.abs(total))}
+          <Num money value={Math.abs(total)} />
         </span>
       </span>
       <span className="mt-0.5 block text-[12px] text-[var(--ov-faint)]">
@@ -87,7 +88,7 @@ export function GmvSplitHover({
                 style={{ color: positive ? "var(--ov-green-ink)" : "var(--ov-red-ink)" }}
               >
                 {positive ? "+" : "−"}
-                {formatRp(Math.abs(part.contribution))}
+                <Num money value={Math.abs(part.contribution)} />
               </span>
             </span>
             <span className="my-1 block h-1.5 overflow-hidden rounded-full bg-[var(--ov-track)]">

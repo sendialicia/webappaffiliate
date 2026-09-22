@@ -61,6 +61,7 @@ function renderCell(row: PidCategoryRow, key: SortKey) {
     case "deltaRp":
       return {
         text: `${row.deltaRp >= 0 ? "+" : "−"}${formatCompact(Math.abs(row.deltaRp))}`,
+        title: `${row.deltaRp >= 0 ? "+" : "−"}${formatIdr(Math.abs(row.deltaRp))}`,
         color: row.deltaRp >= 0 ? "var(--ov-green-ink)" : "var(--ov-red-ink)",
       }
     case "roi":
@@ -68,11 +69,11 @@ function renderCell(row: PidCategoryRow, key: SortKey) {
     case "spCoRate":
       return { text: row.spCoRate !== null ? formatPercent(row.spCoRate, 2) : "—", color: undefined }
     case "livestream":
-      return { text: formatCompact(row.pillars.livestream), color: undefined }
+      return { text: formatCompact(row.pillars.livestream), color: undefined, title: formatIdr(row.pillars.livestream) }
     case "video":
-      return { text: formatCompact(row.pillars.video), color: undefined }
+      return { text: formatCompact(row.pillars.video), color: undefined, title: formatIdr(row.pillars.video) }
     case "productCard":
-      return { text: formatCompact(row.pillars.productCard), color: undefined }
+      return { text: formatCompact(row.pillars.productCard), color: undefined, title: formatIdr(row.pillars.productCard) }
     case "gmv":
     case "commission":
       return { text: formatIdr(row[key]), color: undefined }
@@ -126,9 +127,11 @@ export function CategoryTable({
   }
 
   return (
-    <div className="overflow-x-auto">
+    // Format level runs to ~60 rows: the table scrolls inside its card with the header pinned.
+    <div className="max-h-[520px] overflow-auto">
       <table className="w-full border-separate border-spacing-0.5 text-[13px]" style={{ minWidth: 220 + columns.length * 92 }}>
-        <thead>
+        {/* Solid card colour under the translucent header cells, so rows do not show through. */}
+        <thead className="sticky top-0 z-[2]" style={{ background: "var(--card)" }}>
           <tr>
             <th className="w-9 bg-[var(--accent)] p-2.5">
               <span className="sr-only">Pilih</span>
@@ -166,7 +169,7 @@ export function CategoryTable({
                     letterSpacing: i === 0 ? "0.06em" : undefined,
                   }}
                 >
-                  {i === 0 ? total.name : cell.text}
+                  {i === 0 ? total.name : cell.title ? <span title={cell.title}>{cell.text}</span> : cell.text}
                 </td>
               )
             })}
@@ -203,7 +206,7 @@ export function CategoryTable({
                         fontWeight: i === 0 ? 600 : undefined,
                       }}
                     >
-                      {i === 0 ? row.name : cell.text}
+                      {i === 0 ? row.name : cell.title ? <span title={cell.title}>{cell.text}</span> : cell.text}
                     </td>
                   )
                 })}

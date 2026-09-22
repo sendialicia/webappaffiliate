@@ -1,7 +1,7 @@
 "use client"
 
 import { Bar, BarChart, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts"
-import { formatCompact } from "@/lib/format"
+import { formatCompact, formatIdr } from "@/lib/format"
 import type { CompositionResult } from "@/types/overview"
 import { TOOLTIP_PLACEMENT } from "@/lib/chart-tooltip"
 
@@ -112,7 +112,7 @@ export function WaterfallChart({ result, height = 296 }: { result: CompositionRe
             const step = item?.payload as WaterfallStep | undefined
             if (!step) return ["", ""]
             const sign = step.kind === "total" ? "" : step.delta >= 0 ? "+" : "-"
-            return [`${sign}${formatCompact(Math.abs(step.delta))}`, step.kind === "total" ? "Total" : "Kontribusi"]
+            return [`${sign}${formatIdr(Math.abs(step.delta))}`, step.kind === "total" ? "Total" : "Kontribusi"]
           }}
         />
         <Bar dataKey="base" stackId="w" fill="transparent" isAnimationActive={false} tooltipType="none" />

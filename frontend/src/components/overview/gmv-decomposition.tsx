@@ -1,7 +1,8 @@
 "use client"
 
-import { formatPercent, formatRp, formatSignedPercent } from "@/lib/format"
+import { formatPercent, formatSignedPercent } from "@/lib/format"
 import type { KpiValue } from "@/types/overview"
+import { Num } from "@/components/num"
 
 /**
  * Splits the GMV change into the two things that can move it, using the identity
@@ -82,7 +83,7 @@ export function GmvDecomposition({
             </div>
             <div className="text-[12.5px] text-[var(--ov-faint)]">
               {p.contribution >= 0 ? "+" : "−"}
-              {formatRp(Math.abs(p.contribution))} · {formatPercent(p.share, 0)} dari pergerakan kotor
+              <Num money value={Math.abs(p.contribution)} /> · {formatPercent(p.share, 0)} dari pergerakan kotor
             </div>
           </div>
         )
@@ -95,7 +96,7 @@ export function GmvDecomposition({
           style={{ color: d.total >= 0 ? "var(--ov-green-ink)" : "var(--ov-red-ink)" }}
         >
           {formatSignedPercent(d.totalPct)} · {d.total >= 0 ? "+" : "−"}
-          {formatRp(Math.abs(d.total))}
+          <Num money value={Math.abs(d.total)} />
         </span>
       </div>
     </div>

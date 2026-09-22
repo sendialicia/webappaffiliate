@@ -1,8 +1,9 @@
 "use client"
 
 import { useState } from "react"
-import { formatCompact, formatIdr, formatPercent } from "@/lib/format"
+import { formatIdr, formatPercent } from "@/lib/format"
 import type { PidCreatorRow } from "@/types/shopee-pid"
+import { Num } from "@/components/num"
 
 type SortKey = keyof PidCreatorRow | "livestream" | "video" | "productCard"
 
@@ -92,7 +93,7 @@ export function TopCreatorsTable({ rows, onSelectAction }: { rows: PidCreatorRow
                   key={k}
                   className="border-b border-[var(--ov-fill1)] p-2.5 text-right font-mono text-[var(--ov-soft)]"
                 >
-                  {row.pillars[k] > 0 ? formatCompact(row.pillars[k]) : "—"}
+                  {row.pillars[k] > 0 ? <Num value={row.pillars[k]} /> : "—"}
                 </td>
               ))}
               <td className="border-b border-[var(--ov-fill1)] p-2.5 text-right font-mono font-semibold">

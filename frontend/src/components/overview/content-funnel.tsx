@@ -63,9 +63,9 @@ export function ContentFunnel({ marketplace, periodTo }: { marketplace: FunnelMa
 
       {contentStale && (
         <div className="mt-2.5 rounded-md border border-[var(--ov-gold)]/35 bg-[var(--ov-gold)]/10 px-3 py-2 text-[13px] leading-relaxed text-[var(--ov-soft)]">
-          Data new content untuk filter ini baru sampai{" "}
-          <span className="font-semibold">{formatDate(contentLastDate)}</span>, jadi Total Creator dan # New Content
-          setelah tanggal itu belum terhitung.
+          Data konten (Total Creator dan # New Content) untuk filter ini baru sampai{" "}
+          <span className="font-semibold">{formatDate(contentLastDate)}</span>, jadi keduanya belum menghitung hari
+          setelah tanggal itu.
         </div>
       )}
 
@@ -88,8 +88,9 @@ export function ContentFunnel({ marketplace, periodTo }: { marketplace: FunnelMa
  * marketplace identity colours and carry their own text colour, so they read on either theme.
  */
 const FUNNEL_PALETTES: Record<string, [string, string]> = {
-  shopee: ["#9a3412", "#fdba74"],
-  tiktok: ["#4c1d95", "#93c5fd"],
+  // Shopee yellow and TikTok blue, as everywhere else in the app.
+  shopee: ["#8a6510", "#fde68a"],
+  tiktok: ["#1e3a8a", "#93c5fd"],
 }
 const DEFAULT_PALETTE: [string, string] = ["#1e3a8a", "#93c5fd"]
 

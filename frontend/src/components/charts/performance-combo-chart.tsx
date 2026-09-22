@@ -2,7 +2,7 @@
 
 import { Bar, CartesianGrid, ComposedChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts"
 import type { MouseHandlerDataParam } from "recharts"
-import { formatCompact } from "@/lib/format"
+import { formatCompact, formatIdr } from "@/lib/format"
 import { TOOLTIP_PLACEMENT } from "@/lib/chart-tooltip"
 
 export interface ComboPoint {
@@ -52,7 +52,7 @@ export function PerformanceComboChart({
         <Tooltip {...TOOLTIP_PLACEMENT}
           contentStyle={{ background: "var(--ov-tooltip)", border: "1px solid var(--ov-line)", borderRadius: 8, fontSize: 12 }}
           labelStyle={{ color: "var(--ov-head)" }}
-          formatter={(value, name) => [formatCompact(Number(value)), String(name)]}
+          formatter={(value, name) => [formatIdr(Number(value)), String(name)]}
           cursor={{ fill: "var(--ov-fill1)" }}
         />
         <Bar

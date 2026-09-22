@@ -15,7 +15,7 @@ import { DualKpiCard, KpiCard } from "@/components/charts/kpi-card"
 import { AffSelfChart } from "@/components/charts/aff-self-chart"
 import { WaterfallChart } from "@/components/charts/waterfall-chart"
 import { CompositionTrendChart } from "@/components/charts/composition-trend-chart"
-import { CompositionTable, DIMENSION_COLORS } from "@/components/overview/composition-table"
+import { CompositionTable, seriesColor } from "@/components/overview/composition-table"
 import { CompositionDetail } from "@/components/overview/composition-detail"
 import { GmvDecomposition } from "@/components/overview/gmv-decomposition"
 import type { DownloadItem } from "@/components/download-menu"
@@ -52,6 +52,7 @@ import type {
   SpendResult,
   SummaryResult,
 } from "@/types/overview"
+import { Num } from "@/components/num"
 
 const SECTION_NAV = [
   { id: "ov-sec-1", label: "Performa tahun ini" },
@@ -590,7 +591,7 @@ function OverviewPageInner() {
   const selectedRow = composition?.rows.find((r) => r.name === selectedSlice) ?? null
   const selectedIndex = composition?.rows.findIndex((r) => r.name === selectedSlice) ?? -1
   const selectedColor =
-    selectedIndex >= 0 ? DIMENSION_COLORS[selectedIndex % DIMENSION_COLORS.length] : "var(--ov-gold)"
+    selectedIndex >= 0 && selectedRow ? seriesColor(selectedRow.name, selectedIndex) : "var(--ov-gold)"
 
   return (
     <DashboardShell
@@ -668,7 +669,7 @@ function OverviewPageInner() {
                 <div className="text-right">
                   <div className="text-sm text-[var(--ov-mut)]">Remaining</div>
                   <div className="text-lg font-bold font-(family-name:--font-archivo)">
-                    {formatRp(Math.max(monthly.pace.remaining, 0))}
+                    <Num money value={Math.max(monthly.pace.remaining, 0)} />
                   </div>
                   <div className="text-sm text-[var(--ov-mut)]">in {monthly.pace.daysLeft} days left</div>
                 </div>
@@ -679,9 +680,9 @@ function OverviewPageInner() {
                 <PaceGauge pace={monthly.pace} />
                 <div className="mt-2 flex justify-between font-mono text-xs text-[var(--ov-soft)]">
                   <span>
-                    {formatRp(monthly.pace.actual)} of {formatRp(monthly.pace.target)}
+                    <Num money value={monthly.pace.actual} /> of <Num money value={monthly.pace.target} />
                   </span>
-                  <span className="text-[var(--ov-faint)]">expected to date {formatRp(monthly.pace.expected)}</span>
+                  <span className="text-[var(--ov-faint)]">expected to date <Num money value={monthly.pace.expected} /></span>
                 </div>
                 <div className="mt-3 grid grid-cols-2 gap-3.5 border-t border-[var(--ov-line)] pt-4">
                   <div>
@@ -696,7 +697,7 @@ function OverviewPageInner() {
                   <div>
                     <div className="text-xs text-[var(--ov-mut)]">Proyeksi akhir bulan</div>
                     <div className="text-base font-bold font-(family-name:--font-archivo)">
-                      {formatRp(monthly.pace.projection)}
+                      <Num money value={monthly.pace.projection} />
                     </div>
                   </div>
                 </div>
@@ -782,6 +783,7 @@ function OverviewPageInner() {
                   <KpiCard
                     label="GMV Affiliate"
                     value={formatRp(summary.kpis.gmv.value)}
+                    exact={formatRpFull(summary.kpis.gmv.value)}
                     deltaPct={summary.kpis.gmv.deltaPct}
                     compareLabel={compareLabel}
                     sparkline={summary.trend}
@@ -842,6 +844,7 @@ function OverviewPageInner() {
                 <KpiCard
                   label="Commission"
                   value={formatRp(summary.kpis.commission.value)}
+                  exact={formatRpFull(summary.kpis.commission.value)}
                   deltaPct={summary.kpis.commission.deltaPct}
                   compareLabel={compareLabel}
                   positiveIsGood={false}
@@ -1122,6 +1125,11 @@ function OverviewPageInner() {
               Funnel &amp; pillar stats dari summary order · new content dan total creators dari content
               performance.
             </span>
+          </div>
+          <div className="mb-4 rounded-md border border-[var(--ov-gold)]/35 bg-[var(--ov-gold)]/10 px-3 py-2 text-[12.5px] leading-relaxed text-[var(--ov-soft)]">
+            <span className="font-semibold">Catatan:</span> section ini hanya mengikuti filter{" "}
+            <span className="font-semibold">Brand, Marketplace, dan Periode</span>. Filter Pillar dan Kategori &amp;
+            format tidak berlaku, karena data funnel dan konten tidak memiliki dimensi tersebut.
           </div>
           {funnel ? (
             <div className="grid grid-cols-1 gap-3.5 xl:grid-cols-2">

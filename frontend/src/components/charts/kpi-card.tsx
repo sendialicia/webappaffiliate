@@ -60,9 +60,12 @@ export function KpiCard({
   deltaHover,
   /** "lg" is the headline card: bigger number and a taller chart. */
   size = "sm",
+  exact,
 }: {
   label: string
   value: string
+  /** The unabbreviated figure, shown on hover when `value` is short ("Rp148.2B"). */
+  exact?: string
   deltaPct: number | null
   compareLabel: string
   sparkline: SummaryTrendPoint[]
@@ -82,7 +85,8 @@ export function KpiCard({
     >
       <div className="text-sm font-semibold text-[var(--ov-mut)]">{label}</div>
       <div
-        className={`mt-1 font-bold tracking-tight font-(family-name:--font-archivo) ${large ? "text-[32px] leading-tight" : "text-2xl"}`}
+        className={`mt-1 font-bold tracking-tight font-(family-name:--font-archivo) ${large ? "text-[32px] leading-tight" : "text-2xl"} ${exact ? "cursor-help" : ""}`}
+        title={exact}
       >
         {value}
       </div>

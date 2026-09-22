@@ -1,8 +1,8 @@
 "use client"
 
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts"
-import { DIMENSION_COLORS } from "@/components/overview/composition-table"
-import { formatCompact } from "@/lib/format"
+import { seriesColor } from "@/components/overview/composition-table"
+import { formatCompact, formatIdr } from "@/lib/format"
 import type { CompositionTrendPoint } from "@/types/overview"
 import { TOOLTIP_PLACEMENT } from "@/lib/chart-tooltip"
 
@@ -38,11 +38,11 @@ export function CompositionTrendChart({
         <Tooltip {...TOOLTIP_PLACEMENT}
           contentStyle={{ background: "var(--ov-tooltip)", border: "1px solid var(--ov-line)", borderRadius: 8, fontSize: 12 }}
           labelStyle={{ color: "var(--ov-head)" }}
-          formatter={(value, name) => [formatCompact(Number(value)), String(name)]}
+          formatter={(value, name) => [formatIdr(Number(value)), String(name)]}
         />
         {names.map((name, i) => {
           // The folded remainder stays neutral so it does not read as one more category.
-          const color = name === "Lainnya" ? "var(--ov-dim)" : DIMENSION_COLORS[i % DIMENSION_COLORS.length]
+          const color = seriesColor(name, i)
           const dimmed = highlighted !== null && highlighted !== name
           return (
             <Area

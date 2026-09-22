@@ -1,5 +1,7 @@
 import type { ProgressRow } from "@/types/overview"
-import { formatPercent, formatRp } from "@/lib/format"
+import { formatPercent } from "@/lib/format"
+import { MARKETPLACE_COLORS } from "@/components/overview/composition-table"
+import { Num } from "@/components/num"
 
 export function ProgressBars({ title, rows }: { title: string; rows: ProgressRow[] }) {
   // Furthest along first, so the list reads as a ranking; rows without a target (pct 0) sink.
@@ -20,10 +22,10 @@ export function ProgressBars({ title, rows }: { title: string; rows: ProgressRow
                 <div className="mb-1.5 flex flex-wrap items-baseline gap-x-2 font-mono text-xs text-[var(--ov-soft)]">
                   <span>{formatPercent(r.pct, 0)}</span>
                   <span className="text-[var(--ov-red-ink)]">
-                    ({formatRp(Math.max(r.target - r.actual, 0))} to go)
+                    (<Num money value={Math.max(r.target - r.actual, 0)} /> to go)
                   </span>
                   <span className="ml-auto text-[var(--ov-faint)]">
-                    {formatRp(r.actual)} / {formatRp(r.target)}
+                    <Num money value={r.actual} /> / <Num money value={r.target} />
                   </span>
                 </div>
                 <div className="relative h-3 overflow-hidden rounded-full bg-[var(--ov-track)]">
@@ -31,7 +33,8 @@ export function ProgressBars({ title, rows }: { title: string; rows: ProgressRow
                     className="absolute inset-y-0 left-0 rounded-full"
                     style={{
                       width: `${pct * 100}%`,
-                      background: "linear-gradient(90deg,var(--ov-gold),var(--ov-gold-deep))",
+                      // Marketplace rows wear their identity colour; brands keep the gold bar.
+                      background: MARKETPLACE_COLORS[r.name.toLowerCase()] ?? "linear-gradient(90deg,var(--ov-gold),var(--ov-gold-deep))",
                     }}
                   />
                 </div>

@@ -95,7 +95,7 @@ function AcquisitionTooltip({ active, payload }: { active?: boolean; payload?: A
           </span>
         )}
       </div>
-      {line("GMV", `Rp${formatCompact(p.gmv)}`, p.growth)}
+      {line("GMV", `Rp${formatIdr(p.gmv)}`, p.growth)}
       {line("Creators", formatIdr(p.creators), p.creatorsGrowth)}
       {line("GMV / creator", p.gmvPerCreator !== null ? `Rp${formatIdr(p.gmvPerCreator)}` : "—", p.gmvPerCreatorGrowth)}
       <div className="mt-1 text-[12px] text-[var(--ov-faint)]">

@@ -76,7 +76,7 @@ function valueOf(row: SkuRow, key: SortKey): number | string | null {
   }
 }
 
-function cellOf(row: SkuRow, key: SortKey): { text: string; color?: string } {
+function cellOf(row: SkuRow, key: SortKey): { text: string; color?: string; title?: string } {
   switch (key) {
     case "growth":
       return {
@@ -88,14 +88,14 @@ function cellOf(row: SkuRow, key: SortKey): { text: string; color?: string } {
     case "share":
       return { text: formatPercent(row.share, 2) }
     case "aov":
-      return { text: row.aov !== null ? formatCompact(row.aov) : "—" }
+      return { text: row.aov !== null ? formatCompact(row.aov) : "—", title: row.aov !== null ? formatIdr(row.aov) : undefined }
     case "gmv":
     case "commission":
-      return { text: formatCompact(row[key]) }
+      return { text: formatCompact(row[key]), title: formatIdr(row[key]) }
     case "spGmv":
-      return { text: formatCompact(row.shopee.gmv) }
+      return { text: formatCompact(row.shopee.gmv), title: formatIdr(row.shopee.gmv) }
     case "ttGmv":
-      return { text: formatCompact(row.tiktok.gmv) }
+      return { text: formatCompact(row.tiktok.gmv), title: formatIdr(row.tiktok.gmv) }
     default: {
       const v = valueOf(row, key)
       return { text: formatIdr(Number(v ?? 0)) }
@@ -181,7 +181,7 @@ export function SkuProductTable({
   }
 
   const headTint = (mp?: "sp" | "tt") =>
-    mp === "sp" ? "var(--ov-blue)" : mp === "tt" ? "var(--ov-gold)" : undefined
+    mp === "sp" ? "var(--ov-gold)" : mp === "tt" ? "var(--ov-blue)" : undefined
 
   return (
     <div className="max-h-[440px] overflow-auto rounded-lg border border-[var(--ov-line)]">
@@ -295,7 +295,7 @@ export function SkuProductTable({
                       className="border-b border-[var(--ov-fill1)] p-2.5 text-right font-mono whitespace-nowrap"
                       style={{ color: cell.color }}
                     >
-                      {cell.text}
+                      {cell.title ? <span title={cell.title}>{cell.text}</span> : cell.text}
                     </td>
                   )
                 })}

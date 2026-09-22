@@ -2,8 +2,9 @@
 
 import { MetricTrend } from "@/components/charts/metric-trend"
 import { CommentsPanel } from "@/components/comments-panel"
-import { formatCompact, formatIdr, formatPercent, formatRpFull, formatSignedPercent } from "@/lib/format"
+import { formatIdr, formatPercent, formatRpFull, formatSignedPercent } from "@/lib/format"
 import type { SkuDetail } from "@/types/sku"
+import { Num } from "@/components/num"
 
 const SP_COLOR = "var(--ov-gold)"
 const TT_COLOR = "var(--ov-blue)"
@@ -82,7 +83,7 @@ export function SkuDetailCard({
               <span className="min-w-0 flex-1 truncate text-[var(--ov-soft)]" title={m.name}>
                 {m.name}
               </span>
-              <span className="font-mono text-[var(--ov-mut)]">{formatCompact(m.gmv)}</span>
+              <span className="font-mono text-[var(--ov-mut)]"><Num value={m.gmv} /></span>
               {onRemoveAction && (
                 <button
                   type="button"
@@ -181,7 +182,7 @@ export function SkuDetailCard({
                   {p.productName || p.pid}
                 </span>
                 <span className="font-mono font-semibold">{formatPercent(p.share, 1)}</span>
-                <span className="w-20 text-right font-mono text-[var(--ov-faint)]">{formatCompact(p.gmv)}</span>
+                <span className="w-20 text-right font-mono text-[var(--ov-faint)]"><Num value={p.gmv} /></span>
               </div>
               <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-[var(--ov-track)]">
                 <span

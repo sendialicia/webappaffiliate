@@ -12,8 +12,8 @@ import {
   XAxis,
   YAxis,
 } from "recharts"
-import { DIMENSION_COLORS } from "@/components/overview/composition-table"
-import { formatCompact } from "@/lib/format"
+import { seriesColor } from "@/components/overview/composition-table"
+import { formatCompact, formatIdr } from "@/lib/format"
 import type { DriverChartRow, EntityGrowthRow } from "@/types/overview"
 import { TOOLTIP_PLACEMENT } from "@/lib/chart-tooltip"
 
@@ -47,7 +47,7 @@ export const DRIVER_OTHER = "Lainnya"
 const OTHER_COLOR = "var(--ov-dim)"
 
 export function driverColor(name: string, index: number): string {
-  return name === DRIVER_OTHER ? OTHER_COLOR : (DIMENSION_COLORS[index % DIMENSION_COLORS.length] as string)
+  return name === DRIVER_OTHER ? OTHER_COLOR : seriesColor(name, index)
 }
 
 const rankValue = (k: number) => `__v${k}`
@@ -112,10 +112,10 @@ function DriverTooltip({
   items.sort((a, b) => (a.name === DRIVER_OTHER ? 1 : b.name === DRIVER_OTHER ? -1 : b.value - a.value))
   const fmt = (item: (typeof items)[number]) =>
     unit === "share"
-      ? `${item.value.toFixed(1)}% · ${formatCompact(item.raw)}`
+      ? `${item.value.toFixed(1)}% · ${formatIdr(item.raw)}`
       : unit === "pp"
         ? `${item.value >= 0 ? "+" : ""}${item.value.toFixed(1)}pp`
-        : `${item.value >= 0 ? "+" : "−"}${formatCompact(Math.abs(item.value))}`
+        : `${item.value >= 0 ? "+" : "−"}${formatIdr(Math.abs(item.value))}`
   return (
     <div
       className="rounded-lg border px-3 py-2 text-[12.5px]"

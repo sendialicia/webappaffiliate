@@ -49,7 +49,7 @@ function valueOf(row: PidProductRow, key: SortKey): number | string | null {
   return row[key]
 }
 
-function cellOf(row: PidProductRow, key: SortKey): { text: string; color?: string } {
+function cellOf(row: PidProductRow, key: SortKey): { text: string; color?: string; title?: string } {
   switch (key) {
     case "growth":
       return {
@@ -65,10 +65,10 @@ function cellOf(row: PidProductRow, key: SortKey): { text: string; color?: strin
     case "livestream":
     case "video":
     case "productCard":
-      return { text: formatCompact(row.pillars[key]) }
+      return { text: formatCompact(row.pillars[key]), title: formatIdr(row.pillars[key]) }
     case "gmv":
     case "commission":
-      return { text: formatCompact(row[key]) }
+      return { text: formatCompact(row[key]), title: formatIdr(row[key]) }
     default:
       return { text: formatIdr(Number(row[key] ?? 0)) }
   }
@@ -240,7 +240,7 @@ export function ProductTable({
                       className="border-b border-[var(--ov-fill1)] p-2.5 text-right font-mono whitespace-nowrap"
                       style={{ color: cell.color }}
                     >
-                      {cell.text}
+                      {cell.title ? <span title={cell.title}>{cell.text}</span> : cell.text}
                     </td>
                   )
                 })}

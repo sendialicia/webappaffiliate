@@ -10,7 +10,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts"
-import { formatCompact } from "@/lib/format"
+import { formatIdr } from "@/lib/format"
 import type { SummaryTrendPoint } from "@/types/overview"
 import { TOOLTIP_PLACEMENT } from "@/lib/chart-tooltip"
 
@@ -55,7 +55,7 @@ export function GmvCommissionChart({ trend, height = 150 }: { trend: SummaryTren
             const row = item?.payload as { gmv: number; commission: number } | undefined
             const actual = name === "GMV" ? row?.gmv : row?.commission
             const idx = value === null ? "—" : `${Number(value).toFixed(0)}`
-            return [`${idx} (${formatCompact(Number(actual ?? 0))})`, String(name)]
+            return [`${idx} (${formatIdr(Number(actual ?? 0))})`, String(name)]
           }}
         />
         <ReferenceLine y={100} stroke="var(--ov-rule)" strokeDasharray="4 4" />

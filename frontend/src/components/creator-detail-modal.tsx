@@ -6,6 +6,7 @@ import { apiFetch } from "@/lib/api"
 import { formatCompact, formatIdr, formatPercent, formatRpFull } from "@/lib/format"
 import type { CreatorDetail } from "@/types/creator-detail"
 import { TOOLTIP_PLACEMENT } from "@/lib/chart-tooltip"
+import { Num } from "@/components/num"
 
 const PILLAR_KEYS = [
   { key: "livestream", label: "Livestream", color: "var(--ov-gold)" },
@@ -253,7 +254,7 @@ export function CreatorDetailModal({
                         </span>
                         <span className="font-mono font-semibold">{formatPercent(t.share, 1)}</span>
                         <span className="w-16 text-right font-mono text-[var(--ov-faint)]">
-                          {formatCompact(t.gmv)}
+                          <Num value={t.gmv} />
                         </span>
                       </div>
                       <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-[var(--ov-track)]">

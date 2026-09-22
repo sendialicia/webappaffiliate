@@ -57,7 +57,7 @@ function valueOf(row: TtProductRow, key: SortKey): number | string | null {
   return row[key]
 }
 
-function cellOf(row: TtProductRow, key: SortKey): { text: string; color?: string } {
+function cellOf(row: TtProductRow, key: SortKey): { text: string; color?: string; title?: string } {
   switch (key) {
     case "growth":
       return {
@@ -79,10 +79,10 @@ function cellOf(row: TtProductRow, key: SortKey): { text: string; color?: string
     case "livestream":
     case "video":
     case "productCard":
-      return { text: formatCompact(row.pillars[key]) }
+      return { text: formatCompact(row.pillars[key]), title: formatIdr(row.pillars[key]) }
     case "gmv":
     case "commission":
-      return { text: formatCompact(row[key]) }
+      return { text: formatCompact(row[key]), title: formatIdr(row[key]) }
     default:
       return { text: formatIdr(Number(row[key] ?? 0)) }
   }
@@ -259,7 +259,7 @@ export function TtProductTable({
                       className="border-b border-[var(--ov-fill1)] p-2.5 text-right font-mono whitespace-nowrap"
                       style={{ color: cell.color }}
                     >
-                      {cell.text}
+                      {cell.title ? <span title={cell.title}>{cell.text}</span> : cell.text}
                     </td>
                   )
                 })}
