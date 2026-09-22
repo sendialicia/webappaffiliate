@@ -51,6 +51,8 @@ export async function getCreatorDetail(spec: CreatorDetailSpec): Promise<Creator
         SUM(ATTRIBUTED_ORDERS) AS orders,
         SUM(ITEMS_SOLD) AS itemsSold,
         SUM(COMMISSION) AS commission,
+        -- Days, not buckets: with a weekly or monthly trend one bucket spans many days.
+        uniqExactIf(DATE, GMV <> 0) AS activeDays,
         sumIf(GMV, PILLAR = 'Livestream') AS livestream,
         sumIf(GMV, PILLAR = 'Video') AS video,
         sumIf(GMV, PILLAR = 'Product Card') AS productCard,
@@ -74,6 +76,7 @@ export async function getCreatorDetail(spec: CreatorDetailSpec): Promise<Creator
     orders: number
     itemsSold: number
     commission: number
+    activeDays: number
     livestream: number
     video: number
     productCard: number
@@ -168,7 +171,8 @@ export async function getCreatorDetail(spec: CreatorDetailSpec): Promise<Creator
     itemsSold: sum((r) => r.itemsSold),
     commission: sum((r) => r.commission),
     aov: ratio(gmv, orders),
-    activeDays: days.filter((r) => Number(r.gmv || 0) !== 0).length,
+    // Buckets partition the dates, so summing each bucket's distinct days is exact.
+    activeDays: sum((r) => r.activeDays),
     productCount,
     rank,
     totalCreators,

@@ -109,7 +109,8 @@ export interface SummaryTrendPoint {
   aov: number
   commission: number
   affiliateShare: number
-  commissionRate: number
+  /** null when the bucket holds GMV whose commission has not landed yet. */
+  commissionRate: number | null
   /** null when the bucket has no commission booked yet (ETL lags GMV by ~2 days). */
   roi: number | null
   refundRate: number
@@ -124,6 +125,12 @@ export interface SummaryResult {
   comparison: { from: string; to: string; basis: ComparisonBasis }
   kpis: SummaryKpis
   trend: SummaryTrendPoint[]
+  /**
+   * Marketplace → last day whose commission has fully landed, for marketplaces where that falls
+   * inside the window. ROI and commission rate are computed only up to it (both windows, same
+   * day offset); empty when the whole window is complete.
+   */
+  commissionCompleteThrough: Record<string, string>
 }
 
 /**

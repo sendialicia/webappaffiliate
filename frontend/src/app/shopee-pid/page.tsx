@@ -11,6 +11,7 @@ import { ProductTable } from "@/components/shopee-pid/product-table"
 import { ProductDetail } from "@/components/shopee-pid/product-detail"
 import { CreatorDetailModal } from "@/components/creator-detail-modal"
 import { OpportunityCreators } from "@/components/opportunity-creators"
+import { PidSummary } from "@/components/pid-summary"
 import { TopCreatorsTable } from "@/components/shopee-pid/top-creators-table"
 import { ProductQuadrant, QUADRANT_PRESETS, QuadrantInfo } from "@/components/charts/product-quadrant"
 import { MetricTrend } from "@/components/charts/metric-trend"
@@ -35,6 +36,7 @@ import type {
 const DEEP_DIVE_LIMIT = 50
 
 const SECTION_NAV = [
+  { id: "pp-sec-0", label: "Ringkasan" },
   { id: "pp-sec-1", label: "1 · Category" },
   { id: "pp-sec-2", label: "Category deep dive" },
   { id: "pp-sec-2b", label: "Product quadrant" },
@@ -119,6 +121,8 @@ function ShopeePidPageInner() {
   // Which creator row opened the pop-up; null keeps it closed and unfetched.
   const [openCreator, setOpenCreator] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  // How many picks the last filter change dropped, shown once in the deep dive instead of an error.
+  const [droppedPicks, setDroppedPicks] = useState(0)
   // The last opportunity list the panel loaded, tagged with the selection it was loaded for.
   const [opportunity, setOpportunity] = useState<{ ids: string; data: OpportunityCreatorsResult } | null>(null)
 
@@ -208,7 +212,18 @@ function ShopeePidPageInner() {
     let stale = false
     apiFetch<PidProductsResult>(`/api/shopee-pid/products${buildQuery(scopeQuery)}`)
       .then((data) => {
-        if (!stale) setProducts(data)
+        if (stale) return
+        setProducts(data)
+        // Keep the selection to what the current filters can show, so a brand, period or
+        // dimension change never leaves a dangling pick behind. Read from the store directly:
+        // this callback may outlive the render that created it.
+        const picked = useShopeePidFilters.getState().selectedPids
+        const available = new Set(data.rows.map((r) => r.pid))
+        const kept = picked.filter((id) => available.has(id))
+        if (kept.length !== picked.length) {
+          setSelectedPids(kept)
+          setDroppedPicks(picked.length - kept.length)
+        }
       })
       .catch((e) => {
         if (!stale) setError(e instanceof Error ? e.message : "Gagal memuat produk")
@@ -259,8 +274,22 @@ function ShopeePidPageInner() {
     if (!detailUrl) return
     apiFetch<PidProductDetail>(detailUrl)
       .then((data) => setDetail({ key: detailUrl, data }))
-      .catch((e) => setError(e instanceof Error ? e.message : "Gagal memuat detail produk"))
+      .catch((e) => {
+        const text = e instanceof Error ? e.message : "Gagal memuat detail produk"
+        // A picked produk with no sales under the new filters is not an error: the pruning below
+        // drops it from the selection, and the deep dive falls back to its empty state.
+        if (/not found/i.test(text)) return
+        setError(text)
+      })
   }, [detailUrl])
+
+  // The notice is about the last filter change only; the reader's next pick retires it.
+  const [noticeKey, setNoticeKey] = useState("")
+  if (selectedKey && noticeKey !== selectedKey) {
+    setNoticeKey(selectedKey)
+    if (droppedPicks > 0) setDroppedPicks(0)
+  }
+
 
   useEffect(() => {
     let stale = false
@@ -508,6 +537,22 @@ function ShopeePidPageInner() {
       )}
 
       <div className="flex flex-col gap-6 px-6 py-6 md:px-8">
+        {/* Summary podium — follows the filter bar, not the category scope below */}
+        <div id="pp-sec-0" className="scroll-mt-24">
+          <PidSummary
+            marketplace="shopee"
+            products={products?.rows ?? null}
+            leadersUrl={`/api/shopee-pid/product-creator-leaders${buildQuery({ brand: csv(brand), from, to, compare, ...prevParams, ...detailParams })}`}
+            contextLabel={`${brand.length === 0 ? "Semua brand" : brand.join(", ")} · ${from} → ${to}`}
+            onSelectProductAction={(pid) => {
+              setSelectedPids([pid])
+              setLastSection("produk")
+              document.getElementById("pp-sec-4")?.scrollIntoView({ behavior: "smooth", block: "start" })
+            }}
+            onSelectCreatorAction={setOpenCreator}
+          />
+        </div>
+
         {/* 1 · Category */}
         <SectionHeading id="pp-sec-1" step="1 · Category" />
 
@@ -744,7 +789,9 @@ function ShopeePidPageInner() {
               >
                 {selectedKey
                   ? "Memuat detail produk…"
-                  : "Klik satu baris produk untuk melihat detailnya, atau centang beberapa baris untuk menggabungkannya."}
+                  : droppedPicks > 0
+                    ? `${droppedPicks} produk yang tadi dipilih tidak punya penjualan pada brand/periode ini, jadi pilihannya dilepas. Klik baris produk lain untuk melihat detailnya.`
+                    : "Klik satu baris produk untuk melihat detailnya, atau centang beberapa baris untuk menggabungkannya."}
               </div>
             )}
           </div>
@@ -752,7 +799,7 @@ function ShopeePidPageInner() {
           {/* The creators column takes the deep-dive column's height instead of setting its own:
               on xl it is pulled out of flow (absolute) so the left card alone sizes the row, and
               the table scrolls inside. The min height keeps it usable before a product is picked. */}
-          <div className="flex flex-col xl:relative xl:min-h-[720px]">
+          <div className="flex flex-col xl:relative xl:min-h-[820px]">
             <div className="flex flex-col xl:absolute xl:inset-0">
             <div className="mb-3.5 flex min-h-[42px] flex-wrap items-center gap-3.5">
               <div className="flex items-center gap-2.5">
@@ -834,8 +881,10 @@ function ShopeePidPageInner() {
               )}
             </div>
             {/* Right under the top creators, not at the page bottom: these are the ones to act on,
-                so they share the column and split its height rather than scroll out of view. */}
-            <div className="mt-3.5 flex min-h-0 flex-col overflow-auto xl:flex-1">
+                so they share the column and split its height rather than scroll out of view.
+                Until something is picked the panel has nothing to show but a hint, so it shrinks
+                to that and the creators table keeps the height. */}
+            <div className={`mt-3.5 flex min-h-0 flex-col overflow-auto ${selectedKey ? "xl:flex-1" : "xl:flex-none"}`}>
               <OpportunityCreators
                 endpoint="/api/shopee-pid/opportunity-creators"
                 idParam="pid"

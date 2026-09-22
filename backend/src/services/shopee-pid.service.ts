@@ -1,8 +1,10 @@
 import { clickhouse } from '../lib/clickhouse'
+import { getProductImages } from './product-image.service'
 import { getCreatorDetail } from './creator-detail.service'
 import { findOpportunityCreators, similarityColumn, type SimilarityLevel } from './opportunity.service'
 import { getNames } from '../lib/name-cache'
 import { getVariantContribution } from '../lib/variants'
+import { getCreatorLeadersByProduct, type CreatorLeadersResult } from '../lib/creator-leaders'
 import {
   buildDetailClause,
   TABLE_SUMMARY_ORDER,
@@ -542,7 +544,13 @@ export async function getPidProductDetail(
   const creators = Number(creatorCounts?.creators ?? 0)
   const creatorsPrev = Number(creatorCounts?.creatorsPrev ?? 0)
 
-  const members = infoRows.map((r) => ({ pid: r.pid, name: r.name, gmv: Number(r.gmv || 0) }))
+  const images = await getProductImages('shopee', infoRows.map((r) => r.pid))
+  const members = infoRows.map((r) => ({
+    pid: r.pid,
+    name: r.name,
+    gmv: Number(r.gmv || 0),
+    image: images.get(r.pid) ?? null,
+  }))
   const shared = (values: string[]): string => {
     const unique = [...new Set(values)]
     return unique.length === 1 ? (unique[0] as string) : 'Beragam'
@@ -840,4 +848,23 @@ export async function getPidCreatorDetail(
     granularity,
     params,
   })
+}
+
+/** Each summary product's own top creators, with growth against the comparison window. */
+export async function getPidProductCreatorLeaders(
+  from: string,
+  to: string,
+  basis: ComparisonBasis,
+  filters: PidFilters,
+  pids: string[],
+  prevRange?: { from?: string; to?: string },
+): Promise<Record<string, CreatorLeadersResult>> {
+  const comparison = computeComparisonRange(from, to, basis, prevRange)
+  const params: Record<string, unknown> = {
+    currentFrom: from,
+    currentTo: to,
+    prevFrom: comparison.from,
+    prevTo: comparison.to,
+  }
+  return getCreatorLeadersByProduct(SHOPEE_SCOPE, pidFilterClause(filters, params), params, pids)
 }

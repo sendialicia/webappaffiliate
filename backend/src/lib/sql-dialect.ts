@@ -76,7 +76,9 @@ function tupleKey(expr: string): string {
 }
 
 const RULES: Record<string, Rule> = {
-  sumIf: ([x, c]) => `SUM(CASE WHEN ${c} THEN ${x} END)`,
+  // ClickHouse's sumIf is 0 when nothing matches; a bare SUM(CASE…) is NULL, and Snowflake sorts
+  // NULLs first under DESC — which floated "no sales this period" rows to the top of GMV lists.
+  sumIf: ([x, c]) => `COALESCE(SUM(CASE WHEN ${c} THEN ${x} END), 0)`,
   avgIf: ([x, c]) => `AVG(CASE WHEN ${c} THEN ${x} END)`,
   countIf: ([c]) => `COUNT_IF(${c})`,
   uniqExactIf: ([x, c]) => `COUNT(DISTINCT CASE WHEN ${c} THEN ${x} END)`,

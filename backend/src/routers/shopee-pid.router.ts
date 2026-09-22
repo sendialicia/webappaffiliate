@@ -7,6 +7,7 @@ import {
   getPidTopCreatorsHandler,
   getPidTrendHandler,
   getPidCreatorDetailHandler,
+  getPidProductCreatorLeadersHandler,
 } from '../controllers/shopee-pid.controller'
 
 export const shopeePidRouter = Router()
@@ -18,3 +19,4 @@ shopeePidRouter.get('/api/shopee-pid/product-detail', getPidProductDetailHandler
 shopeePidRouter.get('/api/shopee-pid/top-creators', getPidTopCreatorsHandler)
 shopeePidRouter.get('/api/shopee-pid/opportunity-creators', getOpportunityCreatorsHandler)
 shopeePidRouter.get('/api/shopee-pid/creator-detail', getPidCreatorDetailHandler)
+shopeePidRouter.get('/api/shopee-pid/product-creator-leaders', getPidProductCreatorLeadersHandler)

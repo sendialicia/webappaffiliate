@@ -1,4 +1,5 @@
 import type { Request, Response } from 'express'
+import { getGmvLevers } from '../services/gmv-levers.service'
 import {
   getComposition,
   getDailyPerformance,
@@ -273,4 +274,18 @@ export async function getCreatorDriversHandler(req: Request, res: Response) {
   res.json(
     await getCreatorDrivers(from, to, basisFromQuery(req), filtersFromQuery(req), detailFromQuery(req), slices, limit, prevRangeFromQuery(req)),
   )
+}
+
+export async function getGmvLeversHandler(req: Request, res: Response) {
+  const to = str(req.query.to) ?? new Date().toISOString().slice(0, 10)
+  const from = str(req.query.from) ?? defaultFrom(to)
+  const data = await getGmvLevers(
+    from,
+    to,
+    basisFromQuery(req),
+    filtersFromQuery(req),
+    detailFromQuery(req),
+    prevRangeFromQuery(req),
+  )
+  res.json(data)
 }

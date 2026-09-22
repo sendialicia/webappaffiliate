@@ -7,6 +7,7 @@ import {
   getTtTopCreatorsHandler,
   getTtTrendHandler,
   getTtCreatorDetailHandler,
+  getTtProductCreatorLeadersHandler,
 } from '../controllers/tiktok-pid.controller'
 
 export const tiktokPidRouter = Router()
@@ -18,3 +19,4 @@ tiktokPidRouter.get('/api/tiktok-pid/product-detail', getTtProductDetailHandler)
 tiktokPidRouter.get('/api/tiktok-pid/top-creators', getTtTopCreatorsHandler)
 tiktokPidRouter.get('/api/tiktok-pid/opportunity-creators', getTtOpportunityCreatorsHandler)
 tiktokPidRouter.get('/api/tiktok-pid/creator-detail', getTtCreatorDetailHandler)
+tiktokPidRouter.get('/api/tiktok-pid/product-creator-leaders', getTtProductCreatorLeadersHandler)

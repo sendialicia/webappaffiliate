@@ -89,10 +89,20 @@ export interface PidPillarContribution {
   delta: number
 }
 
+/** Product photo, resolved from the marketplace integration dimensions. */
+export interface ProductImage {
+  /** Thumbnail — requested first. */
+  url: string
+  /** Full-size original, used if the thumbnail 404s. */
+  fallback: string
+}
+
 export interface PidDetailMember {
   pid: string
   name: string
   gmv: number
+  /** null when the product has no photo, or the lookup was unavailable. */
+  image: ProductImage | null
 }
 
 /** Covers a single product and a combined selection of several; members carries the breakdown. */
@@ -179,4 +189,21 @@ export interface VariantContribution {
   gmvPrev: number
   itemsSold: number
   share: number
+}
+
+/** One row of a PID page's creator leaderboard; growth is against the comparison window. */
+export interface CreatorLeader {
+  username: string
+  isManaged: boolean
+  gmv: number
+  gmvPrev: number
+  growth: number | null
+  share: number
+}
+
+export interface CreatorLeadersResult {
+  rows: CreatorLeader[]
+  totalGmv: number
+  /** TikTok's aggregated "Agency" username, reported beside the ranking rather than in it. */
+  agency: CreatorLeader | null
 }

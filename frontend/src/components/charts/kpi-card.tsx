@@ -1,11 +1,68 @@
 "use client"
 
 import type { ReactNode } from "react"
-import { Area, AreaChart, Line, LineChart, ResponsiveContainer } from "recharts"
-import { formatSignedPercent } from "@/lib/format"
+import { Area, AreaChart, Line, LineChart, ResponsiveContainer, Tooltip } from "recharts"
+import { formatIdr, formatPercent, formatRpFull, formatSignedPercent } from "@/lib/format"
+import { TOOLTIP_PLACEMENT } from "@/lib/chart-tooltip"
 import type { SummaryTrendPoint } from "@/types/overview"
 
 type TrendKey = keyof Omit<SummaryTrendPoint, "bucket">
+
+/** How each sparkline metric reads in its tooltip — the same units the card's headline uses. */
+const TREND_FORMAT: Record<TrendKey, (v: number) => string> = {
+  gmv: formatRpFull,
+  gmvPerCreator: formatRpFull,
+  asp: formatRpFull,
+  aov: formatRpFull,
+  commission: formatRpFull,
+  creators: formatIdr,
+  itemsSold: formatIdr,
+  affiliateShare: (v) => formatPercent(v, 2),
+  commissionRate: (v) => formatPercent(v, 2),
+  refundRate: (v) => formatPercent(v, 2),
+  roi: (v) => `${v.toFixed(1)}x`,
+}
+
+/**
+ * The commission-based ratios move with commission booking, which trails GMV by days, so their
+ * tooltip also shows the two amounts behind the ratio: a spike reads as "no commission yet".
+ */
+const SHOWS_INPUTS = new Set<TrendKey>(["roi", "commissionRate"])
+
+function SparkTooltip({
+  active,
+  payload,
+  trendKey,
+  label,
+}: {
+  active?: boolean
+  payload?: Array<{ payload?: SummaryTrendPoint }>
+  trendKey: TrendKey
+  label: string
+}) {
+  const point = payload?.[0]?.payload
+  if (!active || !point) return null
+  const value = point[trendKey]
+  return (
+    <div
+      className="rounded-lg border px-2.5 py-1.5 text-[12px] whitespace-nowrap"
+      style={{ background: "var(--ov-tooltip)", borderColor: "var(--ov-line)" }}
+    >
+      <div className="font-semibold text-[var(--ov-head)]">{point.bucket}</div>
+      <div className="text-[var(--ov-soft)]">
+        {label}:{" "}
+        <span className="font-mono font-semibold text-[var(--ov-ink)]">
+          {value === null || value === undefined ? "— (komisi hari ini belum lengkap)" : TREND_FORMAT[trendKey](value)}
+        </span>
+      </div>
+      {SHOWS_INPUTS.has(trendKey) && (
+        <div className="mt-0.5 font-mono text-[11.5px] text-[var(--ov-faint)]">
+          GMV {formatRpFull(point.gmv)} · komisi {formatRpFull(point.commission)}
+        </div>
+      )}
+    </div>
+  )
+}
 
 interface DualMetric {
   label: string
@@ -61,6 +118,8 @@ export function KpiCard({
   /** "lg" is the headline card: bigger number and a taller chart. */
   size = "sm",
   exact,
+  onOpenAction,
+  openLabel,
 }: {
   label: string
   value: string
@@ -75,6 +134,9 @@ export function KpiCard({
   note?: string
   deltaHover?: ReactNode
   size?: "sm" | "lg"
+  /** When set, the card offers a deeper panel behind a button (the hover stays as it is). */
+  onOpenAction?: () => void
+  openLabel?: string
 }) {
   const large = size === "lg"
 
@@ -107,9 +169,24 @@ export function KpiCard({
           {note && <NoteLine>{note}</NoteLine>}
         </>
       )}
+      {onOpenAction && (
+        <button
+          type="button"
+          onClick={onOpenAction}
+          className="mt-2.5 flex w-max items-center gap-1.5 rounded-full border border-[var(--ov-gold)]/60 bg-[var(--ov-gold)]/10 px-3 py-1 text-[12.5px] font-semibold text-[var(--ov-gold-ink)] hover:bg-[var(--ov-gold)]/20"
+        >
+          {openLabel ?? "Lihat detail"}
+          <span aria-hidden="true">→</span>
+        </button>
+      )}
       <div className="-mx-1 mt-auto pt-2">
         <ResponsiveContainer width="100%" height={large ? 120 : 56}>
           <AreaChart data={sparkline}>
+            <Tooltip
+              {...TOOLTIP_PLACEMENT}
+              cursor={{ stroke: "var(--ov-track)" }}
+              content={<SparkTooltip trendKey={sparklineKey} label={label} />}
+            />
             <Area
               type="monotone"
               dataKey={sparklineKey}
@@ -155,6 +232,11 @@ export function DualKpiCard({
             <div className="-mx-1 mt-auto pt-2">
               <ResponsiveContainer width="100%" height={56}>
                 <LineChart data={sparkline}>
+                  <Tooltip
+                    {...TOOLTIP_PLACEMENT}
+                    cursor={{ stroke: "var(--ov-track)" }}
+                    content={<SparkTooltip trendKey={m.trendKey} label={m.label} />}
+                  />
                   <Line type="monotone" dataKey={m.trendKey} stroke={m.color} strokeWidth={2} dot={false} />
                 </LineChart>
               </ResponsiveContainer>

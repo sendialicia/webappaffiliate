@@ -8,6 +8,7 @@ import {
   getPidProducts,
   getPidTopCreators,
   getPidTrend,
+  getPidProductCreatorLeaders,
 } from '../services/shopee-pid.service'
 import type { ComparisonBasis, DetailFilters, TrendGranularity } from '../types/overview'
 import type { PidFilters, PidLevel } from '../types/shopee-pid'
@@ -160,4 +161,16 @@ export async function getPidCreatorDetailHandler(req: Request, res: Response) {
   }
   const { from, to } = range(req)
   res.json(await getPidCreatorDetail(username, from, to, filtersOf(req), granularityOf(req)))
+}
+
+export async function getPidProductCreatorLeadersHandler(req: Request, res: Response) {
+  // The summary shows three products; the cap only guards against a hand-built URL.
+  const pids = list(req.query.pid).slice(0, 5)
+  if (pids.length === 0) {
+    res.status(400).json({ error: 'pid is required' })
+    return
+  }
+  const { from, to } = range(req)
+  const { scope: _scope, scopeLevel: _level, ...filters } = filtersOf(req)
+  res.json(await getPidProductCreatorLeaders(from, to, basisOf(req), filters, pids, prevRangeOf(req)))
 }

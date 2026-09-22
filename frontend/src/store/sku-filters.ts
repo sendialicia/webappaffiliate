@@ -132,8 +132,10 @@ export const useSkuFilters = create<SkuState>((set) => ({
       bundleSplit: s.draft.bundleSplit,
       includeGwp: s.draft.includeGwp,
       detail: s.draft.detail,
-      // The two bundle populations have different barcodes, so a held selection would dangle.
-      ...(s.draft.bundleSplit !== s.bundleSplit ? { selectedBarcodes: [], quadrantSelection: [] } : {}),
+      // A different brand or bundle population has different barcodes, so a held selection would dangle.
+      ...(s.draft.bundleSplit !== s.bundleSplit || s.draft.brand.join(",") !== s.brand.join(",")
+        ? { selectedBarcodes: [], quadrantSelection: [] }
+        : {}),
     })),
   discardDraft: () =>
     set((s) => ({

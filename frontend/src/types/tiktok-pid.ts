@@ -1,4 +1,4 @@
-import type { OrderMetrics, VariantContribution } from "@/types/shopee-pid"
+import type { OrderMetrics, ProductImage, VariantContribution } from "@/types/shopee-pid"
 import type { TrendMetricPoint } from "@/components/charts/metric-trend"
 import type { PidLevel, PidPillarContribution, PillarSplit } from "./shopee-pid"
 
@@ -82,6 +82,8 @@ export interface TtDetailMember {
   pid: string
   name: string
   gmv: number
+  /** null when the product has no photo, or the lookup was unavailable. */
+  image: ProductImage | null
 }
 
 export interface TtProductDetail {

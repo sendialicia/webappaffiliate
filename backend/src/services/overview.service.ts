@@ -1,4 +1,5 @@
 import { clickhouse } from '../lib/clickhouse'
+import { completeCommissionCondition, getCommissionCompleteThrough } from '../lib/commission-completeness'
 import {
   DETAIL_FILTER_COLUMNS,
   TABLE_CONTENT_PERFORMANCE,
@@ -256,6 +257,9 @@ interface SummaryRow {
   affCommission: number
   affRefund: number
   affCreators: number
+  /** GMV and commission on days whose commission has fully landed — the base for the ratios. */
+  affGmvCc: number
+  affCommissionCc: number
 }
 
 export async function getSummary(
@@ -275,11 +279,15 @@ export async function getSummary(
     prevTo: comparison.to,
   }
   const filterClause = buildFilterClause(filters, params) + buildDetailClause(detail, params)
+  const completeThrough = await getCommissionCompleteThrough()
+  const complete = completeCommissionCondition(completeThrough, { from, prevFrom: comparison.from }, params)
 
   const result = await clickhouse.query({
     query: `
       SELECT
         DATE AS date,
+        SUM(CASE WHEN IS_AFFILIATE AND ${complete} THEN GMV ELSE 0 END) AS affGmvCc,
+        SUM(CASE WHEN IS_AFFILIATE AND ${complete} THEN COMMISSION ELSE 0 END) AS affCommissionCc,
         SUM(CASE WHEN IS_AFFILIATE THEN GMV ELSE 0 END) AS affGmv,
         SUM(GMV) AS totalGmv,
         SUM(CASE WHEN IS_AFFILIATE THEN ITEMS_SOLD ELSE 0 END) AS affItems,
@@ -330,6 +338,10 @@ export async function getSummary(
     comparison: { ...comparison, basis },
     kpis,
     trend: bucketTrend(currentRows, granularity),
+    // Only the marketplaces whose cut actually falls inside this window are worth a note.
+    commissionCompleteThrough: Object.fromEntries(
+      Object.entries(completeThrough).filter(([, cut]) => cut < to),
+    ),
   }
 }
 
@@ -344,6 +356,9 @@ function aggregateRows(rows: SummaryRow[], creators: number) {
   const orders = sumBy(rows, 'affOrders')
   const commission = sumBy(rows, 'affCommission')
   const refund = sumBy(rows, 'affRefund')
+  // The ratios use only days whose commission has landed; see commission-completeness.ts.
+  const gmvCc = sumBy(rows, 'affGmvCc')
+  const commissionCc = sumBy(rows, 'affCommissionCc')
 
   return {
     gmv,
@@ -353,8 +368,8 @@ function aggregateRows(rows: SummaryRow[], creators: number) {
     aov: orders > 0 ? gmv / orders : 0,
     commission,
     affiliateShare: totalGmv > 0 ? gmv / totalGmv : 0,
-    commissionRate: gmv > 0 ? commission / gmv : 0,
-    roi: commission > 0 ? gmv / commission : 0,
+    commissionRate: gmvCc > 0 ? commissionCc / gmvCc : 0,
+    roi: commissionCc > 0 ? gmvCc / commissionCc : 0,
     refundRate: gmv > 0 ? refund / gmv : 0,
     itemsSold: items,
   }
@@ -411,6 +426,11 @@ function bucketTrend(rows: SummaryRow[], granularity: TrendGranularity): Summary
       const orders = sumBy(bucketRows, 'affOrders')
       const commission = sumBy(bucketRows, 'affCommission')
       const refund = sumBy(bucketRows, 'affRefund')
+      const gmvCc = sumBy(bucketRows, 'affGmvCc')
+      const commissionCc = sumBy(bucketRows, 'affCommissionCc')
+      // A bucket with any GMV whose commission has not landed gets no ratio at all: a partial
+      // one would mix marketplaces unevenly and read as a real move.
+      const commissionComplete = gmv - gmvCc < 1
       // Approximation: per-bucket creators is the average of daily distinct-creator
       // counts, not a true distinct count across the bucket (that would need one
       // extra query per bucket). Fine for a sparkline trend, not for KPI totals.
@@ -425,10 +445,10 @@ function bucketTrend(rows: SummaryRow[], granularity: TrendGranularity): Summary
         aov: orders > 0 ? gmv / orders : 0,
         commission,
         affiliateShare: totalGmv > 0 ? gmv / totalGmv : 0,
-        commissionRate: gmv > 0 ? commission / gmv : 0,
+        commissionRate: commissionComplete && gmvCc > 0 ? commissionCc / gmvCc : null,
         // null (not 0) so the chart shows a gap instead of a misleading value on
         // buckets where commission hasn't landed yet.
-        roi: commission > 0 ? gmv / commission : null,
+        roi: commissionComplete && commissionCc > 0 ? gmvCc / commissionCc : null,
         refundRate: gmv > 0 ? refund / gmv : 0,
         itemsSold: items,
       }
@@ -754,8 +774,14 @@ export async function getSpend(
   const entityColumn = ENTITY_COLUMNS[entity]
   const comparison = computeComparisonRange(from, to, basis, prevRange)
 
-  const tableParams: Record<string, unknown> = { from, to }
+  const tableParams: Record<string, unknown> = { from, to, currentFrom: from, prevFrom: comparison.from }
   const tableFilter = buildFilterClause(filters, tableParams) + buildDetailClause(detail, tableParams)
+  // Same rule as the summary cards: the ratios only count days whose commission has landed.
+  const complete = completeCommissionCondition(
+    await getCommissionCompleteThrough(),
+    { from, prevFrom: comparison.from },
+    tableParams,
+  )
 
   const tableResult = await clickhouse.query({
     query: `
@@ -763,6 +789,8 @@ export async function getSpend(
         ifNull(${entityColumn}, 'Unknown') AS name,
         SUM(GMV) AS gmv,
         SUM(COMMISSION) AS commission,
+        sumIf(GMV, ${complete}) AS gmvCc,
+        sumIf(COMMISSION, ${complete}) AS commissionCc,
         uniqExact(AFFILIATE_USERNAME) AS creators
       FROM ${TABLE_SUMMARY_ORDER}
       WHERE REGION_CODE = 'id'
@@ -781,19 +809,23 @@ export async function getSpend(
     name: string
     gmv: number
     commission: number
+    gmvCc: number
+    commissionCc: number
     creators: number
   }>()
 
   const rows: SpendRow[] = rawRows.map((r) => {
     const gmv = Number(r.gmv || 0)
     const commission = Number(r.commission || 0)
+    const gmvCc = Number(r.gmvCc || 0)
+    const commissionCc = Number(r.commissionCc || 0)
     const creators = Number(r.creators || 0)
     return {
       name: r.name,
       gmv,
       commission,
-      commissionRate: gmv > 0 ? commission / gmv : 0,
-      roi: commission > 0 ? gmv / commission : 0,
+      commissionRate: gmvCc > 0 ? commissionCc / gmvCc : 0,
+      roi: commissionCc > 0 ? gmvCc / commissionCc : 0,
       creators,
       gmvPerCreator: creators > 0 ? gmv / creators : 0,
     }

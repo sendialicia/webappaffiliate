@@ -96,7 +96,13 @@ export const useTiktokPidFilters = create<TiktokPidState>((set) => ({
       return { draft: { ...state.draft, detail } }
     }),
   clearDraftDetail: () => set((state) => ({ draft: { ...state.draft, detail: {} } })),
-  applyDraft: () => set((state) => ({ brand: state.draft.brand, detail: state.draft.detail })),
+  applyDraft: () =>
+    set((state) => ({
+      brand: state.draft.brand,
+      detail: state.draft.detail,
+      // Products belong to a brand, so a selection made under the old one would dangle.
+      ...(state.draft.brand.join(",") !== state.brand.join(",") ? { selectedPids: [], quadrantSelection: [] } : {}),
+    })),
   discardDraft: () => set((state) => ({ draft: { brand: state.brand, detail: state.detail } })),
   setPreset: (preset) =>
     set(preset === "custom" ? { preset } : { preset, ...computePresetRange(preset) }),

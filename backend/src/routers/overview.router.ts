@@ -14,6 +14,7 @@ import {
   getProgressHandler,
   getSpendHandler,
   getSummaryHandler,
+  getGmvLeversHandler,
 } from '../controllers/overview.controller'
 
 export const overviewRouter = Router()
@@ -32,3 +33,4 @@ overviewRouter.get('/api/overview/spend', getSpendHandler)
 overviewRouter.get('/api/overview/funnel', getFunnelHandler)
 overviewRouter.get('/api/overview/filter-options', getFilterOptionsHandler)
 overviewRouter.get('/api/overview/data-availability', getDataAvailabilityHandler)
+overviewRouter.get('/api/overview/gmv-levers', getGmvLeversHandler)

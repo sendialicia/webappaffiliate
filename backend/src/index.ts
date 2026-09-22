@@ -7,6 +7,7 @@ import { shopeePidRouter } from './routers/shopee-pid.router'
 import { tiktokPidRouter } from './routers/tiktok-pid.router'
 import { skuRouter } from './routers/sku.router'
 import { commentsRouter } from './routers/comments.router'
+import { productImagesRouter } from './routers/product-images.router'
 import { requestLogger } from './middleware/requestLogger'
 import { internalAuth } from './middleware/internalAuth'
 import { errorHandler } from './middleware/errorHandler'
@@ -34,6 +35,7 @@ app.use(shopeePidRouter)
 app.use(tiktokPidRouter)
 app.use(skuRouter)
 app.use(commentsRouter)
+app.use(productImagesRouter)
 
 app.use(errorHandler)
 

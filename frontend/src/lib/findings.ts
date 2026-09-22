@@ -73,7 +73,7 @@ export const RULE_CATALOG: Array<{ code: string; name: string; rule: string }> =
   {
     code: "R5",
     name: "Efisiensi komisi",
-    rule: `Commission rate berubah ≥ ${T.commissionRatePp * 100}pp, atau ROI berubah ≥ ±${T.roiChange * 100}%. Tidak dijalankan bila data komisi belum lengkap (R6).`,
+    rule: `Commission rate berubah ≥ ${T.commissionRatePp * 100}pp, atau ROI berubah ≥ ±${T.roiChange * 100}%. Dihitung hanya dari hari yang komisinya sudah lengkap, di kedua periode (lihat R6).`,
   },
   {
     code: "R6",
@@ -172,7 +172,7 @@ export function computeFindings(i: FindingsInput): Finding[] {
       code: "R6",
       rule: "KOMISI BELUM LENGKAP",
       severity: "info",
-      text: `${missingCommission} periode terakhir belum punya data komisi. ROI, Commission Rate, dan Commission untuk rentang ini belum final.`,
+      text: `${missingCommission} periode terakhir komisinya belum lengkap. ROI dan Commission Rate hanya menghitung hari yang komisinya sudah lengkap (pembanding dipotong di hari yang sama); total Commission untuk rentang ini belum final.`,
       detail: `${missingCommission} bucket tanpa komisi`,
       impact: 0,
     })
@@ -309,8 +309,10 @@ export function computeFindings(i: FindingsInput): Finding[] {
       })
     }
 
-    // R5 — commission efficiency, only once commission data is complete.
-    if (missingCommission === 0) {
+    // R5 — commission efficiency. The backend already restricts both windows to days whose
+    // commission has landed, so the ratios compare like with like even while R6 is showing; the
+    // only case left out is a window with no complete day at all.
+    if (kpis.roi.value > 0) {
       const ratePp = kpis.commissionRate.delta
       if (Math.abs(ratePp) >= T.commissionRatePp) {
         out.push({

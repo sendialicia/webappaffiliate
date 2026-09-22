@@ -17,6 +17,7 @@ import { WaterfallChart } from "@/components/charts/waterfall-chart"
 import { CompositionTrendChart } from "@/components/charts/composition-trend-chart"
 import { CompositionTable, seriesColor } from "@/components/overview/composition-table"
 import { CompositionDetail } from "@/components/overview/composition-detail"
+import { GmvLeversPanel } from "@/components/overview/gmv-levers-panel"
 import { GmvDecomposition } from "@/components/overview/gmv-decomposition"
 import type { DownloadItem } from "@/components/download-menu"
 import {
@@ -151,6 +152,9 @@ function OverviewPageInner() {
   const [monthly, setMonthly] = useState<MonthlyPerformanceResult | null>(null)
   const [daily, setDaily] = useState<DailyPerformancePoint[] | null>(null)
   const [progress, setProgress] = useState<ProgressResult | null>(null)
+  // The "why did GMV move" panel; fetched only while open.
+  const [leversOpen, setLeversOpen] = useState(false)
+  const closeLevers = useCallback(() => setLeversOpen(false), [])
   const [summary, setSummary] = useState<SummaryResult | null>(null)
   const [composition, setComposition] = useState<CompositionResult | null>(null)
   const [drivers, setDrivers] = useState<DriversResult | null>(null)
@@ -862,6 +866,8 @@ function OverviewPageInner() {
                     note={`${summary.kpis.gmv.delta >= 0 ? "+" : "−"}${formatRpFull(
                       Math.abs(summary.kpis.gmv.delta),
                     )} dari ${formatRpFull(summary.kpis.gmv.value - summary.kpis.gmv.delta)}`}
+                    onOpenAction={() => setLeversOpen(true)}
+                    openLabel="Kenapa GMV berubah? Impressions · CTR · CO · AOV"
                     deltaHover={
                       <GmvDecomposition
                         gmv={summary.kpis.gmv}
@@ -1233,6 +1239,14 @@ function OverviewPageInner() {
         <div id="ov-sec-8" className="grid scroll-mt-24 grid-cols-1 gap-4.5 xl:grid-cols-2">
           <div>
             <div className="mb-3.5 text-xl font-bold font-(family-name:--font-archivo)">Affiliate&rsquo;s Health</div>
+            {summary && commissionCutNote(summary.commissionCompleteThrough, marketplace) && (
+              <div className="mb-3.5 rounded-md border border-[var(--ov-gold)]/35 bg-[var(--ov-gold)]/10 px-3 py-2 text-[12.5px] leading-relaxed text-[var(--ov-soft)]">
+                <span className="font-semibold">Catatan komisi:</span> ROI dan Commission Rate hanya menghitung hari yang
+                komisinya sudah lengkap — {commissionCutNote(summary.commissionCompleteThrough, marketplace)}. Komisi
+                tercatat bertahap setelah order (TikTok ±10 hari), jadi hari sesudahnya belum dihitung; periode pembanding
+                dipotong di hari ke-sekian yang sama supaya adil.
+              </div>
+            )}
             {summary ? (
               <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
                 <KpiCard
@@ -1394,8 +1408,32 @@ function OverviewPageInner() {
           sebagai 1 creator — sehingga metrik Creators Count dan GMV per Creator sedikit terdistorsi.
         </div>
       </div>
+      <GmvLeversPanel
+        open={leversOpen}
+        query={buildQuery({
+          from,
+          to,
+          compare,
+          brand: csv(brand),
+          marketplace: csv(marketplace),
+          ...detailParams,
+          ...prevParams,
+        })}
+        onCloseAction={closeLevers}
+      />
     </DashboardShell>
   )
+}
+
+/**
+ * "TikTok s/d 9 Sep · Shopee s/d 19 Sep" for the marketplaces in view, or null when every one of
+ * them has complete commission for the whole window.
+ */
+function commissionCutNote(through: Record<string, string>, marketplaces: string[]): string | null {
+  const parts = Object.entries(through)
+    .filter(([name]) => marketplaces.length === 0 || marketplaces.includes(name))
+    .map(([name, date]) => `${name === "Tiktok" ? "TikTok" : name} s/d ${formatDateLabel(date)}`)
+  return parts.length > 0 ? parts.join(" · ") : null
 }
 
 /** useSearchParams needs a Suspense boundary for the static snapshot export. */

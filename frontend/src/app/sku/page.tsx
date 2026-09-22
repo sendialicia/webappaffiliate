@@ -136,6 +136,8 @@ function SkuPageInner() {
   // Which creator row opened the pop-up; null keeps it closed and unfetched.
   const [openCreator, setOpenCreator] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  // How many picks the last filter change dropped, shown once in the deep dive instead of an error.
+  const [droppedPicks, setDroppedPicks] = useState(0)
   // The last opportunity list the panel loaded, tagged with the selection it was loaded for.
   const [opportunity, setOpportunity] = useState<{ ids: string; data: OpportunityCreatorsResult } | null>(null)
 
@@ -236,7 +238,18 @@ function SkuPageInner() {
     let stale = false
     apiFetch<SkuProductsResult>(`/api/sku/products${buildQuery(scopeQuery)}`)
       .then((data) => {
-        if (!stale) setProducts(data)
+        if (stale) return
+        setProducts(data)
+        // Keep the selection to what the current filters can show, so a brand, period or
+        // dimension change never leaves a dangling pick behind. Read from the store directly:
+        // this callback may outlive the render that created it.
+        const picked = useSkuFilters.getState().selectedBarcodes
+        const available = new Set(data.rows.map((r) => r.barcode))
+        const kept = picked.filter((id) => available.has(id))
+        if (kept.length !== picked.length) {
+          setSelectedBarcodes(kept)
+          setDroppedPicks(picked.length - kept.length)
+        }
       })
       .catch((e) => {
         if (!stale) setError(e instanceof Error ? e.message : "Gagal memuat SKU")
@@ -285,8 +298,22 @@ function SkuPageInner() {
     if (!detailUrl) return
     apiFetch<SkuDetail>(detailUrl)
       .then((data) => setDetail({ key: detailUrl, data }))
-      .catch((e) => setError(e instanceof Error ? e.message : "Gagal memuat detail SKU"))
+      .catch((e) => {
+        const text = e instanceof Error ? e.message : "Gagal memuat detail SKU"
+        // A picked SKU with no sales under the new filters is not an error: the pruning below
+        // drops it from the selection, and the deep dive falls back to its empty state.
+        if (/not found/i.test(text)) return
+        setError(text)
+      })
   }, [detailUrl])
+
+  // The notice is about the last filter change only; the reader's next pick retires it.
+  const [noticeKey, setNoticeKey] = useState("")
+  if (selectedKey && noticeKey !== selectedKey) {
+    setNoticeKey(selectedKey)
+    if (droppedPicks > 0) setDroppedPicks(0)
+  }
+
 
   useEffect(() => {
     let stale = false
@@ -741,7 +768,9 @@ function SkuPageInner() {
               >
                 {selectedKey
                   ? "Memuat detail SKU…"
-                  : "Klik satu baris SKU untuk melihat detailnya, atau centang beberapa baris untuk menggabungkannya."}
+                  : droppedPicks > 0
+                    ? `${droppedPicks} SKU yang tadi dipilih tidak punya penjualan pada brand/periode ini, jadi pilihannya dilepas. Klik baris SKU lain untuk melihat detailnya.`
+                    : "Klik satu baris SKU untuk melihat detailnya, atau centang beberapa baris untuk menggabungkannya."}
               </div>
             )}
           </div>
@@ -749,13 +778,18 @@ function SkuPageInner() {
           {/* The creators column takes the deep-dive column's height instead of setting its own:
               on xl it is pulled out of flow (absolute) so the left card alone sizes the row, and
               the table scrolls inside. The min height keeps it usable before a product is picked. */}
-          <div className="flex flex-col xl:relative xl:min-h-[720px]">
+          <div className="flex flex-col xl:relative xl:min-h-[820px]">
             <div className="flex flex-col xl:absolute xl:inset-0">
             <div className="mb-3.5 flex min-h-[42px] flex-wrap items-center gap-3.5">
               <div className="flex items-center gap-2.5">
                 <i className="block h-2.5 w-2.5 flex-none rounded-full" style={{ background: "var(--ov-gold)" }} />
                 <span className="text-[17px] font-semibold font-(family-name:--font-archivo)">
                   Who are the Top Creators Across Marketplaces?
+                </span>
+                {/* Same as the PID pages: says what the list covers — the picked SKUs, or else the
+                    level scope clicked in the category table (the whole level when none is). */}
+                <span className="rounded-full border border-[var(--ov-line)] px-2.5 py-1 text-[12.5px] font-semibold text-[var(--ov-soft)]">
+                  {selectedKey ? `${selectedBarcodes.length} SKU terpilih` : scopeLabel}
                 </span>
               </div>
               <div className="ml-auto flex flex-wrap items-center gap-2.5">
@@ -799,7 +833,7 @@ function SkuPageInner() {
                   </div>
                   <div className="mt-3 border-t border-[var(--ov-line)] pt-2.5 text-xs leading-relaxed text-[var(--ov-faint)]">
                     10 creator teratas menyumbang {formatPercent(creators.concentrationTop10)} dari total GMV{" "}
-                    {formatIdr(creators.totalGmv)} pada cakupan ini.
+                    {formatIdr(creators.totalGmv)} pada {selectedKey ? "SKU terpilih" : `cakupan ${scopeLabel}`}.
                   </div>
                 </>
               ) : (
@@ -807,8 +841,10 @@ function SkuPageInner() {
               )}
             </div>
             {/* Right under the top creators, not at the page bottom: these are the ones to act on,
-                so they share the column and split its height rather than scroll out of view. */}
-            <div className="mt-3.5 flex min-h-0 flex-col overflow-auto xl:flex-1">
+                so they share the column and split its height rather than scroll out of view.
+                Until something is picked the panel has nothing to show but a hint, so it shrinks
+                to that and the creators table keeps the height. */}
+            <div className={`mt-3.5 flex min-h-0 flex-col overflow-auto ${selectedKey ? "xl:flex-1" : "xl:flex-none"}`}>
               <OpportunityCreators
                 endpoint="/api/sku/opportunity-creators"
                 idParam="barcode"

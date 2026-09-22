@@ -9,6 +9,7 @@ import { formatIdr, formatPercent, formatRpFull, formatSignedPercent } from "@/l
 import type { PidProductDetail } from "@/types/shopee-pid"
 import { Num } from "@/components/num"
 import { VariantContribution } from "@/components/variant-contribution"
+import { ProductPhoto } from "@/components/product-photo"
 
 export function ProductDetail({
   detail,
@@ -30,24 +31,18 @@ export function ProductDetail({
     >
       <div>
         <div className="flex flex-wrap items-start gap-3.5">
-          <div className="flex h-[92px] w-[92px] flex-none flex-col items-center justify-center rounded-lg border border-dashed border-[var(--ov-line)] bg-[var(--ov-fill1)] text-center text-[11.5px] leading-tight text-[var(--ov-faint)]">
-            {combined ? (
-              <>
-                <span className="text-xl font-bold text-[var(--ov-soft)] font-(family-name:--font-archivo)">
-                  {detail.members.length}
-                </span>
-                produk
-                <br />
-                digabung
-              </>
-            ) : (
-              <>
-                Foto produk
-                <br />
-                (menyusul)
-              </>
-            )}
-          </div>
+          {combined ? (
+            <div className="flex h-[92px] w-[92px] flex-none flex-col items-center justify-center rounded-lg border border-dashed border-[var(--ov-line)] bg-[var(--ov-fill1)] text-center text-[11.5px] leading-tight text-[var(--ov-faint)]">
+              <span className="text-xl font-bold text-[var(--ov-soft)] font-(family-name:--font-archivo)">
+                {detail.members.length}
+              </span>
+              produk
+              <br />
+              digabung
+            </div>
+          ) : (
+            <ProductPhoto image={detail.members[0]?.image ?? null} alt={detail.name} size={92} />
+          )}
           <div className="min-w-[210px] flex-1">
             <div className="flex flex-wrap items-center gap-2">
               <span className="rounded border border-[var(--ov-line)] bg-[var(--ov-fill1)] px-1.5 py-0.5 font-mono text-[12.5px] text-[var(--ov-faint)]">
@@ -68,7 +63,8 @@ export function ProductDetail({
         {combined && (
           <div className="mt-3 max-h-[132px] overflow-y-auto rounded-lg border border-[var(--ov-line)] bg-[var(--ov-fill2)] p-2">
             {detail.members.map((m) => (
-              <div key={m.pid} className="flex items-baseline gap-2 px-1 py-1 text-[12.5px]">
+              <div key={m.pid} className="flex items-center gap-2 px-1 py-1 text-[12.5px]">
+                <ProductPhoto image={m.image} alt={m.name} size={28} />
                 <span className="font-mono text-[var(--ov-faint)]">{m.pid}</span>
                 <span className="min-w-0 flex-1 truncate text-[var(--ov-soft)]" title={m.name}>
                   {m.name}
