@@ -714,6 +714,7 @@ export async function getSkuTopCreators(
   filters: SkuFilters,
   managed: boolean | null,
   limit: number,
+  barcodes: string[] = [],
 ): Promise<SkuCreatorsResult> {
   const params: Record<string, unknown> = { from, to }
   const scope = baseScope(filters, params)
@@ -721,6 +722,10 @@ export async function getSkuTopCreators(
   const scopeSql = scopeClause(filters, params)
 
   let extra = ''
+  if (barcodes.length > 0) {
+    params.barcodes = barcodes
+    extra += ` AND ifNull(BARCODE, '(none)') IN {barcodes:Array(String)}`
+  }
   if (managed !== null) {
     params.managed = managed ? 1 : 0
     extra += ` AND IS_MANAGED_CREATOR = {managed:UInt8}`

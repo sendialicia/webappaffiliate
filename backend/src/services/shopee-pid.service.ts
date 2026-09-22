@@ -2,6 +2,7 @@ import { clickhouse } from '../lib/clickhouse'
 import { getCreatorDetail } from './creator-detail.service'
 import { findOpportunityCreators, similarityColumn, type SimilarityLevel } from './opportunity.service'
 import { getNames } from '../lib/name-cache'
+import { getVariantContribution } from '../lib/variants'
 import {
   buildDetailClause,
   TABLE_SUMMARY_ORDER,
@@ -625,7 +626,10 @@ export async function getPidProductDetail(
     }
   })
 
-  const trend = await getPidTrendForProduct(pids, from, to, filters, granularity)
+  const [trend, variants] = await Promise.all([
+    getPidTrendForProduct(pids, from, to, filters, granularity),
+    getVariantContribution(SHOPEE_SCOPE, filterClause, params),
+  ])
 
   return {
     pids: members.map((m) => m.pid),
@@ -645,6 +649,7 @@ export async function getPidProductDetail(
     attributesPrev: toAttributes(prevAttrs),
     trend,
     pillars,
+    variants,
   }
 }
 

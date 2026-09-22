@@ -656,7 +656,7 @@ function ShopeePidPageInner() {
           {/* The creators column takes the deep-dive column's height instead of setting its own:
               on xl it is pulled out of flow (absolute) so the left card alone sizes the row, and
               the table scrolls inside. The min height keeps it usable before a product is picked. */}
-          <div className="flex flex-col xl:relative xl:min-h-[560px]">
+          <div className="flex flex-col xl:relative xl:min-h-[720px]">
             <div className="flex flex-col xl:absolute xl:inset-0">
             <div className="mb-3.5 flex min-h-[42px] flex-wrap items-center gap-3.5">
               <div className="flex items-center gap-2.5">
@@ -737,17 +737,20 @@ function ShopeePidPageInner() {
                 </div>
               )}
             </div>
+            {/* Right under the top creators, not at the page bottom: these are the ones to act on,
+                so they share the column and split its height rather than scroll out of view. */}
+            <div className="mt-3.5 flex min-h-0 flex-col overflow-auto xl:flex-1">
+              <OpportunityCreators
+                endpoint="/api/shopee-pid/opportunity-creators"
+                idParam="pid"
+                ids={selectedKey}
+                query={{ brand: csv(brand), from, to, ...detailParams }}
+              />
+            </div>
             </div>
           </div>
         </div>
 
-        {/* Full width: its table needs ~720px, too cramped beside the deep dive. */}
-        <OpportunityCreators
-          endpoint="/api/shopee-pid/opportunity-creators"
-          idParam="pid"
-          ids={selectedKey}
-          query={{ brand: csv(brand), from, to, ...detailParams }}
-        />
       </div>
 
       <CreatorDetailModal

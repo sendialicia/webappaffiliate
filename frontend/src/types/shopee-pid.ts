@@ -118,6 +118,7 @@ export interface PidProductDetail {
   attributesPrev: ShopeeAttributes
   trend: PidTrendPoint[]
   pillars: PidPillarContribution[]
+  variants: VariantContribution[]
 }
 
 export interface PidCreatorRow {
@@ -168,4 +169,14 @@ export interface OpportunityCreatorsResult {
   subCategory: string
   lookbackDays: number
   rows: OpportunityCreatorRow[]
+}
+
+/** One variant (shade, size, bundle) of a listing, both windows. */
+export interface VariantContribution {
+  variantId: string
+  name: string
+  gmv: number
+  gmvPrev: number
+  itemsSold: number
+  share: number
 }

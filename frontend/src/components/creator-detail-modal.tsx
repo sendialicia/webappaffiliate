@@ -34,12 +34,15 @@ export function CreatorDetailModal({
   username,
   query,
   onCloseAction,
+  grain = "pid",
 }: {
   endpoint: string
   /** Null closes the dialog. */
   username: string | null
   query: Record<string, string | undefined>
   onCloseAction: () => void
+  /** What the top-products list is keyed by: a listing (PID) or a SKU (barcode). */
+  grain?: "pid" | "sku"
 }) {
   // One state keyed by the request URL, so a stale response can never paint over a newer one
   // and nothing has to be reset synchronously inside the effect.
@@ -241,7 +244,9 @@ export function CreatorDetailModal({
               </div>
 
               <div>
-                <div className="text-sm font-semibold text-[var(--ov-mut)]">Produk terlaris dia</div>
+                <div className="text-sm font-semibold text-[var(--ov-mut)]">
+                  {grain === "sku" ? "SKU terlaris dia" : "Produk (PID) terlaris dia"}
+                </div>
                 <div className="mt-0.5 mb-2 text-[12.5px] text-[var(--ov-faint)]">
                   Share dihitung terhadap GMV creator ini, bukan GMV produknya.
                 </div>
@@ -249,8 +254,11 @@ export function CreatorDetailModal({
                   {d.topProducts.map((t) => (
                     <div key={t.id} className="mb-2">
                       <div className="flex items-baseline gap-2 text-[12.5px]">
-                        <span className="min-w-0 flex-1 truncate text-[var(--ov-soft)]" title={t.name}>
-                          {t.name}
+                        <span className="flex min-w-0 flex-1 flex-col" title={t.name}>
+                          <span className="truncate text-[var(--ov-soft)]">{t.name}</span>
+                          <span className="font-mono text-[11.5px] text-[var(--ov-faint)]">
+                            {grain === "sku" ? "Barcode" : "PID"} {t.id}
+                          </span>
                         </span>
                         <span className="font-mono font-semibold">{formatPercent(t.share, 1)}</span>
                         <span className="w-16 text-right font-mono text-[var(--ov-faint)]">

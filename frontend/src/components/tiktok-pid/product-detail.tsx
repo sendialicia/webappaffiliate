@@ -8,6 +8,7 @@ import { CommentsPanel } from "@/components/comments-panel"
 import { formatIdr, formatPercent, formatRpFull, formatSignedPercent } from "@/lib/format"
 import type { TtProductDetail } from "@/types/tiktok-pid"
 import { Num } from "@/components/num"
+import { VariantContribution } from "@/components/variant-contribution"
 
 export function TtProductDetailCard({
   detail,
@@ -156,6 +157,11 @@ export function TtProductDetailCard({
         </div>
       </div>
 
+
+      {/* Which variant carries this listing, before which pillar moved it. */}
+      <div className="mt-4 border-t border-[var(--ov-line)] pt-4">
+        <VariantContribution variants={detail.variants ?? []} />
+      </div>
 
       {/* Which pillar moved the number, directly under the trend that raised the question. */}
       <div className="mt-4 border-t border-[var(--ov-line)] pt-4">

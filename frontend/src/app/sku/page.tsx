@@ -289,6 +289,8 @@ function SkuPageInner() {
     apiFetch<SkuCreatorsResult>(
       `/api/sku/top-creators${buildQuery({
         ...scopeQuery,
+        // With SKUs picked in the table the list answers "who sells these"; otherwise the scope.
+        barcode: selectedKey || undefined,
         managed: creatorManaged === null ? undefined : String(creatorManaged),
         limit: String(creatorLimit),
       })}`,
@@ -303,7 +305,7 @@ function SkuPageInner() {
       stale = true
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [brand, from, to, level, attributeBase, scope, creatorManaged, creatorLimit, detailKey, modeKey])
+  }, [brand, from, to, level, attributeBase, scope, creatorManaged, creatorLimit, detailKey, modeKey, selectedKey])
 
   // One predicate for the count cards, shared by the SKU table and the quadrant, so a card
   // narrows both instead of only the table.
@@ -679,7 +681,7 @@ function SkuPageInner() {
           {/* The creators column takes the deep-dive column's height instead of setting its own:
               on xl it is pulled out of flow (absolute) so the left card alone sizes the row, and
               the table scrolls inside. The min height keeps it usable before a product is picked. */}
-          <div className="flex flex-col xl:relative xl:min-h-[560px]">
+          <div className="flex flex-col xl:relative xl:min-h-[720px]">
             <div className="flex flex-col xl:absolute xl:inset-0">
             <div className="mb-3.5 flex min-h-[42px] flex-wrap items-center gap-3.5">
               <div className="flex items-center gap-2.5">
@@ -736,17 +738,20 @@ function SkuPageInner() {
                 <div className="flex h-[240px] items-center justify-center text-sm text-[var(--ov-faint)]">Loading…</div>
               )}
             </div>
+            {/* Right under the top creators, not at the page bottom: these are the ones to act on,
+                so they share the column and split its height rather than scroll out of view. */}
+            <div className="mt-3.5 flex min-h-0 flex-col overflow-auto xl:flex-1">
+              <OpportunityCreators
+                endpoint="/api/sku/opportunity-creators"
+                idParam="barcode"
+                ids={selectedKey}
+                query={{ brand: csv(brand), from, to, attributeBase, ...modeParams, ...detailParams }}
+              />
+            </div>
             </div>
           </div>
         </div>
 
-        {/* Full width: its table needs ~720px, too cramped beside the deep dive. */}
-        <OpportunityCreators
-          endpoint="/api/sku/opportunity-creators"
-          idParam="barcode"
-          ids={selectedKey}
-          query={{ brand: csv(brand), from, to, attributeBase, ...modeParams, ...detailParams }}
-        />
 
         <div className="text-xs leading-relaxed text-[var(--ov-faint)]">
           Catatan data: satu SKU dikenali lewat <span className="font-mono">BARCODE</span>, dan nama yang tampil adalah{" "}
@@ -763,6 +768,7 @@ function SkuPageInner() {
       </div>
 
       <CreatorDetailModal
+        grain="sku"
         endpoint="/api/sku/creator-detail"
         username={openCreator}
         query={{ brand: csv(brand), from, to, granularity: trendGranularity, ...modeParams, ...detailParams }}

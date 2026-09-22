@@ -2,6 +2,7 @@ import { clickhouse } from '../lib/clickhouse'
 import { getCreatorDetail } from './creator-detail.service'
 import { findOpportunityCreators, similarityColumn, type SimilarityLevel } from './opportunity.service'
 import { getNames } from '../lib/name-cache'
+import { getVariantContribution } from '../lib/variants'
 import {
   buildDetailClause,
   TABLE_SUMMARY_ORDER,
@@ -695,7 +696,10 @@ export async function getTtProductDetail(
     }
   })
 
-  const trend = await getTtTrendForProduct(pids, from, to, filters, granularity)
+  const [trend, variants] = await Promise.all([
+    getTtTrendForProduct(pids, from, to, filters, granularity),
+    getVariantContribution(TIKTOK_SCOPE, filterClause, params),
+  ])
 
   return {
     pids: members.map((m) => m.pid),
@@ -715,6 +719,7 @@ export async function getTtProductDetail(
     attributesPrev: toAttributes(prevAttrs, Number(info.gmvPrev || 0), 0),
     trend,
     pillars,
+    variants,
   }
 }
 

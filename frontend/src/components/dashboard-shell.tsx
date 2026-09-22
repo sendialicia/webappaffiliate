@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import { useSearchParams } from "next/navigation"
 import { useEffect, useSyncExternalStore, type ReactNode } from "react"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { UserMenu } from "@/components/user-menu"
@@ -145,6 +146,26 @@ function CollapseButton({ collapsed, onToggle }: { collapsed: boolean; onToggle:
   )
 }
 
+const CARRIED_PARAMS = [
+  "brand",
+  "marketplace",
+  "preset",
+  "from",
+  "to",
+  "compare",
+  "prevFrom",
+  "prevTo",
+  "trend",
+  "pillar",
+  "subpillar",
+  "pidCategory",
+  "pidSubCategory",
+  "pidFormat",
+  "productCategory",
+  "productSubCategory",
+  "productFormat",
+]
+
 export function DashboardShell({
   title,
   subtitle,
@@ -159,6 +180,17 @@ export function DashboardShell({
   sectionNav?: SectionLink[]
   children: ReactNode
 }) {
+  // Moving between pages keeps the reader's filters: every page reads these same URL keys, so
+  // the nav links simply carry the applied ones along. Page-specific state (scope, selection,
+  // sort) stays behind, and a page ignores keys it has no filter for (PID pages, marketplace).
+  const searchParams = useSearchParams()
+  const carried = new URLSearchParams()
+  for (const key of CARRIED_PARAMS) {
+    const value = searchParams.get(key)
+    if (value) carried.set(key, value)
+  }
+  const carry = carried.toString()
+
   const [collapsed, toggle] = useSidebarCollapsed()
   // Sub-items carry no icon, so an icon rail can only show the top level.
   const navItems = collapsed ? NAV_ITEMS.filter((i) => !i.sub) : NAV_ITEMS
@@ -251,7 +283,7 @@ export function DashboardShell({
             return (
               <Link
                 key={item.key}
-                href={item.href}
+                href={carry ? `${item.href}?${carry}` : item.href}
                 title={collapsed ? item.label : undefined}
                 className={`${className} hover:bg-[var(--ov-fill1)]`}
                 style={style}

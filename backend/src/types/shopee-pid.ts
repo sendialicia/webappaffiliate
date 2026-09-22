@@ -1,3 +1,4 @@
+import type { VariantContribution } from '../lib/variants'
 import type { OrderMetrics, TrendMetrics } from '../lib/query-helpers'
 import type { ComparisonBasis, DetailFilters, OverviewFilters, TrendGranularity } from './overview'
 
@@ -116,6 +117,8 @@ export interface PidProductDetail {
   attributesPrev: ShopeeAttributes
   trend: PidTrendPoint[]
   pillars: PidPillarContribution[]
+  /** How the listing's GMV splits across its variants (shades, sizes). */
+  variants: VariantContribution[]
 }
 
 export interface PidCreatorRow {

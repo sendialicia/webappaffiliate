@@ -1,4 +1,4 @@
-import type { OrderMetrics } from "@/types/shopee-pid"
+import type { OrderMetrics, VariantContribution } from "@/types/shopee-pid"
 import type { TrendMetricPoint } from "@/components/charts/metric-trend"
 import type { PidLevel, PidPillarContribution, PillarSplit } from "./shopee-pid"
 
@@ -106,6 +106,7 @@ export interface TtProductDetail {
   attributesPrev: TiktokAttributes
   trend: TtTrendPoint[]
   pillars: PidPillarContribution[]
+  variants: VariantContribution[]
 }
 
 export interface TtCreatorRow {

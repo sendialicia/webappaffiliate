@@ -161,8 +161,10 @@ export async function getSkuTopCreatorsHandler(req: Request, res: Response) {
   const managedParam = str(req.query.managed)
   const managed = managedParam === 'true' ? true : managedParam === 'false' ? false : null
   const limit = Number(str(req.query.limit)) || 25
+  // With SKUs picked in the table the list answers "who sells these"; otherwise the scope.
+  const barcodes = list(req.query.barcode)
 
-  const data = await getSkuTopCreators(from, to, filtersOf(req), managed, limit)
+  const data = await getSkuTopCreators(from, to, filtersOf(req), managed, limit, barcodes)
   res.json(data)
 }
 

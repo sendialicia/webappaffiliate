@@ -1,3 +1,4 @@
+import type { VariantContribution } from '../lib/variants'
 import type { OrderMetrics, TrendMetrics } from '../lib/query-helpers'
 import type { ComparisonBasis } from './overview'
 import type { PidFilters, PidLevel, PidPillarContribution, PillarSplit } from './shopee-pid'
@@ -116,6 +117,8 @@ export interface TtProductDetail {
   attributesPrev: TiktokAttributes
   trend: TtTrendPoint[]
   pillars: PidPillarContribution[]
+  /** How the listing's GMV splits across its variants (shades, sizes). */
+  variants: VariantContribution[]
 }
 
 export interface TtCreatorRow {
