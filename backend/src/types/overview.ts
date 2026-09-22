@@ -51,6 +51,8 @@ export interface PaceSummary {
   projection: number
   actualPct: number
   expectedPct: number
+  /** Last day with actual data this month; pace and projection count days up to it. */
+  asOf: string | null
 }
 
 export interface MonthlyPerformanceResult {
@@ -367,4 +369,27 @@ export interface GmvPair {
 export interface FindingsInputsResult {
   brands: GmvPair[]
   pillars: GmvPair[]
+}
+
+export interface CreatorDriverRow {
+  username: string
+  isManaged: boolean
+  gmv: number
+  gmvPrev: number
+  delta: number
+  /** Share of the slice's gross gains (gainers) or gross losses (losers). */
+  share: number
+}
+
+export interface CreatorDriversResult {
+  gmv: number
+  gmvPrev: number
+  /** Sum of every creator's positive and negative moves, the bases the shares are read against. */
+  grossGain: number
+  grossLoss: number
+  /** The aggregated Agency row, reported apart: it is not one creator. */
+  agencyGmv: number
+  agencyGmvPrev: number
+  gainers: CreatorDriverRow[]
+  losers: CreatorDriverRow[]
 }

@@ -21,6 +21,7 @@ import type {
   CompositionDimension,
   DataAvailabilityResult,
   TopCreatorsResult,
+  CreatorDriversResult,
   FindingsInputsResult,
   DriverMatrixResult,
   MatrixCell,
@@ -100,17 +101,36 @@ export async function getMonthlyPerformance(
   })
 
   const months = await result.json<MonthlyPerformancePoint>()
-  return { months, pace: computePace(months) }
+
+  // Last day with an actual this month: loads lag a day or two, and pacing against today would
+  // understate both the pace and the projection by exactly those missing days.
+  const lastResult = await clickhouse.query({
+    query: `
+      SELECT toString(max(PERIOD_DATE)) AS lastDate
+      FROM ${TABLE_DAILY_PERFORMANCE}
+      WHERE REGION_CODE = 'id'
+        AND METRIC_NAME = 'Actual GMV'
+        AND METRIC_VALUE > 0
+        AND PERIOD_YEAR = {year:Int32}
+        ${filterClause}
+    `,
+    query_params: params,
+    format: 'JSONEachRow',
+  })
+  const lastDate = (await lastResult.json<{ lastDate: string | null }>())[0]?.lastDate ?? null
+  return { months, pace: computePace(months, lastDate) }
 }
 
-function computePace(months: MonthlyPerformancePoint[]): PaceSummary {
+function computePace(months: MonthlyPerformancePoint[], lastDataDate: string | null): PaceSummary {
   const now = new Date()
   const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
   const row = months.find((m) => m.month.startsWith(monthKey))
 
   const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()
-  const daysElapsed = now.getDate()
-  const daysLeft = daysInMonth - daysElapsed
+  const dataInMonth = lastDataDate?.startsWith(monthKey) ? lastDataDate : null
+  // Pace and projection run on days that have data; "days left" stays calendar days.
+  const daysElapsed = dataInMonth ? Number(dataInMonth.slice(8, 10)) : now.getDate()
+  const daysLeft = daysInMonth - now.getDate()
 
   const actual = row?.actualGmv ?? 0
   const target = row?.target ?? 0
@@ -129,6 +149,7 @@ function computePace(months: MonthlyPerformancePoint[]): PaceSummary {
     projection,
     actualPct: target > 0 ? actual / target : 0,
     expectedPct: daysElapsed / daysInMonth,
+    asOf: dataInMonth,
   }
 }
 
@@ -1531,4 +1552,117 @@ export async function getFindingsInputs(
 
   const [brands, pillars] = await Promise.all([byColumn('BRAND_NAME'), byColumn('PILLAR')])
   return { brands, pillars }
+}
+
+/** Every slice field the overview can name — composition keys and driver keys alike. */
+export const SLICE_COLUMNS: Record<string, string> = { ...DIMENSION_COLUMNS, ...DRIVER_FIELD_COLUMNS }
+
+/**
+ * Which creators moved a slice (a composition row, a matrix cell, or the whole scope): the top
+ * gainers and losers by GMV change, each with its share of the slice's gross gains or losses.
+ * Agency is left out of the lists and reported on its own.
+ */
+export async function getCreatorDrivers(
+  from: string,
+  to: string,
+  basis: ComparisonBasis,
+  filters: OverviewFilters,
+  detail: DetailFilters,
+  slices: Array<{ field: string; value: string }>,
+  limit: number,
+  prevRange?: { from?: string; to?: string },
+): Promise<CreatorDriversResult> {
+  const comparison = computeComparisonRange(from, to, basis, prevRange)
+  const params: Record<string, unknown> = {
+    currentFrom: from,
+    currentTo: to,
+    prevFrom: comparison.from,
+    prevTo: comparison.to,
+    agency: AGENCY,
+  }
+  let filterClause = buildFilterClause(filters, params) + buildDetailClause(detail, params)
+  slices.forEach((slice, i) => {
+    const column = SLICE_COLUMNS[slice.field]
+    if (!column) return
+    filterClause += ` AND ifNull(${column}, 'Unknown') = {slice${i}:String}`
+    params[`slice${i}`] = slice.value
+  })
+  const scope = `
+        FROM ${TABLE_SUMMARY_ORDER}
+        WHERE REGION_CODE = 'id'
+          AND ITEM_MARKETPLACE_FLAG = TRUE
+          AND IS_AFFILIATE = TRUE
+          ${TWO_WINDOW_CLAUSE}
+          ${filterClause}`
+  const perCreator = `
+      SELECT
+        AFFILIATE_USERNAME AS username,
+        sumIf(GMV, DATE >= {currentFrom:Date} AND DATE <= {currentTo:Date}) AS gmv,
+        sumIf(GMV, DATE >= {prevFrom:Date} AND DATE <= {prevTo:Date}) AS gmvPrev,
+        countIf(IS_MANAGED_CREATOR = TRUE) > 0 AS isManaged
+      ${scope}
+        AND AFFILIATE_USERNAME IS NOT NULL
+        AND AFFILIATE_USERNAME <> {agency:String}
+      GROUP BY username`
+  const ranked = (direction: 'DESC' | 'ASC') => `
+      SELECT username, gmv, gmvPrev, gmv - gmvPrev AS delta, isManaged
+      FROM (${perCreator}) c
+      WHERE gmv - gmvPrev ${direction === 'DESC' ? '>' : '<'} 0
+      ORDER BY delta ${direction}
+      LIMIT ${limit}`
+
+  type Row = { username: string; gmv: number; gmvPrev: number; delta: number; isManaged: boolean | number }
+  const [gainRows, lossRows, totals, gross] = await Promise.all([
+    clickhouse.query({ query: ranked('DESC'), query_params: params, format: 'JSONEachRow' }).then((r) => r.json<Row>()),
+    clickhouse.query({ query: ranked('ASC'), query_params: params, format: 'JSONEachRow' }).then((r) => r.json<Row>()),
+    clickhouse
+      .query({
+        query: `
+          SELECT
+            sumIf(GMV, DATE >= {currentFrom:Date} AND DATE <= {currentTo:Date}) AS gmv,
+            sumIf(GMV, DATE >= {prevFrom:Date} AND DATE <= {prevTo:Date}) AS gmvPrev,
+            sumIf(GMV, DATE >= {currentFrom:Date} AND DATE <= {currentTo:Date} AND AFFILIATE_USERNAME = {agency:String}) AS agencyGmv,
+            sumIf(GMV, DATE >= {prevFrom:Date} AND DATE <= {prevTo:Date} AND AFFILIATE_USERNAME = {agency:String}) AS agencyGmvPrev
+          ${scope}`,
+        query_params: params,
+        format: 'JSONEachRow',
+      })
+      .then((r) => r.json<Record<string, number>>()),
+    clickhouse
+      .query({
+        query: `
+          SELECT
+            SUM(CASE WHEN gmv > gmvPrev THEN gmv - gmvPrev ELSE 0 END) AS grossGain,
+            SUM(CASE WHEN gmv < gmvPrev THEN gmv - gmvPrev ELSE 0 END) AS grossLoss
+          FROM (${perCreator}) c`,
+        query_params: params,
+        format: 'JSONEachRow',
+      })
+      .then((r) => r.json<Record<string, number>>()),
+  ])
+
+  const grossGain = Number(gross[0]?.grossGain || 0)
+  const grossLoss = Number(gross[0]?.grossLoss || 0)
+  const toRow = (r: Row, base: number) => {
+    const delta = Number(r.delta || 0)
+    return {
+      username: r.username,
+      isManaged: Boolean(Number(r.isManaged)),
+      gmv: Number(r.gmv || 0),
+      gmvPrev: Number(r.gmvPrev || 0),
+      delta,
+      share: base !== 0 ? delta / base : 0,
+    }
+  }
+  const t = totals[0] ?? {}
+  return {
+    gmv: Number(t.gmv || 0),
+    gmvPrev: Number(t.gmvPrev || 0),
+    grossGain,
+    grossLoss,
+    agencyGmv: Number(t.agencyGmv || 0),
+    agencyGmvPrev: Number(t.agencyGmvPrev || 0),
+    gainers: gainRows.map((r) => toRow(r, grossGain)),
+    losers: lossRows.map((r) => toRow(r, grossLoss)),
+  }
 }

@@ -116,7 +116,8 @@ export function MetricTrend({
             label="Metrik"
             options={METRIC_KEYS}
             selected={metrics}
-            onChangeAction={(values) => values.length > 0 && setMetrics(values as TrendMetricKey[])}
+            // At least one line must stay: clearing falls back to GMV instead of being ignored.
+            onChangeAction={(values) => setMetrics(values.length > 0 ? (values as TrendMetricKey[]) : ["gmv"])}
             max={MAX_TREND_METRICS}
             optionLabel={(v) => TREND_METRICS[v as TrendMetricKey].label}
             width="w-52"

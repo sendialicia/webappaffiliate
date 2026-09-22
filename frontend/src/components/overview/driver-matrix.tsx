@@ -1,6 +1,7 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
+import { CreatorDrivers } from "@/components/overview/creator-drivers"
 import { formatCompact, formatIdr, formatSignedPercent } from "@/lib/format"
 import type { DriverMatrixResult, MatrixCell } from "@/types/overview"
 
@@ -99,16 +100,34 @@ export function DriverMatrix({
   entityLabel,
   dimensionLabel,
   compareLabel,
-  onDrillAction,
+  query,
 }: {
   result: DriverMatrixResult
   entityLabel: string
   dimensionLabel: string
   compareLabel: string
-  /** Filters the page to an entity, a dimension value, or both; null leaves that side alone. */
-  onDrillAction: (entity: string | null, name: string | null) => void
+  /** The page's filters, so a cell's creator breakdown covers exactly what the cell shows. */
+  query: Record<string, string | undefined>
 }) {
   const [hover, setHover] = useState<Hover | null>(null)
+  // A clicked cell opens its creator breakdown in place instead of filtering the whole page.
+  const [opened, setOpened] = useState<{ title: string; cell: MatrixCell; slices: Array<{ field: string; value: string }> } | null>(null)
+
+  useEffect(() => {
+    if (!opened) return
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpened(null)
+    window.addEventListener("keydown", onKey)
+    return () => window.removeEventListener("keydown", onKey)
+  }, [opened])
+
+  const open = (title: string, cell: MatrixCell | undefined, entity: string | null, name: string | null) => () => {
+    if (!cell) return
+    const slices: Array<{ field: string; value: string }> = []
+    if (entity) slices.push({ field: result.entity, value: entity })
+    if (name) slices.push({ field: result.dimension, value: name })
+    setHover(null)
+    setOpened({ title, cell, slices })
+  }
   const totalGmv = result.total.gmv
 
   const track = (title: string, cell: MatrixCell | undefined) => (e: React.MouseEvent) => {
@@ -182,9 +201,8 @@ export function DriverMatrix({
               {result.names.map((name) => (
                 <th
                   key={name}
-                  onClick={name === OTHER ? undefined : () => onDrillAction(null, name)}
-                  title={name === OTHER ? "Gabungan nilai di luar 20 teratas" : `Klik untuk memfilter halaman ke ${name}`}
-                  className={`sticky top-0 z-[2] min-w-[130px] border-b border-l border-[var(--ov-line)] px-2.5 py-2 text-left text-[12px] font-bold tracking-wide text-[var(--ov-head)] uppercase ${name === OTHER ? "" : "cursor-pointer hover:text-[var(--accent-foreground)]"}`}
+                  title={name === OTHER ? "Gabungan nilai di luar 20 teratas" : undefined}
+                  className="sticky top-0 z-[2] min-w-[130px] border-b border-l border-[var(--ov-line)] px-2.5 py-2 text-left text-[12px] font-bold tracking-wide text-[var(--ov-head)] uppercase"
                   style={{ background: "linear-gradient(var(--accent), var(--accent)), var(--card)" }}
                 >
                   {name}
@@ -200,13 +218,13 @@ export function DriverMatrix({
               >
                 Semua {entityLabel.toLowerCase()}
               </th>
-              {renderCell("total", "Total", result.total, null, true)}
+              {renderCell("total", "Total", result.total, open("Total", result.total, null, null), true)}
               {result.names.map((name) =>
                 renderCell(
                   `col-${name}`,
                   `Semua ${entityLabel.toLowerCase()} · ${name}`,
                   result.columnTotals[name],
-                  name === OTHER ? null : () => onDrillAction(null, name),
+                  name === OTHER ? null : open(`Semua ${entityLabel.toLowerCase()} · ${name}`, result.columnTotals[name], null, name),
                   true,
                 ),
               )}
@@ -214,20 +232,18 @@ export function DriverMatrix({
             {result.entities.map((entity) => (
               <tr key={entity}>
                 <th
-                  onClick={() => onDrillAction(entity, null)}
-                  title={`Klik untuk memfilter halaman ke ${entity}`}
-                  className="sticky left-0 z-[1] cursor-pointer border-b border-[var(--ov-line)] px-2.5 py-2 text-left text-[13px] font-semibold text-[var(--ov-soft)] hover:text-[var(--accent-foreground)]"
+                  className="sticky left-0 z-[1] border-b border-[var(--ov-line)] px-2.5 py-2 text-left text-[13px] font-semibold text-[var(--ov-soft)]"
                   style={{ background: "var(--card)" }}
                 >
                   {entity}
                 </th>
-                {renderCell(`${entity}-total`, `${entity} · total`, result.rowTotals[entity], () => onDrillAction(entity, null), true)}
+                {renderCell(`${entity}-total`, `${entity} · total`, result.rowTotals[entity], open(`${entity} · total`, result.rowTotals[entity], entity, null), true)}
                 {result.names.map((name) =>
                   renderCell(
                     `${entity}-${name}`,
                     `${entity} · ${name}`,
                     result.cells[entity]?.[name],
-                    name === OTHER ? null : () => onDrillAction(entity, name),
+                    name === OTHER ? null : open(`${entity} · ${name}`, result.cells[entity]?.[name], entity, name),
                   ),
                 )}
               </tr>
@@ -248,8 +264,46 @@ export function DriverMatrix({
           &ldquo;Basis kecil&rdquo; = kurang dari {MIN_CREATORS} creator atau di bawah{" "}
           {(MIN_SHARE_OF_TOTAL * 100).toFixed(1)}% GMV total — growth-nya diredupkan karena mudah melonjak.
         </span>
-        <span>Klik sel, nama baris, atau nama kolom untuk memfilter seluruh halaman · {compareLabel}.</span>
+        <span>Klik sel untuk melihat creator pendorong growth dan penyebab loss-nya · {compareLabel}.</span>
       </div>
+
+      {opened && (
+        <div
+          className="fixed inset-0 z-[90] flex items-start justify-center overflow-y-auto bg-black/50 p-4 pt-[8vh] animate-in fade-in-0 duration-200"
+          onClick={() => setOpened(null)}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label={opened.title}
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-[920px] animate-in fade-in-0 zoom-in-95 slide-in-from-top-2 rounded-xl border border-[var(--ov-line)] p-5 shadow-[0_24px_48px_-24px_var(--ov-shadow)] duration-300"
+            style={{ background: "var(--ov-card-gradient)" }}
+          >
+            <div className="mb-3 flex flex-wrap items-baseline gap-3">
+              <div className="text-lg font-semibold font-(family-name:--font-archivo)">{opened.title}</div>
+              {(() => {
+                const r = read(opened.cell, totalGmv)
+                return (
+                  <span className="font-mono text-[13px] text-[var(--ov-soft)]">
+                    {formatIdr(opened.cell.gmv)}{" "}
+                    <span style={{ color: growthColor(r.growth) }}>{formatSignedPercent(r.growth)}</span>
+                    <span className="text-[var(--ov-faint)]"> · {leverLabel(r)}</span>
+                  </span>
+                )
+              })()}
+              <button
+                type="button"
+                onClick={() => setOpened(null)}
+                className="ml-auto rounded-md border border-[var(--ov-line)] px-2 py-1 text-xs text-[var(--ov-faint)] hover:text-[var(--ov-soft)]"
+              >
+                Tutup ✕
+              </button>
+            </div>
+            <CreatorDrivers query={query} slices={opened.slices} />
+          </div>
+        </div>
+      )}
 
       {hover && (
         // Follows the cursor, always below it and to its right (left only at the screen edge), so

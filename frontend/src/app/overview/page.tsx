@@ -34,7 +34,7 @@ import { apiFetch } from "@/lib/api"
 import { useMediaQuery } from "@/lib/use-media-query"
 import { DriverMatrix } from "@/components/overview/driver-matrix"
 import { computeFindings } from "@/lib/findings"
-import { formatIdr, formatMonthLabelFull, formatPercent, formatRp, formatRpFull } from "@/lib/format"
+import { formatIdr, formatMonthLabelFull, formatPercent, formatRp, formatRpFull, formatDateLabel } from "@/lib/format"
 import { currentMonth } from "@/lib/date-range"
 import { filtersToParams, useOverviewFilters } from "@/store/overview-filters"
 import type {
@@ -430,20 +430,6 @@ function OverviewPageInner() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [driverView, from, to, compare, driverEntity, driverDimension, brand, marketplace, detailKey, prevFrom, prevTo])
 
-  /**
-   * Clicking a matrix cell narrows the whole page to that entity and/or dimension value. Brand and
-   * marketplace are top-level filters; every other driver field shares its key with a detail filter.
-   */
-  const drillTo = (entityValue: string | null, nameValue: string | null) => {
-    const apply = (field: DriverField, value: string) => {
-      if (field === "brand") filters.setDraftBrand([value])
-      else if (field === "marketplace") filters.setDraftMarketplace([value])
-      else filters.setDraftDetail(field, [value])
-    }
-    if (entityValue) apply(driverEntity, entityValue)
-    if (nameValue) apply(driverDimension, nameValue)
-    filters.applyDraft()
-  }
 
   useEffect(() => {
     let stale = false
@@ -742,13 +728,45 @@ function OverviewPageInner() {
                       {formatPercent(monthly.pace.expectedPct)}
                     </div>
                     <div className="mt-0.5 text-[12px] text-[var(--ov-faint)]">
-                      bulan ini sudah lewat sejauh ini
+                      {monthly.pace.asOf
+                        ? `hari ${monthly.pace.daysElapsed} dari ${monthly.pace.daysInMonth} (data s/d ${formatDateLabel(monthly.pace.asOf)})`
+                        : "bulan ini sudah lewat sejauh ini"}
                     </div>
                   </div>
-                  <div>
-                    <div className="text-xs text-[var(--ov-mut)]">Proyeksi akhir bulan</div>
-                    <div className="text-base font-bold font-(family-name:--font-archivo)">
-                      <Num money value={monthly.pace.projection} />
+                  {/* Where the month lands at the current daily rate, read against the target. */}
+                  <div className="flex items-start gap-2.5">
+                    <svg
+                      width="20"
+                      height="20"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="var(--ov-icon)"
+                      strokeWidth="1.6"
+                      className="mt-0.5 flex-none"
+                      aria-hidden="true"
+                    >
+                      <rect x="3" y="5" width="18" height="16" rx="2" />
+                      <path d="M3 10h18M8 3v4M16 3v4" />
+                    </svg>
+                    <div>
+                      <div className="text-xs text-[var(--ov-mut)]">Proyeksi akhir bulan</div>
+                      <div className="text-xl font-bold font-(family-name:--font-archivo)">
+                        <Num money value={monthly.pace.projection} />
+                      </div>
+                      {monthly.pace.target > 0 && (
+                        <div
+                          className="mt-0.5 text-[12.5px]"
+                          style={{
+                            color:
+                              monthly.pace.projection >= monthly.pace.target
+                                ? "var(--ov-green-ink)"
+                                : "var(--ov-faint)",
+                          }}
+                        >
+                          {monthly.pace.projection >= monthly.pace.target ? "di atas" : "di bawah"} target{" "}
+                          <Num money value={monthly.pace.target} />
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -991,6 +1009,7 @@ function OverviewPageInner() {
 
               {selectedRow && (
                 <CompositionDetail
+                  key={selectedRow.name}
                   row={selectedRow}
                   result={composition}
                   color={selectedColor}
@@ -1096,7 +1115,15 @@ function OverviewPageInner() {
                 entityLabel={DRIVER_FIELD_LABELS[driverEntity]}
                 dimensionLabel={DRIVER_FIELD_LABELS[driverDimension]}
                 compareLabel={compareLabel}
-                onDrillAction={drillTo}
+                query={{
+                  from,
+                  to,
+                  compare,
+                  brand: csv(brand),
+                  marketplace: csv(marketplace),
+                  ...detailParams,
+                  ...prevParams,
+                }}
               />
             ) : (
               <div className="flex h-[330px] items-center justify-center text-sm text-[var(--ov-faint)]">Loading…</div>

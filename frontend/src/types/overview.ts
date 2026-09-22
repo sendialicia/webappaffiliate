@@ -17,6 +17,8 @@ export interface PaceSummary {
   projection: number
   actualPct: number
   expectedPct: number
+  /** Last day with actual data this month; pace and projection count days up to it. */
+  asOf: string | null
 }
 
 export interface MonthlyPerformanceResult {
@@ -335,4 +337,24 @@ export interface GmvPair {
 export interface FindingsInputsResult {
   brands: GmvPair[]
   pillars: GmvPair[]
+}
+
+export interface CreatorDriverRow {
+  username: string
+  isManaged: boolean
+  gmv: number
+  gmvPrev: number
+  delta: number
+  share: number
+}
+
+export interface CreatorDriversResult {
+  gmv: number
+  gmvPrev: number
+  grossGain: number
+  grossLoss: number
+  agencyGmv: number
+  agencyGmvPrev: number
+  gainers: CreatorDriverRow[]
+  losers: CreatorDriverRow[]
 }

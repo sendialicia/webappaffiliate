@@ -11,6 +11,7 @@ import {
   getDriverMatrix,
   getTopCreators,
   getFindingsInputs,
+  getCreatorDrivers,
   getSpend,
   getSummary,
 } from '../services/overview.service'
@@ -256,4 +257,20 @@ export async function getFindingsInputsHandler(req: Request, res: Response) {
   const to = str(req.query.to) ?? new Date().toISOString().slice(0, 10)
   const from = str(req.query.from) ?? defaultFrom(to)
   res.json(await getFindingsInputs(from, to, basisFromQuery(req), filtersFromQuery(req), detailFromQuery(req), prevRangeFromQuery(req)))
+}
+
+/** Slices arrive as field1/value1, field2/value2 — a composition row, or a matrix cell's two sides. */
+export async function getCreatorDriversHandler(req: Request, res: Response) {
+  const to = str(req.query.to) ?? new Date().toISOString().slice(0, 10)
+  const from = str(req.query.from) ?? defaultFrom(to)
+  const slices: Array<{ field: string; value: string }> = []
+  for (const i of [1, 2]) {
+    const field = str(req.query[`field${i}`])
+    const value = typeof req.query[`value${i}`] === 'string' ? (req.query[`value${i}`] as string) : undefined
+    if (field && value !== undefined) slices.push({ field, value })
+  }
+  const limit = Math.min(Number(str(req.query.limit)) || 10, 50)
+  res.json(
+    await getCreatorDrivers(from, to, basisFromQuery(req), filtersFromQuery(req), detailFromQuery(req), slices, limit, prevRangeFromQuery(req)),
+  )
 }
