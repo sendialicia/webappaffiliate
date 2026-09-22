@@ -37,6 +37,7 @@ export function OpportunityCreators({
   idParam,
   ids,
   query,
+  onLoadedAction,
 }: {
   /** e.g. "/api/sku/opportunity-creators" */
   endpoint: string
@@ -46,6 +47,8 @@ export function OpportunityCreators({
   ids: string
   /** Period and dimension filters, already serialised. */
   query: Record<string, string | undefined>
+  /** Hands the loaded list to the page, so the download menu can offer it. */
+  onLoadedAction?: (ids: string, data: OpportunityCreatorsResult) => void
 }) {
   const [pillar, setPillar] = useState<string>(ALL)
   const [level, setLevel] = useState<OppLevel>("subcategory")
@@ -74,6 +77,7 @@ export function OpportunityCreators({
       .then((data) => {
         setState({ key: url, data })
         setFreshLevel(level)
+        onLoadedAction?.(ids, data)
       })
       .catch((e) => setError(e instanceof Error ? e.message : "Gagal memuat creator peluang"))
       .finally(() => setLoading(false))

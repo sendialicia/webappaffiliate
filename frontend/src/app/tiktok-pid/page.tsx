@@ -19,15 +19,18 @@ import { apiFetch } from "@/lib/api"
 import { formatIdr, formatPercent } from "@/lib/format"
 import { ttFiltersToParams, useTiktokPidFilters } from "@/store/tiktok-pid-filters"
 import type { DownloadItem } from "@/components/download-menu"
+import { comparisonRows, selectionLabel, selectionRows } from "@/lib/deep-dive-export"
 import type { FilterOptionsResult } from "@/types/overview"
 import type {
   TtCategoriesResult,
   TtCreatorsResult,
   TtProductDetail,
+  TtProductRow,
   TtProductsResult,
   TtQuadrantPreset,
   TtTrendPoint,
 } from "@/types/tiktok-pid"
+import type { OpportunityCreatorsResult } from "@/types/shopee-pid"
 
 /** How many lassoed products the combined deep dive will load at once. */
 const DEEP_DIVE_LIMIT = 50
@@ -120,6 +123,8 @@ function TiktokPidPageInner() {
   // Which creator row opened the pop-up; null keeps it closed and unfetched.
   const [openCreator, setOpenCreator] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  // The last opportunity list the panel loaded, tagged with the selection it was loaded for.
+  const [opportunity, setOpportunity] = useState<{ ids: string; data: OpportunityCreatorsResult } | null>(null)
 
   useEffect(() => {
     hydrateFromParams(searchParams)
@@ -327,9 +332,21 @@ function TiktokPidPageInner() {
 
   // Built from the same state each section renders — the product list follows the active
   // count-card filter and search box, not the unfiltered response.
+  const flattenProduct = ({ pillars, ...r }: TtProductRow) => ({
+    ...r,
+    livestream: pillars.livestream,
+    video: pillars.video,
+    productCard: pillars.productCard,
+  })
+  // Only the detail that matches the current selection; a stale one would mislabel the file.
+  const deepDive = detailUrl && detail?.key === detailUrl ? detail.data : null
+  const deepDiveHint = !selectedKey ? "Pilih produk di tabel dulu" : !deepDive ? "Detail produk masih dimuat…" : null
+  const freshOpportunity = opportunity && opportunity.ids === selectedKey ? opportunity.data : null
+
   const downloads: DownloadItem[] = [
     {
       id: "kategori",
+      group: "Category",
       label: `Tabel ${TT_LEVEL_LABELS[level]}`,
       rows: () =>
         categories
@@ -346,11 +363,13 @@ function TiktokPidPageInner() {
     },
     {
       id: "gmv-trend",
+      group: "Category",
       label: `GMV trend · ${scopeLabel}`,
       rows: () => (trend ?? []).map((t) => ({ ...t })),
     },
     {
       id: "quadrant",
+      group: "Category",
       label: `Product quadrant · ${TT_QUADRANT_PRESETS[quadrant].name}`,
       rows: () =>
         (products?.rows ?? [])
@@ -365,29 +384,107 @@ function TiktokPidPageInner() {
     {
       id: "produk",
       label: `Tabel produk (${visibleProducts.length} baris tampil)`,
-      rows: () =>
-        visibleProducts.map(({ pillars, ...r }) => ({
-          ...r,
-          livestream: pillars.livestream,
-          video: pillars.video,
-          productCard: pillars.productCard,
-        })),
+      group: "Product",
+      rows: () => visibleProducts.map(flattenProduct),
     },
     {
-      id: "product-deep-dive",
-      label: "Product deep dive · pillar",
-      rows: () => (detail ? detail.data.pillars.map((p) => ({ produk: detail.data.name, ...p })) : []),
+      id: "produk-terpilih",
+      label: `Produk terpilih (${selectedPids.length})`,
+      group: "Product deep dive",
+      disabledHint: deepDiveHint,
+      rows: () =>
+        selectionRows({
+          selected: selectedPids,
+          rows: products?.rows ?? [],
+          idOf: (r) => r.pid,
+          flatten: flattenProduct,
+          members: (deepDive?.members ?? []).map((m) => ({ id: m.pid, name: m.name, gmv: m.gmv })),
+          idColumn: "pid",
+          total: deepDive
+            ? {
+                pid: selectionLabel(deepDive.pids),
+                name: `TOTAL (${deepDive.pids.length} produk digabung)`,
+                category: deepDive.category,
+                subCategory: deepDive.subCategory,
+                format: deepDive.format,
+                gmv: deepDive.gmv,
+                gmvPrev: deepDive.gmvPrev,
+                growth: deepDive.growth,
+                creators: deepDive.creators,
+                orders: deepDive.orders,
+                ...deepDive.attributes,
+              }
+            : null,
+        }),
+    },
+    {
+      id: "product-deep-dive-metrik",
+      label: "Metrik vs periode pembanding",
+      group: "Product deep dive",
+      disabledHint: deepDiveHint,
+      rows: () =>
+        deepDive
+          ? comparisonRows(
+              { gmv: deepDive.gmv, creators: deepDive.creators, orders: deepDive.orders, ...deepDive.attributes },
+              {
+                gmv: deepDive.gmvPrev,
+                creators: deepDive.creatorsPrev,
+                orders: deepDive.ordersPrev,
+                ...deepDive.attributesPrev,
+              },
+            ).map((r) => ({ pid: selectionLabel(deepDive.pids), produk: deepDive.name, ...r }))
+          : [],
+    },
+    {
+      id: "product-deep-dive-trend",
+      label: `Trend (${trendGranularity})`,
+      group: "Product deep dive",
+      disabledHint: deepDiveHint,
+      rows: () =>
+        deepDive ? deepDive.trend.map((t) => ({ pid: selectionLabel(deepDive.pids), produk: deepDive.name, ...t })) : [],
+    },
+    {
+      id: "product-deep-dive-pillar",
+      label: "Kontribusi pillar",
+      group: "Product deep dive",
+      disabledHint: deepDiveHint,
+      rows: () =>
+        deepDive ? deepDive.pillars.map((p) => ({ pid: selectionLabel(deepDive.pids), produk: deepDive.name, ...p })) : [],
+    },
+    {
+      id: "product-deep-dive-varian",
+      label: "Kontribusi varian",
+      group: "Product deep dive",
+      disabledHint: deepDiveHint ?? (deepDive && deepDive.variants.length === 0 ? "Tidak ada data varian untuk pilihan ini" : null),
+      rows: () =>
+        deepDive ? deepDive.variants.map((v) => ({ pid: selectionLabel(deepDive.pids), produk: deepDive.name, ...v })) : [],
     },
     {
       id: "top-creators",
-      label: "Top creators",
+      label: `Top creators · ${selectedKey ? `${selectedPids.length} produk terpilih` : scopeLabel}`,
+      group: "Creators",
       rows: () =>
         (creators?.rows ?? []).map(({ pillars, ...r }) => ({
+          ...(selectedKey ? { pid: selectionLabel(selectedPids) } : {}),
           ...r,
           livestream: pillars.livestream,
           video: pillars.video,
           productCard: pillars.productCard,
         })),
+    },
+    {
+      id: "opportunity-creators",
+      label: "Creator peluang",
+      group: "Creators",
+      disabledHint: !selectedKey
+        ? "Pilih produk di tabel dulu"
+        : !freshOpportunity
+          ? "Klik “Cari” di panel creator peluang dulu"
+          : null,
+      rows: () =>
+        freshOpportunity
+          ? freshOpportunity.rows.map((r) => ({ pid: selectionLabel(selectedPids), subCategory: freshOpportunity.subCategory, ...r }))
+          : [],
     },
   ]
 
@@ -739,6 +836,7 @@ function TiktokPidPageInner() {
                 endpoint="/api/tiktok-pid/opportunity-creators"
                 idParam="pid"
                 ids={selectedKey}
+                onLoadedAction={(ids, data) => setOpportunity({ ids, data })}
                 query={{ brand: csv(brand), from, to, ...detailParams }}
               />
             </div>

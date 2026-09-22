@@ -19,6 +19,8 @@ import { apiFetch } from "@/lib/api"
 import { formatIdr, formatPercent } from "@/lib/format"
 import { skuFiltersToParams, useSkuFilters } from "@/store/sku-filters"
 import type { DownloadItem } from "@/components/download-menu"
+import { selectionLabel, selectionRows } from "@/lib/deep-dive-export"
+import type { OpportunityCreatorsResult } from "@/types/shopee-pid"
 import type { FilterOptionsResult } from "@/types/overview"
 import type {
   SkuCategoriesResult,
@@ -134,6 +136,8 @@ function SkuPageInner() {
   // Which creator row opened the pop-up; null keeps it closed and unfetched.
   const [openCreator, setOpenCreator] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  // The last opportunity list the panel loaded, tagged with the selection it was loaded for.
+  const [opportunity, setOpportunity] = useState<{ ids: string; data: OpportunityCreatorsResult } | null>(null)
 
   useEffect(() => {
     hydrateFromParams(searchParams)
@@ -365,36 +369,100 @@ function SkuPageInner() {
       }
     })
 
+  // Only the detail that matches the current selection; a stale one would mislabel the file.
+  const deepDive = detailUrl && detail?.key === detailUrl ? detail.data : null
+  const deepDiveHint = !selectedKey ? "Pilih SKU di tabel dulu" : !deepDive ? "Detail SKU masih dimuat…" : null
+  const freshOpportunity = opportunity && opportunity.ids === selectedKey ? opportunity.data : null
+  const selectionCell = deepDive ? selectionLabel(deepDive.barcodes) : ""
+
   const downloads: DownloadItem[] = [
     {
       id: "kategori",
       label: `Tabel ${skuLevelLabel(attributeBase, level)}`,
+      group: "Category",
       rows: () => (categories ? flatten([categories.total, ...categories.rows]) : []),
     },
     {
       id: "gmv-trend",
       label: `GMV trend · ${scopeLabel}`,
+      group: "Category",
       rows: () => (trend ?? []).map((t) => ({ ...t })),
     },
     {
       id: "quadrant",
       label: `SKU quadrant · ${SKU_QUADRANT_PRESETS[quadrant].name}`,
+      group: "Category",
       rows: () => flatten((products?.rows ?? []).filter((r) => r.inScope)),
     },
     {
       id: "sku",
       label: `Tabel SKU (${visibleSkus.length} baris tampil)`,
+      group: "SKU",
       rows: () => flatten(visibleSkus),
     },
     {
+      id: "sku-terpilih",
+      label: `SKU terpilih (${selectedBarcodes.length})`,
+      group: "SKU deep dive",
+      disabledHint: deepDiveHint,
+      rows: () =>
+        selectionRows({
+          selected: selectedBarcodes,
+          rows: products?.rows ?? [],
+          idOf: (r) => r.barcode,
+          flatten: (r) => flatten([r])[0] ?? {},
+          members: (deepDive?.members ?? []).map((m) => ({ id: m.barcode, name: m.name, gmv: m.gmv })),
+          idColumn: "barcode",
+          total: deepDive
+            ? {
+                barcode: selectionCell,
+                name: `TOTAL (${deepDive.barcodes.length} SKU digabung)`,
+                category: deepDive.category,
+                subCategory: deepDive.subCategory,
+                format: deepDive.format,
+                ...(flatten([deepDive.totals])[0] ?? {}),
+              }
+            : null,
+        }),
+    },
+    {
+      id: "sku-deep-dive-trend",
+      label: `Trend (${trendGranularity})`,
+      group: "SKU deep dive",
+      disabledHint: deepDiveHint,
+      rows: () => (deepDive ? deepDive.trend.map((t) => ({ barcode: selectionCell, sku: deepDive.name, ...t })) : []),
+    },
+    {
       id: "sku-deep-dive",
-      label: "SKU deep dive · listing",
-      rows: () => (detail ? detail.data.pids.map((p) => ({ sku: detail.data.name, ...p })) : []),
+      label: "Listing (PID) per marketplace",
+      group: "SKU deep dive",
+      disabledHint: deepDiveHint,
+      rows: () => (deepDive ? deepDive.pids.map((p) => ({ barcode: selectionCell, sku: deepDive.name, ...p })) : []),
     },
     {
       id: "top-creators",
-      label: "Top creators",
-      rows: () => (creators?.rows ?? []).map((r) => ({ ...r })),
+      label: `Top creators · ${selectedKey ? `${selectedBarcodes.length} SKU terpilih` : scopeLabel}`,
+      group: "Creators",
+      rows: () =>
+        (creators?.rows ?? []).map((r) => ({ ...(selectedKey ? { barcode: selectionLabel(selectedBarcodes) } : {}), ...r })),
+    },
+    {
+      id: "opportunity-creators",
+      label: "Creator peluang",
+      group: "Creators",
+      disabledHint: !selectedKey
+        ? "Pilih SKU di tabel dulu"
+        : !freshOpportunity
+          ? "Klik “Cari” di panel creator peluang dulu"
+          : null,
+      rows: () =>
+        freshOpportunity
+          ? freshOpportunity.rows.map((r) => ({
+              barcode: selectionLabel(selectedBarcodes),
+              subCategory: freshOpportunity.subCategory,
+              ...r,
+            }))
+          : [],
     },
   ]
 
@@ -745,6 +813,7 @@ function SkuPageInner() {
                 endpoint="/api/sku/opportunity-creators"
                 idParam="barcode"
                 ids={selectedKey}
+                onLoadedAction={(ids, data) => setOpportunity({ ids, data })}
                 query={{ brand: csv(brand), from, to, attributeBase, ...modeParams, ...detailParams }}
               />
             </div>
