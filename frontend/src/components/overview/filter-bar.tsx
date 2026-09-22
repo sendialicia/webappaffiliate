@@ -30,12 +30,18 @@ export function FilterBar({
   dimensionOptions,
   downloads,
   lastSection,
+  showSectionControls = true,
 }: {
   brandOptions: string[]
   marketplaceOptions: string[]
   dimensionOptions: FilterOption[]
   downloads: DownloadItem[]
   lastSection?: string | null
+  /**
+   * Tren and the dimension filters bind Summary and the sections below it, not the performance
+   * and progress blocks above, so the page only shows them once Summary has been reached.
+   */
+  showSectionControls?: boolean
 }) {
   const {
     brand,
@@ -51,17 +57,20 @@ export function FilterBar({
     trendGranularity,
     setDraftBrand,
     setDraftMarketplace,
+    setDraftDetail,
     setPreset,
     setCustomRange,
     setCompare,
     setPrevRange,
     setTrendGranularity,
-    clearDraftFilters,
     applyDraft,
     discardDraft,
   } = useOverviewFilters()
   const [copyLabel, setCopyLabel] = useState("Copy link")
-  const activeCount = activeDetailCount(draft.detail)
+  // Pillar has its own control in the bar; the popover and its badge hold the rest.
+  const pillarOptions = dimensionOptions.find((d) => d.key === "pillar")?.values ?? []
+  const popoverOptions = dimensionOptions.filter((d) => d.key !== "pillar")
+  const activeCount = activeDetailCount({ ...draft.detail, pillar: [] })
 
   // Nothing refetches until Apply, so the bar has to say when it is holding edits.
   const pending =
@@ -95,6 +104,15 @@ export function FilterBar({
         />
       </FilterItem>
 
+      <FilterItem label="Pillar">
+        <MultiSelect
+          label="Pillar"
+          options={pillarOptions}
+          selected={draft.detail.pillar ?? []}
+          onChangeAction={(values) => setDraftDetail("pillar", values)}
+        />
+      </FilterItem>
+
       <FilterDivider />
 
       <FilterItem label="Periode">
@@ -119,6 +137,8 @@ export function FilterBar({
         />
       </FilterItem>
 
+      {showSectionControls && (
+        <>
       <FilterDivider />
 
       <FilterItem label="Tren">
@@ -144,7 +164,7 @@ export function FilterBar({
               <PopoverTrigger
                 render={
                   <button type="button" className={pillControlClass}>
-                    Dimensi PID
+                    Kategori & format
                     {activeCount > 0 && (
                       <span className="rounded-full bg-[var(--accent)] px-1.5 py-0.5 text-[11.5px] font-bold text-[var(--accent-foreground)]">
                         {activeCount}
@@ -162,7 +182,7 @@ export function FilterBar({
                   {activeCount > 0 && (
                     <button
                       type="button"
-                      onClick={clearDraftFilters}
+                      onClick={() => popoverOptions.forEach((opt) => setDraftDetail(opt.key, []))}
                       className="ml-auto text-[12px] font-semibold text-[var(--accent-foreground)]"
                     >
                       Reset
@@ -170,11 +190,13 @@ export function FilterBar({
                   )}
                 </div>
                 <div className="flex flex-wrap gap-3">
-                  <DetailFilterSelects options={dimensionOptions} />
+                  <DetailFilterSelects options={popoverOptions} />
                 </div>
               </PopoverContent>
             </Popover>
       </FilterItem>
+        </>
+      )}
 
       <FilterActions>
         {pending && (

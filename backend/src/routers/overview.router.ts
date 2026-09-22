@@ -4,6 +4,7 @@ import {
   getDailyPerformanceHandler,
   getDriversHandler,
   getFilterOptionsHandler,
+  getDataAvailabilityHandler,
   getFunnelHandler,
   getMonthlyPerformanceHandler,
   getProgressHandler,
@@ -22,3 +23,4 @@ overviewRouter.get('/api/overview/drivers', getDriversHandler)
 overviewRouter.get('/api/overview/spend', getSpendHandler)
 overviewRouter.get('/api/overview/funnel', getFunnelHandler)
 overviewRouter.get('/api/overview/filter-options', getFilterOptionsHandler)
+overviewRouter.get('/api/overview/data-availability', getDataAvailabilityHandler)

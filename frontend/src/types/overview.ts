@@ -267,3 +267,18 @@ export interface FilterOptionsResult {
   marketplaces: string[]
   dimensions: FilterOption[]
 }
+
+/** Last day of data per brand, per source — loads lag and stop at different days per brand. */
+export interface DataAvailabilityRow {
+  brand: string
+  shopeeOrders: string | null
+  tiktokOrders: string | null
+  shopeeActual: string | null
+  tiktokActual: string | null
+  tiktokContent: string | null
+}
+
+export interface DataAvailabilityResult {
+  latest: string | null
+  rows: DataAvailabilityRow[]
+}

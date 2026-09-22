@@ -4,6 +4,7 @@ import Link from "next/link"
 import { useEffect, useSyncExternalStore, type ReactNode } from "react"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { UserMenu } from "@/components/user-menu"
+import { DataAvailability } from "@/components/data-availability"
 import { currentMonth } from "@/lib/date-range"
 import { formatMonthLabelFull } from "@/lib/format"
 
@@ -320,6 +321,7 @@ export function DashboardShell({
             <div className="mt-1 text-sm text-[var(--ov-mut)]">{subtitle}</div>
           </div>
           <div className="flex flex-wrap items-center gap-2">
+            <DataAvailability />
             <UserMenu />
             <ThemeToggle />
           </div>

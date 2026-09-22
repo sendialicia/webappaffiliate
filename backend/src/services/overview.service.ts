@@ -19,6 +19,8 @@ import type {
   FilterOption,
   FilterOptionsResult,
   CompositionDimension,
+  DataAvailabilityResult,
+  DataAvailabilityRow,
   CompositionResult,
   CompositionRow,
   CompositionTrendPoint,
@@ -1127,4 +1129,89 @@ export async function getFilterOptions(
     marketplaces: sorted(row.marketplaces),
     dimensions,
   }
+}
+
+/**
+ * How far each source reaches per brand. Scans only the last 120 days: a brand whose data
+ * stopped earlier than that is not a lag worth flagging, it is gone.
+ */
+export async function getDataAvailability(): Promise<DataAvailabilityResult> {
+  const [ordersResult, actualResult, contentResult] = await Promise.all([
+    clickhouse.query({
+      query: `
+        SELECT BRAND_NAME AS brand, MARKETPLACE_NAME AS marketplace, toString(max(DATE)) AS lastDate
+        FROM ${TABLE_SUMMARY_ORDER}
+        WHERE REGION_CODE = 'id'
+          AND IS_AFFILIATE = TRUE
+          AND ITEM_MARKETPLACE_FLAG = TRUE
+          AND BRAND_NAME IS NOT NULL
+          AND DATE >= today() - 120
+        GROUP BY brand, marketplace
+      `,
+      format: 'JSONEachRow',
+    }),
+    clickhouse.query({
+      query: `
+        SELECT BRAND_NAME AS brand, MARKETPLACE_NAME AS marketplace, toString(max(PERIOD_DATE)) AS lastDate
+        FROM ${TABLE_DAILY_PERFORMANCE}
+        WHERE REGION_CODE = 'id'
+          AND METRIC_NAME = 'Actual GMV'
+          AND METRIC_VALUE > 0
+          AND BRAND_NAME IS NOT NULL
+          AND PERIOD_DATE >= today() - 120
+        GROUP BY brand, marketplace
+      `,
+      format: 'JSONEachRow',
+    }),
+    clickhouse.query({
+      query: `
+        SELECT BRAND_NAME AS brand, toString(max(DATE)) AS lastDate
+        FROM ${TABLE_CONTENT_PERFORMANCE}
+        WHERE MARKETPLACE_NAME = 'Tiktok'
+          AND BRAND_NAME IS NOT NULL
+          AND DATE >= today() - 120
+        GROUP BY brand
+      `,
+      format: 'JSONEachRow',
+    }),
+  ])
+
+  type Row = { brand: string; marketplace?: string; lastDate: string }
+  const orders = await ordersResult.json<Row>()
+  const actual = await actualResult.json<Row>()
+  const content = await contentResult.json<Row>()
+
+  const byBrand = new Map<string, DataAvailabilityRow>()
+  const rowFor = (brand: string) => {
+    let row = byBrand.get(brand)
+    if (!row) {
+      row = { brand, shopeeOrders: null, tiktokOrders: null, shopeeActual: null, tiktokActual: null, tiktokContent: null }
+      byBrand.set(brand, row)
+    }
+    return row
+  }
+  for (const r of orders) {
+    const row = rowFor(r.brand)
+    if (r.marketplace === 'Shopee') row.shopeeOrders = r.lastDate
+    if (r.marketplace === 'Tiktok') row.tiktokOrders = r.lastDate
+  }
+  for (const r of actual) {
+    const row = byBrand.get(r.brand)
+    if (!row) continue
+    if (r.marketplace === 'Shopee') row.shopeeActual = r.lastDate
+    if (r.marketplace === 'Tiktok') row.tiktokActual = r.lastDate
+  }
+  // The content table spells some brands differently ("brightnow"), so match on the same key.
+  const orderBrandByKey = new Map([...byBrand.keys()].map((b) => [brandKey(b), b]))
+  for (const r of content) {
+    const brand = orderBrandByKey.get(brandKey(r.brand))
+    if (brand) rowFor(brand).tiktokContent = r.lastDate
+  }
+
+  const rows = [...byBrand.values()].sort((a, b) => a.brand.localeCompare(b.brand))
+  const latest = rows.reduce<string | null>((acc, r) => {
+    for (const d of [r.shopeeOrders, r.tiktokOrders]) if (d && (!acc || d > acc)) acc = d
+    return acc
+  }, null)
+  return { latest, rows }
 }

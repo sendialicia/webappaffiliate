@@ -30,6 +30,98 @@ export function driverChartHeight(rowCount: number): number {
 /** Room for entity names on the one panel that shows them; the others hide the axis. */
 export const DRIVER_LABEL_WIDTH = 96
 
+/**
+ * Each bar orders its own segments — largest nearest the axis — while a dimension value keeps
+ * one colour everywhere. Recharts stacks series in a fixed order, so the rows are re-shaped
+ * into rank series (the k-th largest segment of every row) and each cell is coloured by the
+ * dimension value that holds that rank in its row.
+ */
+interface RankedRow {
+  entity: string
+  [key: string]: string | number | null
+}
+
+const rankValue = (k: number) => `__v${k}`
+const rankName = (k: number) => `__n${k}`
+const rankColor = (k: number) => `__c${k}`
+const rankRaw = (k: number) => `__r${k}`
+
+function rankRows(
+  rows: DriverChartRow[],
+  names: string[],
+  unit: "currency" | "pp" | "share",
+): { data: RankedRow[]; depth: number } {
+  let depth = 0
+  const data = rows.map((row) => {
+    const total =
+      unit === "share" ? names.reduce((acc, n) => acc + Math.max(Number(row[n]) || 0, 0), 0) : 0
+    const segments = names
+      .map((name, i) => {
+        const raw = Number(row[name]) || 0
+        const value = unit === "share" ? (total > 0 ? (Math.max(raw, 0) / total) * 100 : 0) : raw
+        return { name, raw, value, color: DIMENSION_COLORS[i % DIMENSION_COLORS.length] as string }
+      })
+      .filter((seg) => seg.value !== 0)
+      // Signed charts sort by size either side of zero, so the biggest mover sits at the axis.
+      .sort((a, b) => Math.abs(b.value) - Math.abs(a.value))
+    depth = Math.max(depth, segments.length)
+    const out: RankedRow = { entity: String(row.entity) }
+    segments.forEach((seg, k) => {
+      out[rankValue(k)] = seg.value
+      out[rankName(k)] = seg.name
+      out[rankColor(k)] = seg.color
+      out[rankRaw(k)] = seg.raw
+    })
+    return out
+  })
+  return { data, depth }
+}
+
+function DriverTooltip({
+  active,
+  payload,
+  unit,
+}: {
+  active?: boolean
+  payload?: Array<{ payload?: RankedRow }>
+  unit: "currency" | "pp" | "share"
+}) {
+  const row = payload?.[0]?.payload
+  if (!active || !row) return null
+  const items: Array<{ name: string; value: number; raw: number; color: string }> = []
+  for (let k = 0; row[rankName(k)] !== undefined; k++) {
+    items.push({
+      name: String(row[rankName(k)]),
+      value: Number(row[rankValue(k)]),
+      raw: Number(row[rankRaw(k)]),
+      color: String(row[rankColor(k)]),
+    })
+  }
+  // Largest first; for signed charts gains before losses, each by size.
+  items.sort((a, b) => b.value - a.value)
+  const fmt = (item: (typeof items)[number]) =>
+    unit === "share"
+      ? `${item.value.toFixed(1)}% · ${formatCompact(item.raw)}`
+      : unit === "pp"
+        ? `${item.value >= 0 ? "+" : ""}${item.value.toFixed(1)}pp`
+        : `${item.value >= 0 ? "+" : "−"}${formatCompact(Math.abs(item.value))}`
+  return (
+    <div
+      className="rounded-lg border px-3 py-2 text-[12.5px]"
+      style={{ background: "var(--ov-tooltip)", borderColor: "var(--ov-line)" }}
+    >
+      <div className="mb-1 font-semibold text-[var(--ov-head)]">{row.entity}</div>
+      {items.map((item) => (
+        <div key={item.name} className="flex items-center gap-2 py-0.5">
+          <i className="block h-2.5 w-2.5 flex-none rounded-sm" style={{ background: item.color }} />
+          <span className="text-[var(--ov-soft)]">{item.name}</span>
+          <span className="ml-auto pl-4 font-mono text-[var(--ov-ink)]">{fmt(item)}</span>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 export function DriverChart({
   rows,
   names,
@@ -48,21 +140,7 @@ export function DriverChart({
   /** Panels sit side by side on shared rows, so only the first one needs the entity names. */
   showLabels?: boolean
 }) {
-  const data =
-    unit === "share"
-      ? rows.map((row) => {
-          const total = names.reduce((acc, n) => acc + Math.max(Number(row[n]) || 0, 0), 0)
-          const out: DriverChartRow = { entity: row.entity }
-          for (const n of names) {
-            const v = Math.max(Number(row[n]) || 0, 0)
-            out[n] = total > 0 ? (v / total) * 100 : 0
-            out[`${RAW_PREFIX}${n}`] = v
-          }
-          return out
-        })
-      : rows
-
-  const fmt = (v: number) => (unit === "pp" ? `${v >= 0 ? "+" : ""}${v.toFixed(1)}pp` : formatCompact(v))
+  const { data, depth } = rankRows(rows, names, unit)
   const tick = (v: number) =>
     unit === "pp" || unit === "share" ? `${Math.round(v)}%` : formatCompact(v)
 
@@ -96,29 +174,20 @@ export function DriverChart({
           tickLine={false}
           width={DRIVER_LABEL_WIDTH}
         />
-        <Tooltip
-          cursor={{ fill: "var(--ov-fill1)" }}
-          contentStyle={{ background: "var(--ov-tooltip)", border: "1px solid var(--ov-line)", borderRadius: 8, fontSize: 12 }}
-          labelStyle={{ color: "var(--ov-head)" }}
-          // Largest first, so the reader sees what moved the entity most without scanning.
-          itemSorter={(item) => -Number(item.value ?? 0)}
-          formatter={(value, name, item) => {
-            if (unit !== "share") return [fmt(Number(value)), String(name)]
-            const raw = Number((item?.payload as DriverChartRow | undefined)?.[`${RAW_PREFIX}${String(name)}`] ?? 0)
-            return [`${Number(value).toFixed(1)}% · ${formatCompact(raw)}`, String(name)]
-          }}
-        />
+        <Tooltip cursor={{ fill: "var(--ov-fill1)" }} content={<DriverTooltip unit={unit} />} />
         {unit !== "share" && <ReferenceLine x={0} stroke="var(--ov-rule)" />}
-        {names.map((name, i) => (
-          <Bar key={name} dataKey={name} stackId="s" fill={DIMENSION_COLORS[i % DIMENSION_COLORS.length]} />
+        {Array.from({ length: depth }, (_, k) => (
+          <Bar key={k} dataKey={rankValue(k)} stackId="s" isAnimationActive={false}>
+            {data.map((row) => (
+              <Cell key={row.entity} fill={String(row[rankColor(k)] ?? "transparent")} />
+            ))}
+          </Bar>
         ))}
       </BarChart>
     </ResponsiveContainer>
   )
 }
 
-/** Keeps each segment's GMV next to its share without colliding with a dimension value's name. */
-const RAW_PREFIX = "__raw__"
 
 /**
  * Growth reads as one bar per entity, like the reference mockup — a bar per dimension value

@@ -287,3 +287,22 @@ export interface FunnelResult {
   marketplaces: FunnelMarketplace[]
   unavailable: string[]
 }
+
+/** Last day of data per brand, per source — loads lag and stop at different days per brand. */
+export interface DataAvailabilityRow {
+  brand: string
+  /** Order data (datamart_affiliate_summary_order), affiliate rows only. */
+  shopeeOrders: string | null
+  tiktokOrders: string | null
+  /** Last day with an actual GMV in datamart_affiliate_daily_performance (target table). */
+  shopeeActual: string | null
+  tiktokActual: string | null
+  /** datamart_affiliate_content_performance, TikTok only. */
+  tiktokContent: string | null
+}
+
+export interface DataAvailabilityResult {
+  /** Latest order-data day across every brand: the "data up to" the header shows. */
+  latest: string | null
+  rows: DataAvailabilityRow[]
+}

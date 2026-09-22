@@ -151,6 +151,9 @@ function OverviewPageInner() {
   const [funnel, setFunnel] = useState<FunnelResult | null>(null)
   const [filterOptions, setFilterOptions] = useState<FilterOptionsResult | null>(null)
   const [error, setError] = useState<string | null>(null)
+  // Whether the reader has scrolled down to Summary, where Tren and the dimension filters start
+  // to apply; above it they would only look like they control the performance blocks.
+  const [summaryReached, setSummaryReached] = useState(false)
 
   const detailKey = JSON.stringify(detail)
   const detailParams = Object.fromEntries(
@@ -160,6 +163,21 @@ function OverviewPageInner() {
   ) as Record<string, string>
   const prevParams =
     compare === "custom" && prevFrom && prevTo ? { prevFrom, prevTo } : ({} as Record<string, string>)
+
+  useEffect(() => {
+    const el = document.getElementById("ov-sec-4")
+    if (!el) return
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry) return
+        setSummaryReached(entry.isIntersecting || entry.boundingClientRect.top < 0)
+      },
+      // "Reached" once Summary's top is in the upper half of the viewport, or above it.
+      { rootMargin: "0px 0px -50% 0px" },
+    )
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
 
   // Hydrate filter state from the URL once on mount, so shared links load the same view.
   useEffect(() => {
@@ -516,6 +534,10 @@ function OverviewPageInner() {
         marketplaceOptions={filterOptions?.marketplaces ?? progress?.marketplace.map((r) => r.name) ?? []}
         dimensionOptions={filterOptions?.dimensions ?? []}
         downloads={downloads}
+        // Still shown up top while a dimension filter is active, so it is never applied unseen.
+        showSectionControls={
+          summaryReached || Object.entries(detail).some(([key, values]) => key !== "pillar" && (values?.length ?? 0) > 0)
+        }
       />
 
       {error && (

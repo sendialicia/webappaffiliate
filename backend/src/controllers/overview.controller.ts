@@ -7,6 +7,7 @@ import {
   getMonthlyPerformance,
   getProgress,
   getFilterOptions,
+  getDataAvailability,
   getSpend,
   getSummary,
 } from '../services/overview.service'
@@ -204,4 +205,8 @@ function defaultFrom(to: string): string {
   const d = new Date(to)
   d.setDate(d.getDate() - 29)
   return d.toISOString().slice(0, 10)
+}
+
+export async function getDataAvailabilityHandler(_req: Request, res: Response) {
+  res.json(await getDataAvailability())
 }

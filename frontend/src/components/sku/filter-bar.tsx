@@ -42,7 +42,6 @@ export function skuLevelLabel(base: SkuAttributeBase, level: SkuLevel): string {
 
 /** Both dimension sets, the way the existing Tableau SKU page offers them. */
 const SKU_DIMENSIONS = [
-  { key: "pillar", label: "Pillar" },
   { key: "pidCategory", label: "PID Category" },
   { key: "pidSubCategory", label: "PID Sub Category" },
   { key: "pidFormat", label: "PID Format" },
@@ -91,7 +90,6 @@ export function SkuFilterBar({
     setDraftBundleSplit,
     setDraftIncludeGwp,
     setDraftDetail,
-    clearDraftDetail,
     applyDraft,
     discardDraft,
     setPreset,
@@ -111,7 +109,8 @@ export function SkuFilterBar({
   const pending =
     JSON.stringify([draft.brand, draft.marketplace, draft.bundleType, draft.bundleSplit, draft.includeGwp, draft.detail]) !==
     JSON.stringify([brand, marketplace, bundleType, bundleSplit, includeGwp, detail])
-  const activeDimensions = Object.values(draft.detail).filter((v) => v && v.length > 0).length
+  // Pillar has its own control in the bar, so the popover badge counts only what it holds.
+  const activeDimensions = SKU_DIMENSIONS.filter((dim) => (draft.detail[dim.key] ?? []).length > 0).length
 
   const resolvedPrev =
     compare === "custom"
@@ -132,6 +131,17 @@ export function SkuFilterBar({
           options={marketplaceOptions}
           selected={draft.marketplace}
           onChangeAction={setDraftMarketplace}
+        />
+      </FilterItem>
+
+      {/* Pillar sits in the bar itself rather than under the dimension popover: it is the cut
+          readers reach for most, and it is not a product attribute like the others. */}
+      <FilterItem label="Pillar">
+        <MultiSelect
+          label="Pillar"
+          options={dimensionOptions.pillar ?? []}
+          selected={draft.detail.pillar ?? []}
+          onChangeAction={(values) => setDraftDetail("pillar", values)}
         />
       </FilterItem>
 
@@ -258,7 +268,7 @@ export function SkuFilterBar({
           <PopoverTrigger
             render={
               <button type="button" className={pillControlClass}>
-                Dimensi PID + SKU
+                Kategori & format
                 {activeDimensions > 0 && (
                   <span className="rounded-full bg-[var(--accent)] px-1.5 py-0.5 text-[11.5px] font-bold text-[var(--accent-foreground)]">
                     {activeDimensions}
@@ -276,7 +286,7 @@ export function SkuFilterBar({
               {activeDimensions > 0 && (
                 <button
                   type="button"
-                  onClick={clearDraftDetail}
+                  onClick={() => SKU_DIMENSIONS.forEach((dim) => setDraftDetail(dim.key, []))}
                   className="ml-auto text-[12px] font-semibold text-[var(--accent-foreground)]"
                 >
                   Reset

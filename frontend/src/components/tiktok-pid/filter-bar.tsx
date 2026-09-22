@@ -30,7 +30,6 @@ export const TT_LEVEL_LABELS: Record<PidLevel, string> = {
 }
 
 const PID_DIMENSIONS = [
-  { key: "pillar", label: "Pillar" },
   { key: "pidCategory", label: "PID Category" },
   { key: "pidSubCategory", label: "PID Sub Category" },
   { key: "pidFormat", label: "PID Format" },
@@ -64,7 +63,6 @@ export function TtFilterBar({
     scope,
     setDraftBrand,
     setDraftDetail,
-    clearDraftDetail,
     applyDraft,
     discardDraft,
     setPreset,
@@ -81,7 +79,8 @@ export function TtFilterBar({
 
   // Nothing refetches until Apply, so the bar has to say when it is holding edits.
   const pending = JSON.stringify([draft.brand, draft.detail]) !== JSON.stringify([brand, detail])
-  const activeDimensions = Object.values(draft.detail).filter((v) => v && v.length > 0).length
+  // Pillar has its own control in the bar, so the popover badge counts only what it holds.
+  const activeDimensions = PID_DIMENSIONS.filter((dim) => (draft.detail[dim.key] ?? []).length > 0).length
 
   const resolvedPrev =
     compare === "custom"
@@ -94,6 +93,17 @@ export function TtFilterBar({
     <FloatingFilterBar>
       <FilterItem label="Brand">
         <MultiSelect label="Brand" options={brandOptions} selected={draft.brand} onChangeAction={setDraftBrand} />
+      </FilterItem>
+
+      {/* Pillar sits in the bar itself rather than under the dimension popover: it is the cut
+          readers reach for most, and it is not a product attribute like the others. */}
+      <FilterItem label="Pillar">
+        <MultiSelect
+          label="Pillar"
+          options={dimensionOptions.pillar ?? []}
+          selected={draft.detail.pillar ?? []}
+          onChangeAction={(values) => setDraftDetail("pillar", values)}
+        />
       </FilterItem>
 
       <FilterItem label="Level">
@@ -158,7 +168,7 @@ export function TtFilterBar({
           <PopoverTrigger
             render={
               <button type="button" className={pillControlClass}>
-                Dimensi PID
+                Kategori & format
                 {activeDimensions > 0 && (
                   <span className="rounded-full bg-[var(--accent)] px-1.5 py-0.5 text-[11.5px] font-bold text-[var(--accent-foreground)]">
                     {activeDimensions}
@@ -176,7 +186,7 @@ export function TtFilterBar({
               {activeDimensions > 0 && (
                 <button
                   type="button"
-                  onClick={clearDraftDetail}
+                  onClick={() => PID_DIMENSIONS.forEach((dim) => setDraftDetail(dim.key, []))}
                   className="ml-auto text-[12px] font-semibold text-[var(--accent-foreground)]"
                 >
                   Reset
