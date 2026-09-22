@@ -153,9 +153,9 @@ export async function getCompositionHandler(req: Request, res: Response) {
   )
     ? (dimensionParam as CompositionDimension)
     : 'pillar'
-  // 20 covers brand (15) and both sub-category lists (~18) whole; only the format lists,
-  // at ~61 values, still get cut — and there a full list would be unreadable anyway.
-  const limit = Math.min(Number(str(req.query.limit)) || 20, 40)
+  // Every value by default: the waterfall and table scroll, so even the ~61 formats fit, and a
+  // cut list would leave the bridge short of the total. The cap only guards a runaway column.
+  const limit = Math.min(Number(str(req.query.limit)) || 500, 500)
 
   const data = await getComposition(from, to, basis, filtersFromQuery(req), granularity, dimension, limit, detailFromQuery(req), prevRangeFromQuery(req))
   res.json(data)
@@ -167,7 +167,8 @@ export async function getDriversHandler(req: Request, res: Response) {
   const basis: ComparisonBasis = basisFromQuery(req)
   const entity = driverFieldOf(req.query.entity, 'brand')
   const dimension = driverFieldOf(req.query.dimension, 'pidFormat')
-  const limit = Math.min(Number(str(req.query.limit)) || 10, 20)
+  // Top 20 plus a folded "Lainnya" — ~94% of GMV by name; more colours than that start repeating.
+  const limit = Math.min(Number(str(req.query.limit)) || 20, 20)
 
   const data = await getDrivers(from, to, basis, filtersFromQuery(req), entity, dimension, limit, detailFromQuery(req), prevRangeFromQuery(req))
   res.json(data)

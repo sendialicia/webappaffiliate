@@ -40,7 +40,8 @@ export function CompositionTrendChart({
           formatter={(value, name) => [formatCompact(Number(value)), String(name)]}
         />
         {names.map((name, i) => {
-          const color = DIMENSION_COLORS[i % DIMENSION_COLORS.length]
+          // The folded remainder stays neutral so it does not read as one more category.
+          const color = name === "Lainnya" ? "var(--ov-dim)" : DIMENSION_COLORS[i % DIMENSION_COLORS.length]
           const dimmed = highlighted !== null && highlighted !== name
           return (
             <Area

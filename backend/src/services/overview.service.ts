@@ -424,6 +424,9 @@ const DIMENSION_COLUMNS: Record<CompositionDimension, string> = {
   productFormat: 'PRODUCT_FORMAT',
 }
 
+/** Series the composition trend keeps before folding the rest into "Lainnya". */
+const TREND_SERIES = 12
+
 export async function getComposition(
   from: string,
   to: string,
@@ -543,13 +546,17 @@ export async function getComposition(
     gmv: dropped.reduce((a, r) => a + r.gmv, 0),
   }
 
+  // The table and waterfall list every value, but a stacked area of ~60 series is unreadable:
+  // the trend keeps the top TREND_SERIES and folds the rest into "Lainnya".
+  const trendNames = new Set(rows.slice(0, TREND_SERIES).map((r) => r.name))
   const buckets = new Map<string, CompositionTrendPoint>()
   for (const row of seriesRows) {
     if (row.date < from || row.date > to) continue
     if (!keptNames.has(row.name)) continue
+    const name = trendNames.has(row.name) ? row.name : DRIVER_OTHER
     const key = bucketKey(row.date, granularity)
     const point = buckets.get(key) ?? ({ bucket: key } as CompositionTrendPoint)
-    point[row.name] = (Number(point[row.name]) || 0) + Number(row.gmv || 0)
+    point[name] = (Number(point[name]) || 0) + Number(row.gmv || 0)
     buckets.set(key, point)
   }
 

@@ -70,10 +70,18 @@ const COLORS: Record<WaterfallStep["kind"], string> = {
   down: "var(--ov-red)",
 }
 
+/** Narrowest a step can get while its angled label still reads. */
+const STEP_WIDTH = 34
+
 export function WaterfallChart({ result, height = 296 }: { result: CompositionResult; height?: number }) {
   const steps = buildSteps(result)
+  // Every value is listed now (~61 for formats), so the bridge gets a readable width per step
+  // and scrolls sideways once that outgrows the card.
+  const minWidth = steps.length * STEP_WIDTH
 
   return (
+    <div className="overflow-x-auto pb-1">
+      <div style={{ minWidth }}>
     <ResponsiveContainer width="100%" height={height}>
       <BarChart data={steps} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
         <XAxis
@@ -114,5 +122,7 @@ export function WaterfallChart({ result, height = 296 }: { result: CompositionRe
         </Bar>
       </BarChart>
     </ResponsiveContainer>
+      </div>
+    </div>
   )
 }

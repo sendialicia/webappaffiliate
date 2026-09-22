@@ -65,7 +65,9 @@ export function CompositionTable({
   }
 
   return (
-    <div className="overflow-x-auto">
+    // Scrolls in both directions with the header pinned, so a long list (~61 formats) stays
+    // beside the waterfall instead of stretching the section.
+    <div className="max-h-[400px] overflow-auto rounded-md">
       <table className="w-full min-w-[620px] border-collapse text-[13px]">
         <thead>
           <tr>
@@ -74,8 +76,10 @@ export function CompositionTable({
                 key={col.key}
                 onClick={() => toggleSort(col.key)}
                 title="Klik untuk mengurutkan"
-                className="cursor-pointer border-b border-[var(--ov-line)] bg-[var(--accent)] p-2.5 text-[12px] font-bold tracking-wider whitespace-nowrap text-[var(--ov-head)] uppercase select-none"
-                style={{ textAlign: col.align }}
+                className="sticky top-0 z-[1] cursor-pointer border-b border-[var(--ov-line)] p-2.5 text-[12px] font-bold tracking-wider whitespace-nowrap text-[var(--ov-head)] uppercase select-none"
+                // The accent tint over a solid card colour: the tint alone is translucent, and rows
+                // would show through the pinned header as they scroll under it.
+                style={{ textAlign: col.align, background: "linear-gradient(var(--accent), var(--accent)), var(--card)" }}
               >
                 {col.label}
                 <span className="ml-1 text-[10.5px] text-[var(--ov-blue)]">

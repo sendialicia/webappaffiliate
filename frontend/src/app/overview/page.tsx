@@ -881,7 +881,11 @@ function OverviewPageInner() {
                 </div>
                 <CompositionTrendChart
                   trend={composition.trend}
-                  names={composition.rows.map((r) => r.name)}
+                  // Matches the backend: top 12 series, the rest folded into "Lainnya".
+                  names={[
+                    ...composition.rows.slice(0, 12).map((r) => r.name),
+                    ...(composition.rows.length > 12 ? ["Lainnya"] : []),
+                  ]}
                   highlighted={selectedSlice}
                 />
               </div>
