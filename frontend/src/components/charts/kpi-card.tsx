@@ -11,6 +11,7 @@ type TrendKey = keyof Omit<SummaryTrendPoint, "bucket">
 /** How each sparkline metric reads in its tooltip — the same units the card's headline uses. */
 const TREND_FORMAT: Record<TrendKey, (v: number) => string> = {
   gmv: formatRpFull,
+  totalGmv: formatRpFull,
   gmvPerCreator: formatRpFull,
   asp: formatRpFull,
   aov: formatRpFull,

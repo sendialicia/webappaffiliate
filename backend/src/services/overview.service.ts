@@ -1,5 +1,6 @@
 import { clickhouse } from '../lib/clickhouse'
 import { completeCommissionCondition, getCommissionCompleteThrough } from '../lib/commission-completeness'
+import { getAffiliateCompleteThrough } from '../lib/affiliate-completeness'
 import {
   DETAIL_FILTER_COLUMNS,
   TABLE_CONTENT_PERFORMANCE,
@@ -260,6 +261,9 @@ interface SummaryRow {
   /** GMV and commission on days whose commission has fully landed — the base for the ratios. */
   affGmvCc: number
   affCommissionCc: number
+  /** All GMV and affiliate GMV on days whose affiliate rows have loaded — the share's base. */
+  totalGmvAc: number
+  affGmvAc: number
 }
 
 export async function getSummary(
@@ -279,8 +283,14 @@ export async function getSummary(
     prevTo: comparison.to,
   }
   const filterClause = buildFilterClause(filters, params) + buildDetailClause(detail, params)
-  const completeThrough = await getCommissionCompleteThrough()
+  const [completeThrough, affiliateThrough] = await Promise.all([
+    getCommissionCompleteThrough(),
+    getAffiliateCompleteThrough(),
+  ])
   const complete = completeCommissionCondition(completeThrough, { from, prevFrom: comparison.from }, params)
+  // Same cut, for the affiliate share: days where a marketplace's self-operated rows have
+  // loaded but its affiliate rows have not would read as affiliate share collapsing.
+  const affiliateLoaded = completeCommissionCondition(affiliateThrough, { from, prevFrom: comparison.from }, params, 'ac')
 
   const result = await clickhouse.query({
     query: `
@@ -288,6 +298,8 @@ export async function getSummary(
         DATE AS date,
         SUM(CASE WHEN IS_AFFILIATE AND ${complete} THEN GMV ELSE 0 END) AS affGmvCc,
         SUM(CASE WHEN IS_AFFILIATE AND ${complete} THEN COMMISSION ELSE 0 END) AS affCommissionCc,
+        SUM(CASE WHEN ${affiliateLoaded} THEN GMV ELSE 0 END) AS totalGmvAc,
+        SUM(CASE WHEN IS_AFFILIATE AND ${affiliateLoaded} THEN GMV ELSE 0 END) AS affGmvAc,
         SUM(CASE WHEN IS_AFFILIATE THEN GMV ELSE 0 END) AS affGmv,
         SUM(GMV) AS totalGmv,
         SUM(CASE WHEN IS_AFFILIATE THEN ITEMS_SOLD ELSE 0 END) AS affItems,
@@ -342,6 +354,9 @@ export async function getSummary(
     commissionCompleteThrough: Object.fromEntries(
       Object.entries(completeThrough).filter(([, cut]) => cut < to),
     ),
+    affiliateCompleteThrough: Object.fromEntries(
+      Object.entries(affiliateThrough).filter(([, cut]) => cut < to),
+    ),
   }
 }
 
@@ -359,6 +374,8 @@ function aggregateRows(rows: SummaryRow[], creators: number) {
   // The ratios use only days whose commission has landed; see commission-completeness.ts.
   const gmvCc = sumBy(rows, 'affGmvCc')
   const commissionCc = sumBy(rows, 'affCommissionCc')
+  const totalAc = sumBy(rows, 'totalGmvAc')
+  const affAc = sumBy(rows, 'affGmvAc')
 
   return {
     gmv,
@@ -367,7 +384,7 @@ function aggregateRows(rows: SummaryRow[], creators: number) {
     asp: items > 0 ? gmv / items : 0,
     aov: orders > 0 ? gmv / orders : 0,
     commission,
-    affiliateShare: totalGmv > 0 ? gmv / totalGmv : 0,
+    affiliateShare: totalAc > 0 ? affAc / totalAc : 0,
     commissionRate: gmvCc > 0 ? commissionCc / gmvCc : 0,
     roi: commissionCc > 0 ? gmvCc / commissionCc : 0,
     refundRate: gmv > 0 ? refund / gmv : 0,
@@ -431,6 +448,10 @@ function bucketTrend(rows: SummaryRow[], granularity: TrendGranularity): Summary
       // A bucket with any GMV whose commission has not landed gets no ratio at all: a partial
       // one would mix marketplaces unevenly and read as a real move.
       const commissionComplete = gmv - gmvCc < 1
+      const totalAc = sumBy(bucketRows, 'totalGmvAc')
+      const affAc = sumBy(bucketRows, 'affGmvAc')
+      // Likewise a bucket where some self-operated GMV has no affiliate load beside it yet.
+      const affiliateLoaded = totalGmv - totalAc < 1
       // Approximation: per-bucket creators is the average of daily distinct-creator
       // counts, not a true distinct count across the bucket (that would need one
       // extra query per bucket). Fine for a sparkline trend, not for KPI totals.
@@ -444,7 +465,8 @@ function bucketTrend(rows: SummaryRow[], granularity: TrendGranularity): Summary
         asp: items > 0 ? gmv / items : 0,
         aov: orders > 0 ? gmv / orders : 0,
         commission,
-        affiliateShare: totalGmv > 0 ? gmv / totalGmv : 0,
+        totalGmv,
+        affiliateShare: affiliateLoaded && totalAc > 0 ? affAc / totalAc : null,
         commissionRate: commissionComplete && gmvCc > 0 ? commissionCc / gmvCc : null,
         // null (not 0) so the chart shows a gap instead of a misleading value on
         // buckets where commission hasn't landed yet.

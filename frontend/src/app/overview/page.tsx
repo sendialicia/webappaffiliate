@@ -941,7 +941,13 @@ function OverviewPageInner() {
                         {(summary.kpis.affiliateShare.value * 100).toFixed(1)}%
                       </span>
                     </div>
-                    <AffSelfChart trend={summary.trend} />
+                    {commissionCutNote(summary.affiliateCompleteThrough, marketplace) && (
+                      <div className="mb-1 text-[12px] leading-relaxed text-[var(--ov-faint)]">
+                        Data affiliate {commissionCutNote(summary.affiliateCompleteThrough, marketplace)} — hari
+                        sesudahnya belum dihitung karena baru data self-operated yang masuk.
+                      </div>
+                    )}
+                    <AffSelfChart trend={summary.trend} affiliateThrough={summary.affiliateCompleteThrough} />
                   </div>
                 </div>
               </div>

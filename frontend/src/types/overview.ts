@@ -73,7 +73,10 @@ export interface SummaryTrendPoint {
   asp: number
   aov: number
   commission: number
-  affiliateShare: number
+  /** All GMV, affiliate and self-operated. */
+  totalGmv: number
+  /** null when some self-operated GMV in the bucket has no affiliate load beside it yet. */
+  affiliateShare: number | null
   /** null when the bucket holds GMV whose commission has not landed yet. */
   commissionRate: number | null
   /** null when the bucket has no commission booked yet (ETL lags GMV by ~2 days). */
@@ -93,6 +96,11 @@ export interface SummaryResult {
    * offset); empty when the whole window is complete.
    */
   commissionCompleteThrough: Record<string, string>
+  /**
+   * Marketplace → last day with affiliate rows loaded, where its self-operated rows run past it
+   * inside the window. The affiliate share only counts days up to it (both windows, same offset).
+   */
+  affiliateCompleteThrough: Record<string, string>
 }
 
 /**

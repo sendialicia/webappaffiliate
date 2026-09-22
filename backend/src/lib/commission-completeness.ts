@@ -100,6 +100,8 @@ export function completeCommissionCondition(
   through: CompleteThrough,
   windows: { from: string; prevFrom: string },
   params: Record<string, unknown>,
+  /** Keeps the bound names apart when two cuts share one params object. */
+  prefix = 'cc',
 ): string {
   const offsetDays = (a: string, b: string) =>
     Math.round((new Date(`${a}T00:00:00Z`).getTime() - new Date(`${b}T00:00:00Z`).getTime()) / 86_400_000)
@@ -110,18 +112,18 @@ export function completeCommissionCondition(
     const cut = through[marketplace]!
     const offset = offsetDays(cut, windows.from)
     const prevCut = daysBefore(windows.prevFrom, -offset)
-    params[`ccName${i}`] = marketplace
-    params[`ccCut${i}`] = cut
-    params[`ccPrevCut${i}`] = prevCut
+    params[`${prefix}Name${i}`] = marketplace
+    params[`${prefix}Cut${i}`] = cut
+    params[`${prefix}PrevCut${i}`] = prevCut
     parts.push(
-      `(MARKETPLACE_NAME = {ccName${i}:String} AND (` +
-        `(DATE >= {currentFrom:Date} AND DATE <= {ccCut${i}:Date}) OR ` +
-        `(DATE >= {prevFrom:Date} AND DATE <= {ccPrevCut${i}:Date})))`,
+      `(MARKETPLACE_NAME = {${prefix}Name${i}:String} AND (` +
+        `(DATE >= {currentFrom:Date} AND DATE <= {${prefix}Cut${i}:Date}) OR ` +
+        `(DATE >= {prevFrom:Date} AND DATE <= {${prefix}PrevCut${i}:Date})))`,
     )
   })
   if (names.length > 0) {
-    params.ccNames = names
-    parts.push(`MARKETPLACE_NAME NOT IN {ccNames:Array(String)}`)
+    params[`${prefix}Names`] = names
+    parts.push(`MARKETPLACE_NAME NOT IN {${prefix}Names:Array(String)}`)
   }
   return parts.length > 0 ? `(${parts.join(' OR ')})` : 'TRUE'
 }
