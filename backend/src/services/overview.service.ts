@@ -212,9 +212,10 @@ async function queryProgress(
           ORDER BY DATA_EXTRACT_TIMESTAMP DESC, ETL_BATCH_TIME DESC
         ) = 1
       )
-      SELECT ${groupColumn} AS name, SUM(METRIC_VALUE) AS actual, SUM(DAILY_POOL_TARGET) AS target
+      -- The target table has rows with no brand; a null name crashed the page when rendered.
+      SELECT ifNull(${groupColumn}, '(tanpa nama)') AS name, SUM(METRIC_VALUE) AS actual, SUM(DAILY_POOL_TARGET) AS target
       FROM deduped
-      GROUP BY ${groupColumn}
+      GROUP BY name
       ORDER BY actual DESC
     `,
     query_params: params,

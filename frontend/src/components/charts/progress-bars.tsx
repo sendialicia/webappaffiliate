@@ -34,7 +34,7 @@ export function ProgressBars({ title, rows }: { title: string; rows: ProgressRow
                     style={{
                       width: `${pct * 100}%`,
                       // Marketplace rows wear their identity colour; brands keep the gold bar.
-                      background: MARKETPLACE_COLORS[r.name.toLowerCase()] ?? "linear-gradient(90deg,var(--ov-gold),var(--ov-gold-deep))",
+                      background: MARKETPLACE_COLORS[(r.name ?? "").toLowerCase()] ?? "linear-gradient(90deg,var(--ov-gold),var(--ov-gold-deep))",
                     }}
                   />
                 </div>
