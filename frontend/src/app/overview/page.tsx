@@ -1280,15 +1280,10 @@ function OverviewPageInner() {
                 GMV Growth vs Creator Acquisition
               </span>
             </div>
-            <div className="mb-1 flex gap-4 text-xs text-[var(--ov-mut2)]">
-              <span className="flex items-center gap-1.5">
-                <i className="block h-2.5 w-2.5 rounded-sm" style={{ background: "#3c5a7e" }} />
-                GMV
-              </span>
-              <span className="flex items-center gap-1.5">
-                <i className="block h-2.5 w-2.5 rounded-sm" style={{ background: "var(--ov-gold)" }} />
-                Creator Acquisition (creator baru {compareLabel})
-              </span>
+            <div className="mb-2 text-[12.5px] leading-relaxed text-[var(--ov-faint)]">
+              Apakah pertumbuhan GMV didorong <span className="font-semibold text-[var(--ov-soft)]">kuantitas</span>{" "}
+              (creator bertambah) atau <span className="font-semibold text-[var(--ov-soft)]">kualitas</span> (GMV per
+              creator naik)? Warna batang menunjukkan tuas yang dominan di tiap bucket.
             </div>
             {spend ? (
               <AcquisitionChart data={spend.acquisition} />

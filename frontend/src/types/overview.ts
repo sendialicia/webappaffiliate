@@ -181,8 +181,15 @@ export interface SpendRow {
 export interface AcquisitionPoint {
   bucket: string
   gmv: number
+  /** Distinct creators with a sale in the bucket. */
+  creators: number
+  gmvPerCreator: number | null
+  /** Creators active here but not in the comparison period. */
   newCreators: number
+  /** GMV, creators and GMV per creator, each against the previous bucket. */
   growth: number | null
+  creatorsGrowth: number | null
+  gmvPerCreatorGrowth: number | null
 }
 
 export interface SpendResult {

@@ -777,8 +777,14 @@ export async function getSpend(
 
   // "Creator acquisition" = creators active in this period that were NOT active in
   // the comparison period (definition confirmed with Sendi).
+  // Growth here is bucket over previous bucket (day over day, week over week), so the query
+  // reaches one bucket before `from`: the first bucket in view needs something to compare to.
+  const lead = new Date(`${from}T00:00:00Z`)
+  if (granularity === 'month') lead.setUTCMonth(lead.getUTCMonth() - 1)
+  else lead.setUTCDate(lead.getUTCDate() - (granularity === 'week' ? 7 : 1))
   const acqParams: Record<string, unknown> = {
     from,
+    leadFrom: toIsoDate(lead),
     to,
     prevFrom: comparison.from,
     prevTo: comparison.to,
@@ -799,6 +805,7 @@ export async function getSpend(
       SELECT
         ${bucketExpr} AS bucket,
         SUM(GMV) AS gmv,
+        uniqExact(AFFILIATE_USERNAME) AS creators,
         uniqExactIf(AFFILIATE_USERNAME, prevUsername IS NULL) AS newCreators
       FROM ${TABLE_SUMMARY_ORDER}
       -- Anti-join rather than NOT IN (subquery) inside the aggregate: Snowflake cannot evaluate a
@@ -816,7 +823,7 @@ export async function getSpend(
       WHERE REGION_CODE = 'id'
         AND ITEM_MARKETPLACE_FLAG = TRUE
         AND IS_AFFILIATE = TRUE
-        AND DATE >= {from:Date} AND DATE <= {to:Date}
+        AND DATE >= {leadFrom:Date} AND DATE <= {to:Date}
         ${acqFilter}
       GROUP BY bucket
       ORDER BY bucket ASC
@@ -825,18 +832,32 @@ export async function getSpend(
     format: 'JSONEachRow',
   })
 
-  const acqRows = await acqResult.json<{ bucket: string; gmv: number; newCreators: number }>()
+  const acqRows = await acqResult.json<{ bucket: string; gmv: number; creators: number; newCreators: number }>()
 
-  const acquisition: AcquisitionPoint[] = acqRows.map((row, i) => {
-    const prevGmv = i > 0 ? Number(acqRows[i - 1]?.gmv ?? 0) : 0
-    const gmv = Number(row.gmv || 0)
-    return {
-      bucket: row.bucket,
-      gmv,
-      newCreators: Number(row.newCreators || 0),
-      growth: i > 0 && prevGmv > 0 ? (gmv - prevGmv) / prevGmv : null,
-    }
-  })
+  const firstBucket = bucketKey(from, granularity)
+  const acquisition: AcquisitionPoint[] = acqRows
+    .map((row, i) => {
+      const prev = i > 0 ? acqRows[i - 1] : undefined
+      const gmv = Number(row.gmv || 0)
+      const creators = Number(row.creators || 0)
+      const gmvPerCreator = creators > 0 ? gmv / creators : null
+      const prevGmv = Number(prev?.gmv ?? 0)
+      const prevCreators = Number(prev?.creators ?? 0)
+      const prevGpc = prevCreators > 0 ? prevGmv / prevCreators : null
+      return {
+        bucket: row.bucket,
+        gmv,
+        creators,
+        gmvPerCreator,
+        newCreators: Number(row.newCreators || 0),
+        // Each against the bucket just before it — the question is how the mix moves day to day.
+        growth: prev ? pctDelta(gmv, prevGmv) : null,
+        creatorsGrowth: prev ? pctDelta(creators, prevCreators) : null,
+        gmvPerCreatorGrowth: prev && gmvPerCreator !== null && prevGpc !== null ? pctDelta(gmvPerCreator, prevGpc) : null,
+      }
+    })
+    // The lead-in bucket only served as the first comparison.
+    .filter((point) => point.bucket >= firstBucket)
 
   return { entity, rows, acquisition }
 }
