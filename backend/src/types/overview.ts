@@ -336,3 +336,23 @@ export interface DriverMatrixResult {
   columnTotals: Record<string, MatrixCell>
   total: MatrixCell
 }
+
+export interface TopCreatorRow {
+  username: string
+  isManaged: boolean
+  gmv: number
+  /** Share of the slice's GMV, Agency included in the denominator. */
+  share: number
+  orders: number
+}
+
+export interface TopCreatorsResult {
+  /** Slice GMV (every row, Agency included) in the current window. */
+  total: number
+  /** GMV booked under the aggregated "Agency" username, which is not one creator. */
+  agencyGmv: number
+  rows: TopCreatorRow[]
+  /** Top-N share of slice GMV excluding Agency, current and comparison window. */
+  topShare: number | null
+  topSharePrev: number | null
+}

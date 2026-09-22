@@ -943,6 +943,15 @@ function OverviewPageInner() {
                   row={selectedRow}
                   result={composition}
                   color={selectedColor}
+                  query={{
+                    from,
+                    to,
+                    compare,
+                    brand: csv(brand),
+                    marketplace: csv(marketplace),
+                    ...detailParams,
+                    ...prevParams,
+                  }}
                   onCloseAction={() => setSelectedSlice(null)}
                 />
               )}

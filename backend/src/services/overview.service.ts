@@ -20,6 +20,7 @@ import type {
   FilterOptionsResult,
   CompositionDimension,
   DataAvailabilityResult,
+  TopCreatorsResult,
   DriverMatrixResult,
   MatrixCell,
   DataAvailabilityRow,
@@ -1372,5 +1373,117 @@ export async function getDriverMatrix(
     rowTotals,
     columnTotals,
     total: toCell(totalRows[0]),
+  }
+}
+
+/** The aggregated agency row: GMV booked by agencies, not one creator. */
+const AGENCY = 'Agency'
+
+/**
+ * Top creators for the whole scope or one composition slice, with how concentrated the slice
+ * is (top-N share of GMV, excluding the Agency aggregate) in both windows.
+ */
+export async function getTopCreators(
+  from: string,
+  to: string,
+  basis: ComparisonBasis,
+  filters: OverviewFilters,
+  detail: DetailFilters,
+  slice: { dimension: CompositionDimension; value: string } | null,
+  limit: number,
+  prevRange?: { from?: string; to?: string },
+): Promise<TopCreatorsResult> {
+  const comparison = computeComparisonRange(from, to, basis, prevRange)
+  const params: Record<string, unknown> = {
+    currentFrom: from,
+    currentTo: to,
+    prevFrom: comparison.from,
+    prevTo: comparison.to,
+    agency: AGENCY,
+  }
+  let filterClause = buildFilterClause(filters, params) + buildDetailClause(detail, params)
+  if (slice) {
+    filterClause += ` AND ifNull(${DIMENSION_COLUMNS[slice.dimension]}, 'Unknown') = {sliceValue:String}`
+    params.sliceValue = slice.value
+  }
+  const scope = `
+      FROM ${TABLE_SUMMARY_ORDER}
+      WHERE REGION_CODE = 'id'
+        AND ITEM_MARKETPLACE_FLAG = TRUE
+        AND IS_AFFILIATE = TRUE
+        ${filterClause}`
+  const window = (w: 'current' | 'prev') =>
+    w === 'current'
+      ? 'DATE >= {currentFrom:Date} AND DATE <= {currentTo:Date}'
+      : 'DATE >= {prevFrom:Date} AND DATE <= {prevTo:Date}'
+  const topSum = (w: 'current' | 'prev') => `
+      SELECT SUM(g) AS topGmv FROM (
+        SELECT AFFILIATE_USERNAME AS u, SUM(GMV) AS g
+        ${scope}
+          AND ${window(w)}
+          AND AFFILIATE_USERNAME IS NOT NULL
+          AND AFFILIATE_USERNAME <> {agency:String}
+        GROUP BY u
+        ORDER BY g DESC
+        LIMIT ${limit}
+      ) t`
+
+  const [rowsResult, totalsResult, topNow, topPrev] = await Promise.all([
+    clickhouse.query({
+      query: `
+        SELECT
+          AFFILIATE_USERNAME AS username,
+          SUM(GMV) AS gmv,
+          SUM(ATTRIBUTED_ORDERS) AS orders,
+          countIf(IS_MANAGED_CREATOR = TRUE) > 0 AS isManaged
+        ${scope}
+          AND ${window('current')}
+          AND AFFILIATE_USERNAME IS NOT NULL
+          AND AFFILIATE_USERNAME <> {agency:String}
+        GROUP BY username
+        ORDER BY gmv DESC
+        LIMIT ${limit}
+      `,
+      query_params: params,
+      format: 'JSONEachRow',
+    }),
+    clickhouse.query({
+      query: `
+        SELECT
+          sumIf(GMV, ${window('current')}) AS total,
+          sumIf(GMV, ${window('current')} AND AFFILIATE_USERNAME = {agency:String}) AS agency,
+          sumIf(GMV, ${window('prev')}) AS totalPrev,
+          sumIf(GMV, ${window('prev')} AND AFFILIATE_USERNAME = {agency:String}) AS agencyPrev
+        ${scope}
+          AND ((${window('current')}) OR (${window('prev')}))
+      `,
+      query_params: params,
+      format: 'JSONEachRow',
+    }),
+    clickhouse.query({ query: topSum('current'), query_params: params, format: 'JSONEachRow' }),
+    clickhouse.query({ query: topSum('prev'), query_params: params, format: 'JSONEachRow' }),
+  ])
+
+  const rows = await rowsResult.json<{ username: string; gmv: number; orders: number; isManaged: boolean | number }>()
+  const t = (await totalsResult.json<Record<string, number>>())[0] ?? {}
+  const topGmv = Number((await topNow.json<{ topGmv: number }>())[0]?.topGmv || 0)
+  const topGmvPrev = Number((await topPrev.json<{ topGmv: number }>())[0]?.topGmv || 0)
+  const total = Number(t.total || 0)
+  const agencyGmv = Number(t.agency || 0)
+  const creatorsGmv = total - agencyGmv
+  const creatorsGmvPrev = Number(t.totalPrev || 0) - Number(t.agencyPrev || 0)
+
+  return {
+    total,
+    agencyGmv,
+    rows: rows.map((r) => ({
+      username: r.username,
+      isManaged: Boolean(Number(r.isManaged)),
+      gmv: Number(r.gmv || 0),
+      share: total > 0 ? Number(r.gmv || 0) / total : 0,
+      orders: Number(r.orders || 0),
+    })),
+    topShare: creatorsGmv > 0 ? topGmv / creatorsGmv : null,
+    topSharePrev: creatorsGmvPrev > 0 ? topGmvPrev / creatorsGmvPrev : null,
   }
 }

@@ -309,3 +309,19 @@ export interface DriverMatrixResult {
   columnTotals: Record<string, MatrixCell>
   total: MatrixCell
 }
+
+export interface TopCreatorRow {
+  username: string
+  isManaged: boolean
+  gmv: number
+  share: number
+  orders: number
+}
+
+export interface TopCreatorsResult {
+  total: number
+  agencyGmv: number
+  rows: TopCreatorRow[]
+  topShare: number | null
+  topSharePrev: number | null
+}

@@ -9,6 +9,7 @@ import {
   getFilterOptions,
   getDataAvailability,
   getDriverMatrix,
+  getTopCreators,
   getSpend,
   getSummary,
 } from '../services/overview.service'
@@ -225,3 +226,27 @@ export async function getDriverMatrixHandler(req: Request, res: Response) {
   const data = await getDriverMatrix(from, to, basis, filtersFromQuery(req), entity, dimension, limit, detailFromQuery(req), prevRangeFromQuery(req))
   res.json(data)
 }
+
+export async function getTopCreatorsHandler(req: Request, res: Response) {
+  const to = str(req.query.to) ?? new Date().toISOString().slice(0, 10)
+  const from = str(req.query.from) ?? defaultFrom(to)
+  const basis: ComparisonBasis = basisFromQuery(req)
+  const dimension = str(req.query.dimension) as CompositionDimension | undefined
+  const value = str(req.query.value)
+  const slice = dimension && value !== undefined && COMPOSITION_DIMENSION_KEYS.includes(dimension) ? { dimension, value } : null
+  const limit = Math.min(Number(str(req.query.limit)) || 10, 50)
+  res.json(await getTopCreators(from, to, basis, filtersFromQuery(req), detailFromQuery(req), slice, limit, prevRangeFromQuery(req)))
+}
+
+const COMPOSITION_DIMENSION_KEYS: CompositionDimension[] = [
+  'pillar',
+  'subpillar',
+  'brand',
+  'marketplace',
+  'category',
+  'pidSubCategory',
+  'format',
+  'productCategory',
+  'productSubCategory',
+  'productFormat',
+]

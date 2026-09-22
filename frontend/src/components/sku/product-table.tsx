@@ -258,10 +258,6 @@ export function SkuProductTable({
                         className="border-b border-[var(--ov-fill1)] p-2.5 text-[var(--ov-ink)]"
                       >
                         <span className="flex items-start gap-2">
-                          <span
-                            className="mt-1 block h-1.5 w-1.5 flex-none rounded-full"
-                            style={{ background: row.inScope ? "var(--ov-gold)" : "transparent" }}
-                          />
                           <span className="flex min-w-0 flex-col gap-0.5">
                             <span className="flex flex-wrap items-center gap-1.5">
                               <span className="font-mono text-[12px] text-[var(--ov-faint)]">{row.barcode}</span>
