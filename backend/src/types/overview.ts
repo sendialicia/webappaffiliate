@@ -96,6 +96,7 @@ export interface SummaryKpis {
   // Affiliate health (section 8). ROI = GMV / Commission, confirmed with Sendi.
   commissionRate: KpiValue
   roi: KpiValue
+  /** TikTok only: |refund| ÷ TikTok affiliate GMV. Shopee sends no refund data. */
   refundRate: KpiValue
   itemsSold: KpiValue
 }
@@ -116,7 +117,8 @@ export interface SummaryTrendPoint {
   commissionRate: number | null
   /** null when the bucket has no commission booked yet (ETL lags GMV by ~2 days). */
   roi: number | null
-  refundRate: number
+  /** TikTok only (Shopee sends no refunds); null when the bucket has no TikTok GMV. */
+  refundRate: number | null
   itemsSold: number
 }
 
@@ -139,6 +141,8 @@ export interface SummaryResult {
    * inside the window. The affiliate share only counts days up to it (both windows, same offset).
    */
   affiliateCompleteThrough: Record<string, string>
+  /** Whether the selection holds TikTok GMV, the only source of refund data. */
+  refundAvailable: boolean
 }
 
 /**

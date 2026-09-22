@@ -257,6 +257,12 @@ interface SummaryRow {
   affOrders: number
   affCommission: number
   affRefund: number
+  /**
+   * TikTok only: Shopee sends no refunds at all (always 0), so dividing TikTok's refunds by both
+   * marketplaces' GMV diluted the rate. TikTok books refunds as negative amounts, hence abs().
+   */
+  affGmvTt: number
+  affRefundTt: number
   affCreators: number
   /** GMV and commission on days whose commission has fully landed — the base for the ratios. */
   affGmvCc: number
@@ -306,6 +312,8 @@ export async function getSummary(
         SUM(CASE WHEN IS_AFFILIATE THEN ATTRIBUTED_ORDERS ELSE 0 END) AS affOrders,
         SUM(CASE WHEN IS_AFFILIATE THEN COMMISSION ELSE 0 END) AS affCommission,
         SUM(CASE WHEN IS_AFFILIATE THEN REFUND_AMOUNT ELSE 0 END) AS affRefund,
+        SUM(CASE WHEN IS_AFFILIATE AND MARKETPLACE_NAME = 'Tiktok' THEN GMV ELSE 0 END) AS affGmvTt,
+        SUM(CASE WHEN IS_AFFILIATE AND MARKETPLACE_NAME = 'Tiktok' THEN abs(REFUND_AMOUNT) ELSE 0 END) AS affRefundTt,
         COUNT(DISTINCT CASE WHEN IS_AFFILIATE THEN AFFILIATE_USERNAME END) AS affCreators
       FROM ${TABLE_SUMMARY_ORDER}
       WHERE REGION_CODE = 'id'
@@ -354,6 +362,9 @@ export async function getSummary(
     commissionCompleteThrough: Object.fromEntries(
       Object.entries(completeThrough).filter(([, cut]) => cut < to),
     ),
+    // False when the selection holds no TikTok GMV (e.g. filtered to Shopee): there is no
+    // refund data to show then, which the card must say rather than print 0%.
+    refundAvailable: sumBy(currentRows, 'affGmvTt') > 0,
     affiliateCompleteThrough: Object.fromEntries(
       Object.entries(affiliateThrough).filter(([, cut]) => cut < to),
     ),
@@ -370,12 +381,13 @@ function aggregateRows(rows: SummaryRow[], creators: number) {
   const items = sumBy(rows, 'affItems')
   const orders = sumBy(rows, 'affOrders')
   const commission = sumBy(rows, 'affCommission')
-  const refund = sumBy(rows, 'affRefund')
   // The ratios use only days whose commission has landed; see commission-completeness.ts.
   const gmvCc = sumBy(rows, 'affGmvCc')
   const commissionCc = sumBy(rows, 'affCommissionCc')
   const totalAc = sumBy(rows, 'totalGmvAc')
   const affAc = sumBy(rows, 'affGmvAc')
+  const ttGmv = sumBy(rows, 'affGmvTt')
+  const ttRefund = sumBy(rows, 'affRefundTt')
 
   return {
     gmv,
@@ -387,7 +399,7 @@ function aggregateRows(rows: SummaryRow[], creators: number) {
     affiliateShare: totalAc > 0 ? affAc / totalAc : 0,
     commissionRate: gmvCc > 0 ? commissionCc / gmvCc : 0,
     roi: commissionCc > 0 ? gmvCc / commissionCc : 0,
-    refundRate: gmv > 0 ? refund / gmv : 0,
+    refundRate: ttGmv > 0 ? ttRefund / ttGmv : 0,
     itemsSold: items,
   }
 }
@@ -442,7 +454,8 @@ function bucketTrend(rows: SummaryRow[], granularity: TrendGranularity): Summary
       const items = sumBy(bucketRows, 'affItems')
       const orders = sumBy(bucketRows, 'affOrders')
       const commission = sumBy(bucketRows, 'affCommission')
-      const refund = sumBy(bucketRows, 'affRefund')
+      const ttGmvBucket = sumBy(bucketRows, 'affGmvTt')
+      const ttRefundBucket = sumBy(bucketRows, 'affRefundTt')
       const gmvCc = sumBy(bucketRows, 'affGmvCc')
       const commissionCc = sumBy(bucketRows, 'affCommissionCc')
       // A bucket with any GMV whose commission has not landed gets no ratio at all: a partial
@@ -471,7 +484,7 @@ function bucketTrend(rows: SummaryRow[], granularity: TrendGranularity): Summary
         // null (not 0) so the chart shows a gap instead of a misleading value on
         // buckets where commission hasn't landed yet.
         roi: commissionComplete && commissionCc > 0 ? gmvCc / commissionCc : null,
-        refundRate: gmv > 0 ? refund / gmv : 0,
+        refundRate: ttGmvBucket > 0 ? ttRefundBucket / ttGmvBucket : null,
         itemsSold: items,
       }
     })

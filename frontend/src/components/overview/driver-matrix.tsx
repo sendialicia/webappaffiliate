@@ -129,6 +129,11 @@ export function DriverMatrix({
     setOpened({ title, cell, slices })
   }
   const totalGmv = result.total.gmv
+  // With one row the total row is that row again, so it is dropped; and once the row field is
+  // itself filtered (Brand = Kahf, OMG) the total covers the pick, not "every brand".
+  const showTotalRow = result.entities.length > 1
+  const entityFiltered = Boolean(query[result.entity])
+  const totalLabel = entityFiltered ? "Total pilihan" : `Semua ${entityLabel.toLowerCase()}`
 
   const track = (title: string, cell: MatrixCell | undefined) => (e: React.MouseEvent) => {
     if (!cell) return setHover(null)
@@ -211,24 +216,26 @@ export function DriverMatrix({
             </tr>
           </thead>
           <tbody>
-            <tr>
-              <th
-                className="sticky left-0 z-[1] border-b border-[var(--ov-line)] px-2.5 py-2 text-left text-[13px] font-bold"
-                style={{ background: "var(--card)" }}
-              >
-                Semua {entityLabel.toLowerCase()}
-              </th>
-              {renderCell("total", "Total", result.total, open("Total", result.total, null, null), true)}
-              {result.names.map((name) =>
-                renderCell(
-                  `col-${name}`,
-                  `Semua ${entityLabel.toLowerCase()} · ${name}`,
-                  result.columnTotals[name],
-                  name === OTHER ? null : open(`Semua ${entityLabel.toLowerCase()} · ${name}`, result.columnTotals[name], null, name),
-                  true,
-                ),
-              )}
-            </tr>
+            {showTotalRow && (
+              <tr>
+                <th
+                  className="sticky left-0 z-[1] border-b border-[var(--ov-line)] px-2.5 py-2 text-left text-[13px] font-bold"
+                  style={{ background: "var(--card)" }}
+                >
+                  {totalLabel}
+                </th>
+                {renderCell("total", "Total", result.total, open("Total", result.total, null, null), true)}
+                {result.names.map((name) =>
+                  renderCell(
+                    `col-${name}`,
+                    `${totalLabel} · ${name}`,
+                    result.columnTotals[name],
+                    name === OTHER ? null : open(`${totalLabel} · ${name}`, result.columnTotals[name], null, name),
+                    true,
+                  ),
+                )}
+              </tr>
+            )}
             {result.entities.map((entity) => (
               <tr key={entity}>
                 <th

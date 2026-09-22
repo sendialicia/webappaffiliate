@@ -1273,13 +1273,19 @@ function OverviewPageInner() {
                   sparklineKey="commissionRate"
                 />
                 <KpiCard
-                  label="Refund Rate"
-                  value={formatPercent(summary.kpis.refundRate.value, 2)}
-                  deltaPct={summary.kpis.refundRate.deltaPct}
+                  label="Refund Rate (TikTok)"
+                  value={summary.refundAvailable ? formatPercent(summary.kpis.refundRate.value, 2) : "—"}
+                  deltaPct={summary.refundAvailable ? summary.kpis.refundRate.deltaPct : null}
                   compareLabel={compareLabel}
                   positiveIsGood={false}
                   sparkline={summary.trend}
                   sparklineKey="refundRate"
+                  noteIsProse
+                  note={
+                    summary.refundAvailable
+                      ? "Refund ÷ GMV affiliate TikTok — Shopee tidak mengirim data refund. Refund tercatat belakangan (retur butuh waktu), jadi periode berjalan biasanya masih naik."
+                      : "Tidak tersedia: hanya TikTok yang mengirim data refund, dan pilihan ini tidak memuat TikTok."
+                  }
                 />
                 <KpiCard
                   label="Items Sold"

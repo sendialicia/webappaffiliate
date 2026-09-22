@@ -30,6 +30,14 @@ const TREND_FORMAT: Record<TrendKey, (v: number) => string> = {
  */
 const SHOWS_INPUTS = new Set<TrendKey>(["roi", "commissionRate"])
 
+/** Why a point has no value, per metric — each one goes missing for its own reason. */
+const EMPTY_REASON: Partial<Record<TrendKey, string>> = {
+  roi: "komisi hari ini belum lengkap",
+  commissionRate: "komisi hari ini belum lengkap",
+  affiliateShare: "data affiliate belum masuk",
+  refundRate: "tidak ada GMV TikTok",
+}
+
 function SparkTooltip({
   active,
   payload,
@@ -53,7 +61,9 @@ function SparkTooltip({
       <div className="text-[var(--ov-soft)]">
         {label}:{" "}
         <span className="font-mono font-semibold text-[var(--ov-ink)]">
-          {value === null || value === undefined ? "— (komisi hari ini belum lengkap)" : TREND_FORMAT[trendKey](value)}
+          {value === null || value === undefined
+            ? `— (${EMPTY_REASON[trendKey] ?? "belum ada data"})`
+            : TREND_FORMAT[trendKey](value)}
         </span>
       </div>
       {SHOWS_INPUTS.has(trendKey) && (
@@ -96,9 +106,11 @@ function DeltaLine({
 }
 
 /** The rupiah restatement of the delta, sitting under it inside the same hover target. */
-function NoteLine({ children }: { children: ReactNode }) {
+function NoteLine({ children, prose = false }: { children: ReactNode; prose?: boolean }) {
   return (
-    <div className="mt-2 border-t border-[var(--ov-line)] pt-2 font-mono text-[12.5px] text-[var(--ov-faint)]">
+    <div
+      className={`mt-2 border-t border-[var(--ov-line)] pt-2 text-[var(--ov-faint)] ${prose ? "text-[12px] leading-relaxed" : "font-mono text-[12.5px]"}`}
+    >
       {children}
     </div>
   )
@@ -121,6 +133,7 @@ export function KpiCard({
   exact,
   onOpenAction,
   openLabel,
+  noteIsProse = false,
 }: {
   label: string
   value: string
@@ -138,6 +151,8 @@ export function KpiCard({
   /** When set, the card offers a deeper panel behind a button (the hover stays as it is). */
   onOpenAction?: () => void
   openLabel?: string
+  /** The note is a sentence rather than a figure, so it reads in the body font. */
+  noteIsProse?: boolean
 }) {
   const large = size === "lg"
 
@@ -161,13 +176,13 @@ export function KpiCard({
           <div className="w-max border-b border-dotted border-[var(--ov-track)] pb-0.5">
             <DeltaLine deltaPct={deltaPct} compareLabel={compareLabel} positiveIsGood={positiveIsGood} />
           </div>
-          {note && <NoteLine>{note}</NoteLine>}
+          {note && <NoteLine prose={noteIsProse}>{note}</NoteLine>}
           <div className="absolute top-full left-0 z-50 hidden pt-2 group-hover:block">{deltaHover}</div>
         </div>
       ) : (
         <>
           <DeltaLine deltaPct={deltaPct} compareLabel={compareLabel} positiveIsGood={positiveIsGood} />
-          {note && <NoteLine>{note}</NoteLine>}
+          {note && <NoteLine prose={noteIsProse}>{note}</NoteLine>}
         </>
       )}
       {onOpenAction && (
