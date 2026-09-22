@@ -5,3 +5,6 @@ dist
 secrets/
 *.p8
 *.pem
+
+# Driver logs
+*.log

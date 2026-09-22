@@ -1,4 +1,5 @@
 import fs from 'node:fs'
+import os from 'node:os'
 import path from 'node:path'
 import dotenv from 'dotenv'
 import snowflake from 'snowflake-sdk'
@@ -14,7 +15,8 @@ dotenv.config()
  * fix made there carries over without a hand port.
  */
 
-snowflake.configure({ logLevel: 'ERROR' })
+// The driver writes snowflake.log to disk; the working directory is read-only on Vercel.
+snowflake.configure({ logLevel: 'ERROR', logFilePath: os.tmpdir() })
 
 /**
  * Key-pair auth. Locally the key sits in a file (SNOWFLAKE_PRIVATE_KEY_PATH, relative to the
