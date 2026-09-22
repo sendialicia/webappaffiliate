@@ -1,0 +1,8 @@
+{"level":"ERROR","message":"[6:34:07.035 AM]: Connection[id: 8b219c8c-eed7-4f72-be9e-97011afb8550] - disconnecting failed with error: timeout of 90000ms exceeded"}
+{"level":"ERROR","message":"[6:34:07.050 AM]: Connection[id: 9f15ec6c-275f-4376-bc1c-830ab7c2a7ac] - disconnecting failed with error: timeout of 90000ms exceeded"}
+{"level":"ERROR","message":"[6:34:07.052 AM]: Connection[id: 320a599b-98f2-44be-8d77-49994f2e1d3d] - disconnecting failed with error: getaddrinfo ENOTFOUND hktuuoq-fx49105.snowflakecomputing.com"}
+{"level":"ERROR","message":"[6:34:07.052 AM]: Connection[id: de01a20e-135a-4f63-9bc6-40b9baa470ef] - disconnecting failed with error: getaddrinfo ENOTFOUND hktuuoq-fx49105.snowflakecomputing.com"}
+{"level":"ERROR","message":"[6:34:07.052 AM]: Connection[id: 205b8145-dc6f-4bb6-b289-d2413e47227a] - disconnecting failed with error: getaddrinfo ENOTFOUND hktuuoq-fx49105.snowflakecomputing.com"}
+{"level":"ERROR","message":"[6:35:07.035 AM]: Connection[id: acc9ef33-544f-4767-8bf6-2bd553845c8d] - disconnecting failed with error: getaddrinfo ENOTFOUND hktuuoq-fx49105.snowflakecomputing.com"}
+{"level":"ERROR","message":"[6:35:07.038 AM]: Connection[id: 1db70b94-d5f4-4a45-a140-b92342f5314f] - disconnecting failed with error: getaddrinfo ENOTFOUND hktuuoq-fx49105.snowflakecomputing.com"}
+{"level":"ERROR","message":"[6:35:07.039 AM]: Connection[id: df6752d6-7589-40e1-9031-0bbe5fc37d00] - disconnecting failed with error: getaddrinfo ENOTFOUND hktuuoq-fx49105.snowflakecomputing.com"}

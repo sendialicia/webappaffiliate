@@ -68,7 +68,14 @@ export function DriverChart({
 
   return (
     <ResponsiveContainer width="100%" height={height}>
-      <BarChart data={data} layout="vertical" margin={{ top: 0, right: 8, left: 0, bottom: 4 }}>
+      <BarChart
+        data={data}
+        layout="vertical"
+        margin={{ top: 0, right: 8, left: 0, bottom: 4 }}
+        // Positive segments stack rightward from zero and negative ones leftward. Plain stacking
+        // runs them in sequence, so a loss mid-stack drags every later gain back across zero.
+        stackOffset={unit === "share" ? "none" : "sign"}
+      >
         <CartesianGrid stroke="var(--ov-line)" horizontal={false} />
         <XAxis
           type="number"
@@ -93,6 +100,8 @@ export function DriverChart({
           cursor={{ fill: "var(--ov-fill1)" }}
           contentStyle={{ background: "var(--ov-tooltip)", border: "1px solid var(--ov-line)", borderRadius: 8, fontSize: 12 }}
           labelStyle={{ color: "var(--ov-head)" }}
+          // Largest first, so the reader sees what moved the entity most without scanning.
+          itemSorter={(item) => -Number(item.value ?? 0)}
           formatter={(value, name, item) => {
             if (unit !== "share") return [fmt(Number(value)), String(name)]
             const raw = Number((item?.payload as DriverChartRow | undefined)?.[`${RAW_PREFIX}${String(name)}`] ?? 0)

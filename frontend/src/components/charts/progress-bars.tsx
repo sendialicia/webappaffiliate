@@ -2,6 +2,8 @@ import type { ProgressRow } from "@/types/overview"
 import { formatPercent, formatRp } from "@/lib/format"
 
 export function ProgressBars({ title, rows }: { title: string; rows: ProgressRow[] }) {
+  // Furthest along first, so the list reads as a ranking; rows without a target (pct 0) sink.
+  const sorted = [...rows].sort((a, b) => b.pct - a.pct || b.actual - a.actual)
   return (
     <div
       className="rounded-xl border border-[var(--ov-line)] p-5 shadow-[0_18px_34px_-22px_var(--ov-shadow)]"
@@ -9,7 +11,7 @@ export function ProgressBars({ title, rows }: { title: string; rows: ProgressRow
     >
       <div className="mb-4 text-lg font-semibold font-(family-name:--font-archivo)">{title}</div>
       <div className="flex max-h-[300px] flex-col gap-4 overflow-y-auto pr-1">
-        {rows.map((r) => {
+        {sorted.map((r) => {
           const pct = Math.min(Math.max(r.pct, 0), 1)
           return (
             <div key={r.name} className="grid grid-cols-[88px_1fr] items-center gap-3">

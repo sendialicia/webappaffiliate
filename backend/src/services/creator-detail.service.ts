@@ -131,15 +131,9 @@ export async function getCreatorDetail(spec: CreatorDetailSpec): Promise<Creator
   // GMV once, so the outer pass only has to count who beats it.
   const rankResult = await clickhouse.query({
     query: `
-      WITH (
-        SELECT SUM(GMV) FROM ${TABLE_SUMMARY_ORDER}
-        WHERE ${spec.scope}
-          AND IS_AFFILIATE = TRUE
-          AND AFFILIATE_USERNAME = {username:String}
-          AND DATE >= {from:Date} AND DATE <= {to:Date}
-          ${spec.filterClause}
-      ) AS mine
-      SELECT count() AS totalCreators, countIf(g > mine) + 1 AS rank
+      -- The creator's own GMV joins in as a one-row table rather than ClickHouse's scalar
+      -- WITH (subquery) AS mine, which Snowflake has no equivalent for.
+      SELECT count() AS totalCreators, countIf(t.g > ifNull(m.mine, 0)) + 1 AS rank
       FROM (
         SELECT AFFILIATE_USERNAME AS u, SUM(GMV) AS g
         FROM ${TABLE_SUMMARY_ORDER}
@@ -149,7 +143,15 @@ export async function getCreatorDetail(spec: CreatorDetailSpec): Promise<Creator
           AND DATE >= {from:Date} AND DATE <= {to:Date}
           ${spec.filterClause}
         GROUP BY u
-      )
+      ) t
+      CROSS JOIN (
+        SELECT SUM(GMV) AS mine FROM ${TABLE_SUMMARY_ORDER}
+        WHERE ${spec.scope}
+          AND IS_AFFILIATE = TRUE
+          AND AFFILIATE_USERNAME = {username:String}
+          AND DATE >= {from:Date} AND DATE <= {to:Date}
+          ${spec.filterClause}
+      ) m
     `,
     query_params: params,
     format: 'JSONEachRow',
