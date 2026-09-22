@@ -584,6 +584,9 @@ const DRIVER_FIELD_COLUMNS: Record<DriverField, string> = {
   productFormat: 'PRODUCT_FORMAT',
 }
 
+/** The folded remainder in the driver charts; the frontend colours it neutral. */
+export const DRIVER_OTHER = 'Lainnya'
+
 export async function getDrivers(
   from: string,
   to: string,
@@ -625,10 +628,10 @@ export async function getDrivers(
     format: 'JSONEachRow',
   })
 
-  const rows = await result.json<{ entity: string; name: string; gmv: number; gmvPrev: number }>()
+  const rawRows = await result.json<{ entity: string; name: string; gmv: number; gmvPrev: number }>()
 
   const gmvByName = new Map<string, number>()
-  for (const row of rows) {
+  for (const row of rawRows) {
     gmvByName.set(row.name, (gmvByName.get(row.name) ?? 0) + Number(row.gmv || 0))
   }
   const names = [...gmvByName.entries()]
@@ -636,6 +639,24 @@ export async function getDrivers(
     .slice(0, limit)
     .map(([name]) => name)
   const keptNames = new Set(names)
+
+  // Everything past the top N folds into one "Lainnya" segment per entity. Dropping it instead
+  // made each composition bar 100% of the top N only and each entity's growth the growth of
+  // those N — Wardah alone sells ~40 formats, so the top 10 cover ~80% of GMV.
+  const folded = new Map<string, { entity: string; name: string; gmv: number; gmvPrev: number }>()
+  for (const row of rawRows) {
+    const name = keptNames.has(row.name) ? row.name : DRIVER_OTHER
+    const key = `${row.entity}\u0000${name}`
+    const acc = folded.get(key) ?? { entity: row.entity, name, gmv: 0, gmvPrev: 0 }
+    acc.gmv += Number(row.gmv || 0)
+    acc.gmvPrev += Number(row.gmvPrev || 0)
+    folded.set(key, acc)
+  }
+  const rows = [...folded.values()]
+  if (rows.some((r) => r.name === DRIVER_OTHER)) {
+    names.push(DRIVER_OTHER)
+    keptNames.add(DRIVER_OTHER)
+  }
 
   const gmvByEntity = new Map<string, number>()
   for (const row of rows) {

@@ -41,6 +41,14 @@ interface RankedRow {
   [key: string]: string | number | null
 }
 
+/** The backend folds everything past the top N into this; it stays grey and at the bar's end. */
+export const DRIVER_OTHER = "Lainnya"
+const OTHER_COLOR = "var(--ov-dim)"
+
+export function driverColor(name: string, index: number): string {
+  return name === DRIVER_OTHER ? OTHER_COLOR : (DIMENSION_COLORS[index % DIMENSION_COLORS.length] as string)
+}
+
 const rankValue = (k: number) => `__v${k}`
 const rankName = (k: number) => `__n${k}`
 const rankColor = (k: number) => `__c${k}`
@@ -59,11 +67,13 @@ function rankRows(
       .map((name, i) => {
         const raw = Number(row[name]) || 0
         const value = unit === "share" ? (total > 0 ? (Math.max(raw, 0) / total) * 100 : 0) : raw
-        return { name, raw, value, color: DIMENSION_COLORS[i % DIMENSION_COLORS.length] as string }
+        return { name, raw, value, color: driverColor(name, i) }
       })
       .filter((seg) => seg.value !== 0)
       // Signed charts sort by size either side of zero, so the biggest mover sits at the axis.
-      .sort((a, b) => Math.abs(b.value) - Math.abs(a.value))
+      .sort((a, b) =>
+        a.name === DRIVER_OTHER ? 1 : b.name === DRIVER_OTHER ? -1 : Math.abs(b.value) - Math.abs(a.value),
+      )
     depth = Math.max(depth, segments.length)
     const out: RankedRow = { entity: String(row.entity) }
     segments.forEach((seg, k) => {
@@ -98,7 +108,7 @@ function DriverTooltip({
     })
   }
   // Largest first; for signed charts gains before losses, each by size.
-  items.sort((a, b) => b.value - a.value)
+  items.sort((a, b) => (a.name === DRIVER_OTHER ? 1 : b.name === DRIVER_OTHER ? -1 : b.value - a.value))
   const fmt = (item: (typeof items)[number]) =>
     unit === "share"
       ? `${item.value.toFixed(1)}% · ${formatCompact(item.raw)}`
@@ -251,7 +261,7 @@ export function DriverLegend({ names }: { names: string[] }) {
         >
           <i
             className="block h-2.5 w-2.5 flex-none rounded-sm"
-            style={{ background: DIMENSION_COLORS[i % DIMENSION_COLORS.length] }}
+            style={{ background: driverColor(name, i) }}
           />
           {name}
         </span>
