@@ -32,6 +32,8 @@ interface OverviewFiltersState {
   selectedSlice: string | null
   driverEntity: DriverField
   driverDimension: DriverField
+  /** "chart": composition/growth/difference bars. "matrix": the GMV matrix. */
+  driverView: "chart" | "matrix"
   spendEntity: DriverEntity
   prevFrom: string | null
   prevTo: string | null
@@ -51,6 +53,7 @@ interface OverviewFiltersState {
   setSelectedSlice: (slice: string | null) => void
   setPrevRange: (from: string, to: string) => void
   setDriverEntity: (entity: DriverField) => void
+  setDriverView: (view: "chart" | "matrix") => void
   setDriverDimension: (dimension: DriverField) => void
   setSpendEntity: (entity: DriverEntity) => void
   hydrateFromParams: (params: URLSearchParams) => void
@@ -72,6 +75,7 @@ export const useOverviewFilters = create<OverviewFiltersState>((set) => ({
   selectedSlice: null,
   driverEntity: "brand",
   driverDimension: "pidFormat",
+  driverView: "chart",
   spendEntity: "brand",
   prevFrom: null,
   prevTo: null,
@@ -109,6 +113,7 @@ export const useOverviewFilters = create<OverviewFiltersState>((set) => ({
   setPrevRange: (prevFrom, prevTo) => set({ compare: "custom", prevFrom, prevTo }),
   setDriverEntity: (driverEntity) => set({ driverEntity }),
   setDriverDimension: (driverDimension) => set({ driverDimension }),
+  setDriverView: (driverView) => set({ driverView }),
   setSpendEntity: (spendEntity) => set({ spendEntity }),
 
   hydrateFromParams: (params) =>
@@ -133,6 +138,7 @@ export const useOverviewFilters = create<OverviewFiltersState>((set) => ({
         selectedSlice: params.get("slice") ?? state.selectedSlice,
         driverEntity: (params.get("drvEntity") as DriverField) ?? state.driverEntity,
         driverDimension: (params.get("drvDim") as DriverField) ?? state.driverDimension,
+        driverView: params.get("drvView") === "matrix" ? "matrix" : state.driverView,
         spendEntity: (params.get("spendEntity") as DriverEntity) ?? state.spendEntity,
         prevFrom: params.get("prevFrom") ?? state.prevFrom,
         prevTo: params.get("prevTo") ?? state.prevTo,
@@ -179,6 +185,7 @@ export function filtersToParams(state: OverviewFiltersState): URLSearchParams {
   if (state.selectedSlice) params.set("slice", state.selectedSlice)
   params.set("drvEntity", state.driverEntity)
   params.set("drvDim", state.driverDimension)
+  if (state.driverView !== "chart") params.set("drvView", state.driverView)
   params.set("spendEntity", state.spendEntity)
   if (state.compare === "custom") {
     if (state.prevFrom) params.set("prevFrom", state.prevFrom)

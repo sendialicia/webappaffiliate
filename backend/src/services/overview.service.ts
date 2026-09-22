@@ -20,6 +20,8 @@ import type {
   FilterOptionsResult,
   CompositionDimension,
   DataAvailabilityResult,
+  DriverMatrixResult,
+  MatrixCell,
   DataAvailabilityRow,
   CompositionResult,
   CompositionRow,
@@ -1242,4 +1244,112 @@ export async function getDataAvailability(): Promise<DataAvailabilityResult> {
     return acc
   }, null)
   return { latest, rows }
+}
+
+/**
+ * GMV matrix: GMV and distinct creators per entity × dimension value, current and comparison
+ * window, with row, column and grand totals queried separately — distinct creators cannot be
+ * added up from the cells. Values past the top `limit` fold into "Lainnya" in SQL, so its
+ * creator count is still a true distinct count.
+ */
+export async function getDriverMatrix(
+  from: string,
+  to: string,
+  basis: ComparisonBasis,
+  filters: OverviewFilters,
+  entity: DriverField,
+  dimension: DriverField,
+  limit: number,
+  detail: DetailFilters = {},
+  prevRange?: { from?: string; to?: string },
+): Promise<DriverMatrixResult> {
+  const entityColumn = `ifNull(${DRIVER_FIELD_COLUMNS[entity]}, 'Unknown')`
+  const dimensionColumn = `ifNull(${DRIVER_FIELD_COLUMNS[dimension]}, 'Unknown')`
+  const comparison = computeComparisonRange(from, to, basis, prevRange)
+  const params: Record<string, unknown> = {
+    currentFrom: from,
+    currentTo: to,
+    prevFrom: comparison.from,
+    prevTo: comparison.to,
+  }
+  const filterClause = buildFilterClause(filters, params) + buildDetailClause(detail, params)
+  const scope = `
+      FROM ${TABLE_SUMMARY_ORDER}
+      WHERE REGION_CODE = 'id'
+        AND ITEM_MARKETPLACE_FLAG = TRUE
+        AND IS_AFFILIATE = TRUE
+        ${TWO_WINDOW_CLAUSE}
+        ${filterClause}`
+
+  const topResult = await clickhouse.query({
+    query: `
+      SELECT ${dimensionColumn} AS name, sumIf(GMV, DATE >= {currentFrom:Date} AND DATE <= {currentTo:Date}) AS gmv
+      ${scope}
+      GROUP BY name
+      ORDER BY gmv DESC
+    `,
+    query_params: params,
+    format: 'JSONEachRow',
+  })
+  const allNames = (await topResult.json<{ name: string; gmv: number }>()).map((r) => r.name)
+  const topNames = allNames.slice(0, limit)
+  const folds = allNames.length > limit
+
+  // CASE rather than if(): valid as written in both ClickHouse and Snowflake.
+  const nameExpr = folds
+    ? `CASE WHEN ${dimensionColumn} IN {topNames:Array(String)} THEN ${dimensionColumn} ELSE '${DRIVER_OTHER}' END`
+    : dimensionColumn
+  const queryParams = { ...params, topNames }
+  const metrics = `
+        sumIf(GMV, DATE >= {currentFrom:Date} AND DATE <= {currentTo:Date}) AS gmv,
+        sumIf(GMV, DATE >= {prevFrom:Date} AND DATE <= {prevTo:Date}) AS gmvPrev,
+        uniqExactIf(AFFILIATE_USERNAME, DATE >= {currentFrom:Date} AND DATE <= {currentTo:Date}) AS creators,
+        uniqExactIf(AFFILIATE_USERNAME, DATE >= {prevFrom:Date} AND DATE <= {prevTo:Date}) AS creatorsPrev`
+
+  const run = (select: string, groupBy: string) =>
+    clickhouse
+      .query({
+        query: `SELECT ${select}${metrics}${scope}${groupBy ? `\n      GROUP BY ${groupBy}` : ''}`,
+        query_params: queryParams,
+        format: 'JSONEachRow',
+      })
+      .then((r) => r.json<Record<string, string | number>>())
+
+  const [cellRows, rowRows, columnRows, totalRows] = await Promise.all([
+    run(`${entityColumn} AS entity, ${nameExpr} AS name,`, 'entity, name'),
+    run(`${entityColumn} AS entity,`, 'entity'),
+    run(`${nameExpr} AS name,`, 'name'),
+    run('', ''),
+  ])
+
+  const toCell = (r: Record<string, string | number> | undefined): MatrixCell => ({
+    gmv: Number(r?.gmv || 0),
+    gmvPrev: Number(r?.gmvPrev || 0),
+    creators: Number(r?.creators || 0),
+    creatorsPrev: Number(r?.creatorsPrev || 0),
+  })
+
+  const cells: DriverMatrixResult['cells'] = {}
+  for (const r of cellRows) {
+    const e = String(r.entity)
+    ;(cells[e] ??= {})[String(r.name)] = toCell(r)
+  }
+  const rowTotals = Object.fromEntries(rowRows.map((r) => [String(r.entity), toCell(r)]))
+  const columnTotals = Object.fromEntries(columnRows.map((r) => [String(r.name), toCell(r)]))
+
+  const entities = Object.keys(rowTotals).sort(
+    (a, b) => (rowTotals[b]?.gmv ?? 0) - (rowTotals[a]?.gmv ?? 0),
+  )
+  const names = [...topNames, ...(folds ? [DRIVER_OTHER] : [])]
+
+  return {
+    entity,
+    dimension,
+    names,
+    entities,
+    cells,
+    rowTotals,
+    columnTotals,
+    total: toCell(totalRows[0]),
+  }
 }

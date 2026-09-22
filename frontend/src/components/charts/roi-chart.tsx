@@ -12,6 +12,7 @@ import {
 } from "recharts"
 import { formatCompact } from "@/lib/format"
 import type { SummaryTrendPoint } from "@/types/overview"
+import { TOOLTIP_PLACEMENT } from "@/lib/chart-tooltip"
 
 /** Business rule, confirmed with Sendi: ROI = GMV / Commission, floor at 12x. */
 export const ROI_THRESHOLD = 12.0
@@ -47,7 +48,7 @@ export function GmvCommissionChart({ trend, height = 150 }: { trend: SummaryTren
           tickLine={false}
           width={44}
         />
-        <Tooltip
+        <Tooltip {...TOOLTIP_PLACEMENT}
           contentStyle={{ background: "var(--ov-tooltip)", border: "1px solid var(--ov-line)", borderRadius: 8, fontSize: 12 }}
           labelStyle={{ color: "var(--ov-head)" }}
           formatter={(value, name, item) => {
@@ -103,7 +104,7 @@ export function RoiChart({ trend, height = 118 }: { trend: SummaryTrendPoint[]; 
           tickLine={false}
           width={52}
         />
-        <Tooltip
+        <Tooltip {...TOOLTIP_PLACEMENT}
           contentStyle={{ background: "var(--ov-tooltip)", border: "1px solid var(--ov-line)", borderRadius: 8, fontSize: 12 }}
           labelStyle={{ color: "var(--ov-head)" }}
           formatter={(value) => [`${Number(value).toFixed(1)}x`, "ROI"]}

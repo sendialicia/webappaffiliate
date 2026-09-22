@@ -32,6 +32,7 @@ import { SpendTable } from "@/components/overview/spend-table"
 import { ContentFunnel } from "@/components/overview/content-funnel"
 import { apiFetch } from "@/lib/api"
 import { useMediaQuery } from "@/lib/use-media-query"
+import { DriverMatrix } from "@/components/overview/driver-matrix"
 import { computeFindings } from "@/lib/findings"
 import { formatIdr, formatMonthLabelFull, formatPercent, formatRp, formatRpFull } from "@/lib/format"
 import { currentMonth } from "@/lib/date-range"
@@ -43,6 +44,7 @@ import type {
   DriverField,
   DriverEntity,
   DriversResult,
+  DriverMatrixResult,
   FilterOptionsResult,
   FunnelResult,
   MonthlyPerformanceResult,
@@ -132,6 +134,7 @@ function OverviewPageInner() {
     selectedSlice,
     driverEntity,
     driverDimension,
+    driverView,
     spendEntity,
     detail,
     prevFrom,
@@ -147,6 +150,7 @@ function OverviewPageInner() {
   const [summary, setSummary] = useState<SummaryResult | null>(null)
   const [composition, setComposition] = useState<CompositionResult | null>(null)
   const [drivers, setDrivers] = useState<DriversResult | null>(null)
+  const [matrix, setMatrix] = useState<DriverMatrixResult | null>(null)
   const [spend, setSpend] = useState<SpendResult | null>(null)
   const [funnel, setFunnel] = useState<FunnelResult | null>(null)
   const [filterOptions, setFilterOptions] = useState<FilterOptionsResult | null>(null)
@@ -204,6 +208,7 @@ function OverviewPageInner() {
     selectedSlice,
     driverEntity,
     driverDimension,
+    driverView,
     spendEntity,
     detailKey,
     prevFrom,
@@ -356,6 +361,50 @@ function OverviewPageInner() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [from, to, compare, driverEntity, driverDimension, brand, marketplace, detailKey, prevFrom, prevTo])
 
+  // The matrix costs four queries, so it only loads while its view is open.
+  useEffect(() => {
+    if (driverView !== "matrix") return
+    let stale = false
+    apiFetch<DriverMatrixResult>(
+      `/api/overview/driver-matrix${buildQuery({
+        from,
+        to,
+        compare,
+        entity: driverEntity,
+        dimension: driverDimension,
+        brand: csv(brand),
+        marketplace: csv(marketplace),
+        ...detailParams,
+        ...prevParams,
+      })}`,
+    )
+      .then((data) => {
+        if (!stale) setMatrix(data)
+      })
+      .catch((e) => {
+        if (!stale) setError(e instanceof Error ? e.message : "Failed to load GMV matrix")
+      })
+    return () => {
+      stale = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [driverView, from, to, compare, driverEntity, driverDimension, brand, marketplace, detailKey, prevFrom, prevTo])
+
+  /**
+   * Clicking a matrix cell narrows the whole page to that entity and/or dimension value. Brand and
+   * marketplace are top-level filters; every other driver field shares its key with a detail filter.
+   */
+  const drillTo = (entityValue: string | null, nameValue: string | null) => {
+    const apply = (field: DriverField, value: string) => {
+      if (field === "brand") filters.setDraftBrand([value])
+      else if (field === "marketplace") filters.setDraftMarketplace([value])
+      else filters.setDraftDetail(field, [value])
+    }
+    if (entityValue) apply(driverEntity, entityValue)
+    if (nameValue) apply(driverDimension, nameValue)
+    filters.applyDraft()
+  }
+
   useEffect(() => {
     let stale = false
     apiFetch<SpendResult>(
@@ -462,6 +511,26 @@ function OverviewPageInner() {
       id: "komposisi-tren",
       label: "Komposisi GMV · tren",
       rows: () => (composition?.trend ?? []).map((t) => ({ ...t })),
+    },
+    {
+      id: "gmv-matrix",
+      label: `GMV Matrix · ${DRIVER_FIELD_LABELS[driverDimension]} per ${DRIVER_FIELD_LABELS[driverEntity]}`,
+      rows: () => {
+        if (!matrix) return []
+        return matrix.entities.flatMap((entity) =>
+          matrix.names.map((name) => {
+            const c = matrix.cells[entity]?.[name]
+            return {
+              [DRIVER_FIELD_LABELS[matrix.entity]]: entity,
+              [DRIVER_FIELD_LABELS[matrix.dimension]]: name,
+              gmv: c?.gmv ?? 0,
+              gmvPrev: c?.gmvPrev ?? 0,
+              creators: c?.creators ?? 0,
+              creatorsPrev: c?.creatorsPrev ?? 0,
+            }
+          }),
+        )
+      },
     },
     {
       id: "driver",
@@ -934,9 +1003,42 @@ function OverviewPageInner() {
                 ))}
               </SelectContent>
             </Select>
+            <div className="ml-auto flex items-center gap-1 rounded-full border border-[var(--ov-line)] bg-[var(--ov-fill1)] p-0.5">
+              {(
+                [
+                  ["chart", "Chart"],
+                  ["matrix", "GMV Matrix"],
+                ] as const
+              ).map(([view, label]) => (
+                <button
+                  key={view}
+                  type="button"
+                  onClick={() => filters.setDriverView(view)}
+                  className="rounded-full px-3 py-1.5 text-xs font-semibold"
+                  style={{
+                    background: driverView === view ? "var(--accent)" : "transparent",
+                    color: driverView === view ? "var(--accent-foreground)" : "var(--ov-mut)",
+                  }}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
           </div>
 
-          {drivers ? (
+          {driverView === "matrix" ? (
+            matrix && matrix.entity === driverEntity && matrix.dimension === driverDimension ? (
+              <DriverMatrix
+                result={matrix}
+                entityLabel={DRIVER_FIELD_LABELS[driverEntity]}
+                dimensionLabel={DRIVER_FIELD_LABELS[driverDimension]}
+                compareLabel={compareLabel}
+                onDrillAction={drillTo}
+              />
+            ) : (
+              <div className="flex h-[330px] items-center justify-center text-sm text-[var(--ov-faint)]">Loading…</div>
+            )
+          ) : drivers ? (
             (() => {
               // The row count swings from 2 (marketplace) to 64 (PID format), so the block is
               // sized from the data and only scrolls once it would run past a screenful. The

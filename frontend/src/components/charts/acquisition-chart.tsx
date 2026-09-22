@@ -3,6 +3,7 @@
 import { Bar, CartesianGrid, ComposedChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts"
 import { formatCompact, formatNumber } from "@/lib/format"
 import type { AcquisitionPoint } from "@/types/overview"
+import { TOOLTIP_PLACEMENT } from "@/lib/chart-tooltip"
 
 export function AcquisitionChart({ data, height = 332 }: { data: AcquisitionPoint[]; height?: number }) {
   return (
@@ -27,7 +28,7 @@ export function AcquisitionChart({ data, height = 332 }: { data: AcquisitionPoin
           tickLine={false}
           width={48}
         />
-        <Tooltip
+        <Tooltip {...TOOLTIP_PLACEMENT}
           cursor={{ fill: "var(--ov-fill1)" }}
           contentStyle={{ background: "var(--ov-tooltip)", border: "1px solid var(--ov-line)", borderRadius: 8, fontSize: 12 }}
           labelStyle={{ color: "var(--ov-head)" }}

@@ -5,6 +5,7 @@ import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "rec
 import { apiFetch } from "@/lib/api"
 import { formatCompact, formatIdr, formatPercent, formatRpFull } from "@/lib/format"
 import type { CreatorDetail } from "@/types/creator-detail"
+import { TOOLTIP_PLACEMENT } from "@/lib/chart-tooltip"
 
 const PILLAR_KEYS = [
   { key: "livestream", label: "Livestream", color: "var(--ov-gold)" },
@@ -209,7 +210,7 @@ export function CreatorDetailModal({
                       tickLine={false}
                       width={48}
                     />
-                    <Tooltip
+                    <Tooltip {...TOOLTIP_PLACEMENT}
                       contentStyle={{
                         background: "var(--ov-tooltip)",
                         border: "1px solid var(--ov-line)",

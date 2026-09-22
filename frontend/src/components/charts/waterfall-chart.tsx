@@ -3,6 +3,7 @@
 import { Bar, BarChart, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts"
 import { formatCompact } from "@/lib/format"
 import type { CompositionResult } from "@/types/overview"
+import { TOOLTIP_PLACEMENT } from "@/lib/chart-tooltip"
 
 interface WaterfallStep {
   name: string
@@ -101,7 +102,7 @@ export function WaterfallChart({ result, height = 296 }: { result: CompositionRe
           tickLine={false}
           width={56}
         />
-        <Tooltip
+        <Tooltip {...TOOLTIP_PLACEMENT}
           cursor={{ fill: "var(--ov-fill1)" }}
           contentStyle={{ background: "var(--ov-tooltip)", border: "1px solid var(--ov-line)", borderRadius: 8, fontSize: 12 }}
           labelStyle={{ color: "var(--ov-head)" }}

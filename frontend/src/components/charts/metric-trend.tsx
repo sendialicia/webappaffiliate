@@ -4,6 +4,7 @@ import { useState } from "react"
 import { Area, CartesianGrid, ComposedChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts"
 import { MultiSelect } from "@/components/multi-select"
 import { formatCompact, formatIdr, formatRpFull } from "@/lib/format"
+import { TOOLTIP_PLACEMENT } from "@/lib/chart-tooltip"
 
 export type TrendMetricKey = "gmv" | "itemsSold" | "orders" | "commission" | "creators" | "aov"
 
@@ -234,7 +235,7 @@ export function MetricTrend({
                 width={60}
               />
             )}
-            <Tooltip
+            <Tooltip {...TOOLTIP_PLACEMENT}
               contentStyle={{ background: "var(--ov-tooltip)", border: "1px solid var(--ov-line)", borderRadius: 8, fontSize: 12.5 }}
               labelStyle={{ color: "var(--ov-head)", fontWeight: 600 }}
               itemStyle={{ color: "var(--ov-ink)" }}

@@ -282,3 +282,23 @@ export interface DataAvailabilityResult {
   latest: string | null
   rows: DataAvailabilityRow[]
 }
+
+/** One entity × dimension-value cell of the GMV matrix, both windows. */
+export interface MatrixCell {
+  gmv: number
+  gmvPrev: number
+  /** Distinct creators with a sale in the window; never summed across cells. */
+  creators: number
+  creatorsPrev: number
+}
+
+export interface DriverMatrixResult {
+  entity: DriverField
+  dimension: DriverField
+  names: string[]
+  entities: string[]
+  cells: Record<string, Record<string, MatrixCell>>
+  rowTotals: Record<string, MatrixCell>
+  columnTotals: Record<string, MatrixCell>
+  total: MatrixCell
+}

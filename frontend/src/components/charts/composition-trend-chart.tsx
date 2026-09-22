@@ -4,6 +4,7 @@ import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YA
 import { DIMENSION_COLORS } from "@/components/overview/composition-table"
 import { formatCompact } from "@/lib/format"
 import type { CompositionTrendPoint } from "@/types/overview"
+import { TOOLTIP_PLACEMENT } from "@/lib/chart-tooltip"
 
 export function CompositionTrendChart({
   trend,
@@ -34,7 +35,7 @@ export function CompositionTrendChart({
           tickLine={false}
           width={56}
         />
-        <Tooltip
+        <Tooltip {...TOOLTIP_PLACEMENT}
           contentStyle={{ background: "var(--ov-tooltip)", border: "1px solid var(--ov-line)", borderRadius: 8, fontSize: 12 }}
           labelStyle={{ color: "var(--ov-head)" }}
           formatter={(value, name) => [formatCompact(Number(value)), String(name)]}

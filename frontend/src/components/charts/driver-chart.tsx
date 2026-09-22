@@ -15,6 +15,7 @@ import {
 import { DIMENSION_COLORS } from "@/components/overview/composition-table"
 import { formatCompact } from "@/lib/format"
 import type { DriverChartRow, EntityGrowthRow } from "@/types/overview"
+import { TOOLTIP_PLACEMENT } from "@/lib/chart-tooltip"
 
 /** One entity per row; tall enough that a 14-brand chart is not a stack of hairlines. */
 export const DRIVER_ROW_HEIGHT = 30
@@ -184,7 +185,7 @@ export function DriverChart({
           tickLine={false}
           width={DRIVER_LABEL_WIDTH}
         />
-        <Tooltip cursor={{ fill: "var(--ov-fill1)" }} content={<DriverTooltip unit={unit} />} />
+        <Tooltip {...TOOLTIP_PLACEMENT} cursor={{ fill: "var(--ov-fill1)" }} content={<DriverTooltip unit={unit} />} />
         {unit !== "share" && <ReferenceLine x={0} stroke="var(--ov-rule)" />}
         {Array.from({ length: depth }, (_, k) => (
           <Bar key={k} dataKey={rankValue(k)} stackId="s" isAnimationActive={false}>
@@ -219,7 +220,7 @@ export function EntityGrowthChart({ rows, height = 330 }: { rows: EntityGrowthRo
           tickLine={false}
         />
         <YAxis type="category" dataKey="entity" hide />
-        <Tooltip
+        <Tooltip {...TOOLTIP_PLACEMENT}
           cursor={{ fill: "var(--ov-fill1)" }}
           contentStyle={{ background: "var(--ov-tooltip)", border: "1px solid var(--ov-line)", borderRadius: 8, fontSize: 12 }}
           labelStyle={{ color: "var(--ov-head)" }}

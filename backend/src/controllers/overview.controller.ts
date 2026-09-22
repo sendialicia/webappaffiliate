@@ -8,6 +8,7 @@ import {
   getProgress,
   getFilterOptions,
   getDataAvailability,
+  getDriverMatrix,
   getSpend,
   getSummary,
 } from '../services/overview.service'
@@ -210,4 +211,17 @@ function defaultFrom(to: string): string {
 
 export async function getDataAvailabilityHandler(_req: Request, res: Response) {
   res.json(await getDataAvailability())
+}
+
+export async function getDriverMatrixHandler(req: Request, res: Response) {
+  const to = str(req.query.to) ?? new Date().toISOString().slice(0, 10)
+  const from = str(req.query.from) ?? defaultFrom(to)
+  const basis: ComparisonBasis = basisFromQuery(req)
+  const entity = driverFieldOf(req.query.entity, 'brand')
+  const dimension = driverFieldOf(req.query.dimension, 'pidFormat')
+  // Top 20 columns plus a folded "Lainnya": ~94% of GMV, and still scannable as a grid.
+  const limit = Math.min(Number(str(req.query.limit)) || 20, 20)
+
+  const data = await getDriverMatrix(from, to, basis, filtersFromQuery(req), entity, dimension, limit, detailFromQuery(req), prevRangeFromQuery(req))
+  res.json(data)
 }

@@ -306,3 +306,26 @@ export interface DataAvailabilityResult {
   latest: string | null
   rows: DataAvailabilityRow[]
 }
+
+/** One brand × dimension-value cell of the GMV matrix, both windows. */
+export interface MatrixCell {
+  gmv: number
+  gmvPrev: number
+  /** Distinct creators with a sale in the window; never summed across cells. */
+  creators: number
+  creatorsPrev: number
+}
+
+export interface DriverMatrixResult {
+  entity: DriverField
+  dimension: DriverField
+  /** Column order: by GMV, with the folded "Lainnya" last. */
+  names: string[]
+  /** Row order: by GMV. */
+  entities: string[]
+  /** cells[entity][name]; absent when neither window has a sale. */
+  cells: Record<string, Record<string, MatrixCell>>
+  rowTotals: Record<string, MatrixCell>
+  columnTotals: Record<string, MatrixCell>
+  total: MatrixCell
+}

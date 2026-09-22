@@ -3,6 +3,7 @@
 import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis } from "recharts"
 import type { SummaryTrendPoint } from "@/types/overview"
 import { formatPercent } from "@/lib/format"
+import { TOOLTIP_PLACEMENT } from "@/lib/chart-tooltip"
 
 export function AffSelfChart({ trend }: { trend: SummaryTrendPoint[] }) {
   const data = trend.map((t) => {
@@ -18,7 +19,7 @@ export function AffSelfChart({ trend }: { trend: SummaryTrendPoint[] }) {
     <ResponsiveContainer width="100%" height={220}>
       <AreaChart data={data} stackOffset="expand" margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
         <XAxis dataKey="label" tick={{ fill: "var(--ov-faint)", fontSize: 12 }} axisLine={{ stroke: "var(--ov-line)" }} tickLine={false} />
-        <Tooltip
+        <Tooltip {...TOOLTIP_PLACEMENT}
           formatter={(value, name) => [formatPercent(Number(value)), String(name)]}
           contentStyle={{ background: "var(--ov-tooltip)", border: "1px solid var(--ov-line)", borderRadius: 8, fontSize: 12 }}
           labelStyle={{ color: "var(--ov-head)" }}

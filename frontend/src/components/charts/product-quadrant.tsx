@@ -14,6 +14,7 @@ import {
 } from "recharts"
 import { formatCompact } from "@/lib/format"
 import type { PidProductRow, QuadrantPreset } from "@/types/shopee-pid"
+import { TOOLTIP_PLACEMENT } from "@/lib/chart-tooltip"
 
 /** The minimum a row must carry to be plotted; each page supplies its own richer row type. */
 export interface QuadrantRow {
@@ -351,7 +352,7 @@ export function ProductQuadrant<T extends QuadrantRow>({
         <ZAxis range={[26, 26]} />
         <ReferenceLine x={xMedian} stroke="var(--ov-rule)" strokeDasharray="4 4" />
         <ReferenceLine y={yMedian} stroke="var(--ov-rule)" strokeDasharray="4 4" />
-        <Tooltip
+        <Tooltip {...TOOLTIP_PLACEMENT}
           cursor={{ strokeDasharray: "3 3" }}
           contentStyle={{ background: "var(--ov-tooltip)", border: "1px solid var(--ov-line)", borderRadius: 8, fontSize: 12 }}
           content={({ payload }) => {
