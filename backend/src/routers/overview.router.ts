@@ -7,6 +7,7 @@ import {
   getDataAvailabilityHandler,
   getDriverMatrixHandler,
   getTopCreatorsHandler,
+  getFindingsInputsHandler,
   getFunnelHandler,
   getMonthlyPerformanceHandler,
   getProgressHandler,
@@ -24,6 +25,7 @@ overviewRouter.get('/api/overview/composition', getCompositionHandler)
 overviewRouter.get('/api/overview/drivers', getDriversHandler)
 overviewRouter.get('/api/overview/driver-matrix', getDriverMatrixHandler)
 overviewRouter.get('/api/overview/top-creators', getTopCreatorsHandler)
+overviewRouter.get('/api/overview/findings-inputs', getFindingsInputsHandler)
 overviewRouter.get('/api/overview/spend', getSpendHandler)
 overviewRouter.get('/api/overview/funnel', getFunnelHandler)
 overviewRouter.get('/api/overview/filter-options', getFilterOptionsHandler)

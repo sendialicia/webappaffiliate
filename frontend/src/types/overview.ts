@@ -325,3 +325,14 @@ export interface TopCreatorsResult {
   topShare: number | null
   topSharePrev: number | null
 }
+
+export interface GmvPair {
+  name: string
+  gmv: number
+  gmvPrev: number
+}
+
+export interface FindingsInputsResult {
+  brands: GmvPair[]
+  pillars: GmvPair[]
+}

@@ -45,6 +45,9 @@ import type {
   DriverEntity,
   DriversResult,
   DriverMatrixResult,
+  FindingsInputsResult,
+  TopCreatorsResult,
+  DataAvailabilityResult,
   FilterOptionsResult,
   FunnelResult,
   MonthlyPerformanceResult,
@@ -152,6 +155,10 @@ function OverviewPageInner() {
   const [composition, setComposition] = useState<CompositionResult | null>(null)
   const [drivers, setDrivers] = useState<DriversResult | null>(null)
   const [matrix, setMatrix] = useState<DriverMatrixResult | null>(null)
+  // Extra inputs the rule-based findings read: brand/pillar GMV, creator concentration, data dates.
+  const [findingsInputs, setFindingsInputs] = useState<FindingsInputsResult | null>(null)
+  const [concentration, setConcentration] = useState<TopCreatorsResult | null>(null)
+  const [availability, setAvailability] = useState<DataAvailabilityResult | null>(null)
   const [spend, setSpend] = useState<SpendResult | null>(null)
   const [funnel, setFunnel] = useState<FunnelResult | null>(null)
   const [filterOptions, setFilterOptions] = useState<FilterOptionsResult | null>(null)
@@ -362,6 +369,38 @@ function OverviewPageInner() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [from, to, compare, driverEntity, driverDimension, brand, marketplace, detailKey, prevFrom, prevTo])
 
+  useEffect(() => {
+    let stale = false
+    const query = buildQuery({ from, to, compare, brand: csv(brand), marketplace: csv(marketplace), ...detailParams, ...prevParams })
+    Promise.all([
+      apiFetch<FindingsInputsResult>(`/api/overview/findings-inputs${query}`),
+      apiFetch<TopCreatorsResult>(`/api/overview/top-creators${query}`),
+    ])
+      .then(([inputs, top]) => {
+        if (stale) return
+        setFindingsInputs(inputs)
+        setConcentration(top)
+      })
+      // Findings are a side panel: a failure here drops rules, not the page.
+      .catch(() => undefined)
+    return () => {
+      stale = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [from, to, compare, brand, marketplace, detailKey, prevFrom, prevTo])
+
+  useEffect(() => {
+    let stale = false
+    apiFetch<DataAvailabilityResult>("/api/overview/data-availability")
+      .then((data) => {
+        if (!stale) setAvailability(data)
+      })
+      .catch(() => undefined)
+    return () => {
+      stale = true
+    }
+  }, [])
+
   // The matrix costs four queries, so it only loads while its view is open.
   useEffect(() => {
     if (driverView !== "matrix") return
@@ -461,7 +500,19 @@ function OverviewPageInner() {
 
   const compareLabel =
     compare === "ly" ? "vs LY" : compare === "custom" ? "vs periode pembanding" : "vs prev period"
-  const findings = computeFindings(monthly?.pace, summary?.kpis, progress, compareLabel, summary?.trend)
+  const findings = computeFindings({
+    pace: monthly?.pace,
+    kpis: summary?.kpis,
+    trend: summary?.trend,
+    progress,
+    progressMonth: month,
+    compareLabel,
+    periodTo: to,
+    inputs: findingsInputs,
+    concentration,
+    availability,
+    acquisition: spend?.acquisition,
+  })
 
 
   // Every entry is built from the same state the section renders, so a download always

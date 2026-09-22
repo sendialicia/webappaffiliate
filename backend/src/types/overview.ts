@@ -356,3 +356,15 @@ export interface TopCreatorsResult {
   topShare: number | null
   topSharePrev: number | null
 }
+
+export interface GmvPair {
+  name: string
+  gmv: number
+  gmvPrev: number
+}
+
+/** Inputs the rule-based findings need beyond the page's own sections. */
+export interface FindingsInputsResult {
+  brands: GmvPair[]
+  pillars: GmvPair[]
+}

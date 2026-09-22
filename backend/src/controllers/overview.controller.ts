@@ -10,6 +10,7 @@ import {
   getDataAvailability,
   getDriverMatrix,
   getTopCreators,
+  getFindingsInputs,
   getSpend,
   getSummary,
 } from '../services/overview.service'
@@ -250,3 +251,9 @@ const COMPOSITION_DIMENSION_KEYS: CompositionDimension[] = [
   'productSubCategory',
   'productFormat',
 ]
+
+export async function getFindingsInputsHandler(req: Request, res: Response) {
+  const to = str(req.query.to) ?? new Date().toISOString().slice(0, 10)
+  const from = str(req.query.from) ?? defaultFrom(to)
+  res.json(await getFindingsInputs(from, to, basisFromQuery(req), filtersFromQuery(req), detailFromQuery(req), prevRangeFromQuery(req)))
+}

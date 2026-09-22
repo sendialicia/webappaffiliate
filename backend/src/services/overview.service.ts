@@ -21,6 +21,7 @@ import type {
   CompositionDimension,
   DataAvailabilityResult,
   TopCreatorsResult,
+  FindingsInputsResult,
   DriverMatrixResult,
   MatrixCell,
   DataAvailabilityRow,
@@ -1486,4 +1487,47 @@ export async function getTopCreators(
     topShare: creatorsGmv > 0 ? topGmv / creatorsGmv : null,
     topSharePrev: creatorsGmvPrev > 0 ? topGmvPrev / creatorsGmvPrev : null,
   }
+}
+
+/** Brand and pillar GMV in both windows: what the brand-direction and pillar-shift rules read. */
+export async function getFindingsInputs(
+  from: string,
+  to: string,
+  basis: ComparisonBasis,
+  filters: OverviewFilters,
+  detail: DetailFilters,
+  prevRange?: { from?: string; to?: string },
+): Promise<FindingsInputsResult> {
+  const comparison = computeComparisonRange(from, to, basis, prevRange)
+  const params: Record<string, unknown> = {
+    currentFrom: from,
+    currentTo: to,
+    prevFrom: comparison.from,
+    prevTo: comparison.to,
+  }
+  const filterClause = buildFilterClause(filters, params) + buildDetailClause(detail, params)
+  const byColumn = (column: string) =>
+    clickhouse
+      .query({
+        query: `
+          SELECT
+            ifNull(${column}, 'Unknown') AS name,
+            sumIf(GMV, DATE >= {currentFrom:Date} AND DATE <= {currentTo:Date}) AS gmv,
+            sumIf(GMV, DATE >= {prevFrom:Date} AND DATE <= {prevTo:Date}) AS gmvPrev
+          FROM ${TABLE_SUMMARY_ORDER}
+          WHERE REGION_CODE = 'id'
+            AND ITEM_MARKETPLACE_FLAG = TRUE
+            AND IS_AFFILIATE = TRUE
+            ${TWO_WINDOW_CLAUSE}
+            ${filterClause}
+          GROUP BY name
+        `,
+        query_params: params,
+        format: 'JSONEachRow',
+      })
+      .then((r) => r.json<{ name: string; gmv: number; gmvPrev: number }>())
+      .then((rows) => rows.map((r) => ({ name: r.name, gmv: Number(r.gmv || 0), gmvPrev: Number(r.gmvPrev || 0) })))
+
+  const [brands, pillars] = await Promise.all([byColumn('BRAND_NAME'), byColumn('PILLAR')])
+  return { brands, pillars }
 }
