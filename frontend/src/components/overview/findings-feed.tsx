@@ -4,7 +4,8 @@ import { useState } from "react"
 import type { Finding } from "@/lib/findings"
 
 export function FindingsFeed({ findings }: { findings: Finding[] }) {
-  const [open, setOpen] = useState(true)
+  // Collapsed by default: the list is a prompt to open, not something to read before the charts.
+  const [open, setOpen] = useState(false)
 
   return (
     <div className="overflow-hidden rounded-xl border border-[var(--ov-line)]" style={{ background: "var(--ov-card-gradient)" }}>
